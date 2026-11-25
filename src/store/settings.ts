@@ -17,6 +17,8 @@ export const LOOKS = ["icon", "bar", "text"] as const;
 /** What each is stands in `src/features/alerts/logic.ts`. */
 export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain"] as const;
 const JOBS: readonly Job[] = ["gladiator", "templar", "ranger", "assassin", "sorcerer", "cleric", "spiritmaster", "chanter", "fighter", ""];
+/** Odyle Energy a run takes: once, or claimed twice. */
+export const ODYLE_RUN = [40, 80] as const;
 export const TEXTS = [1, 1.15, 1.3] as const;
 
 export type Mode = (typeof MODES)[number];
@@ -76,6 +78,8 @@ export interface AuraRule extends Signal {
   glow: boolean;
   /** Only in fights. */
   fight: boolean;
+  /** Stands in a place of its own, not among the others. */
+  own: boolean;
   on: boolean;
 }
 
@@ -143,6 +147,7 @@ export interface Settings {
   /** Skills left off the action bars. */
   skip: number[];
   resources: Resource[];
+  odyleRun: (typeof ODYLE_RUN)[number];
   /** Skills and effects with the game's pictures, when there are some. */
   pictures: boolean;
   alerts: Record<AlertId, Alert>;
@@ -173,6 +178,7 @@ export const DEFAULTS: Settings = {
   ready: [],
   skip: [],
   resources: [],
+  odyleRun: 40,
   pictures: true,
   alerts: {
     low: { on: false, banner: true, sound: "alarm", say: false, value: 30 },
@@ -225,6 +231,7 @@ const aura = (v: Record<string, unknown>, at: number): AuraRule => ({
   look: one(v.look as AuraRule["look"], LOOKS, "icon"),
   glow: flag(v.glow, false),
   fight: flag(v.fight, false),
+  own: flag(v.own, false),
   on: flag(v.on, true),
   ...signal(v, { sound: "", say: false }),
 });
@@ -299,6 +306,7 @@ export function read(value: unknown): Settings {
     skip: numbers(s.skip, 1, 2 ** 31, 200),
     resources: list(s.resources, 200).map((r) => ({ id: Math.round(number(r.id, 0, 2 ** 32, 0)), name: text(r.name, 40), show: flag(r.show, false) }))
       .filter((r) => r.id > 0 && (r.name || r.show)),
+    odyleRun: one(s.odyleRun as Settings["odyleRun"], ODYLE_RUN, d.odyleRun),
     pictures: flag(s.pictures, d.pictures),
     alerts: Object.fromEntries(
       ALERTS.map((id) => {

@@ -7,7 +7,8 @@ import { Switch } from "../../ui/Switch";
 import { followActions, recent, skills } from "../actions/store";
 import { SignalLines } from "../alerts/SignalLines";
 import { ANY_ITEM, called, chosenName } from "../effects/logic";
-import { blank, effectsOf, KIND_NAMES, starter, VALUE_NAMES } from "./logic";
+import { CLASSES } from "../../ui/classes";
+import { blank, effectsOf, KIND_NAMES, placeOf, ruleName as name, SETS, starter, VALUE_NAMES } from "./logic";
 import "./auras.css";
 
 const LOOK_NAMES = [["icon", "Icon"], ["bar", "Bar"], ["text", "Text"]] as const;
@@ -33,11 +34,21 @@ export function AurasPage() {
   };
   const edit = (key: string, to: Partial<AuraRule>) =>
     change((s) => (s.auras = s.auras.map((a) => (a.key === key ? { ...a, ...to } : a))));
-  const set = () => starter(recent(), skills(), newKey).filter((n) => !settings.auras.some((a) => a.kind === n.kind && id(a.of) === id(n.of)));
+  const missing = (rules: AuraRule[]) => rules.filter((n) => !settings.auras.some((a) => a.kind === n.kind && (id(a.of) === id(n.of) || (!!a.of.name && a.of.name === n.of.name))));
+  const set = () => missing(starter(recent(), skills(), newKey));
+  // Your class's, or all there are while it is not known.
+  const job = () => near.you?.job || recent()[0]?.you?.job || "";
+  const sets = () => Object.entries(SETS).filter(([of]) => !job() || of === job()).map(([of, rules]) => ({ of: of as keyof typeof CLASSES, rules: () => missing(rules!.map((r, n) => blank(newKey(n), r))) }));
+  const remove = (key: string) =>
+    change((s) => {
+      s.auras = s.auras.filter((a) => a.key !== key);
+      delete s.places[placeOf(key)];
+    });
   return (
     <div class="page">
       <header class="page-head">
         <h1>Auras</h1>
+        <For each={sets()}>{(s) => <button class="ui-button" disabled={!s.rules().length} onClick={() => add(s.rules())}>{CLASSES[s.of].name} set</button>}</For>
         <button class="ui-button" disabled={!set().length} onClick={() => add(set())}>Make a set from your fights</button>
         <button class="ui-button" data-main onClick={() => add([blank(newKey())])}>
           <span class="ui-icon" aria-hidden="true">{""}</span>
@@ -58,7 +69,7 @@ export function AurasPage() {
                   {picked() === a.key ? "Close" : "Edit"}
                 </button>
               </div>
-              <Show when={picked() === a.key && open()}>{(o) => <Editor of={o()} set={(to) => edit(a.key, to)} remove={() => change((s) => (s.auras = s.auras.filter((x) => x.key !== a.key)))} />}</Show>
+              <Show when={picked() === a.key && open()}>{(o) => <Editor of={o()} set={(to) => edit(a.key, to)} remove={() => remove(a.key)} />}</Show>
             </div>
           )}
         </For>
@@ -81,8 +92,6 @@ export function AurasPage() {
   );
 }
 
-const name = (a: AuraRule) => (a.kind === "low" ? "Low health" : a.of.id || a.of.name ? called(a.of) : "Nothing chosen yet");
-
 function Editor(props: { of: AuraRule; set: (to: Partial<AuraRule>) => void; remove: () => void }) {
   const choices = createMemo<Named[]>(() => {
     if (props.of.kind === "low") return [];
@@ -92,6 +101,12 @@ function Editor(props: { of: AuraRule; set: (to: Partial<AuraRule>) => void; rem
     return (own.id || own.name) && !list.some((n) => id(n) === id(own)) ? [own, ...list] : list;
   });
   const value = () => VALUE_NAMES[props.of.kind];
+  const ownPlace = (own: boolean) => {
+    props.set({ own });
+    // One that was hidden while overlays were moved comes back.
+    const at = settings.places[placeOf(props.of.key)];
+    if (own && at) change((s) => (s.places = { ...s.places, [placeOf(props.of.key)]: { ...at, on: true } }));
+  };
   return (
     <div class="ui-rise">
       <Line name="Shows when">
@@ -123,6 +138,7 @@ function Editor(props: { of: AuraRule; set: (to: Partial<AuraRule>) => void; rem
         <Choices name="Look" all={LOOK_NAMES} value={props.of.look} set={(look) => props.set({ look })} />
       </Line>
       <Switch name="Glow" on={props.of.glow} set={(glow) => props.set({ glow })} />
+      <Switch name="A place of its own" about="Shows with the Auras overlay off too. Move it like any overlay." on={props.of.own} set={ownPlace} />
       <Switch name="Only in fights" on={props.of.fight} set={(fight) => props.set({ fight })} />
       <SignalLines of={props.of} words={name(props.of)} set={props.set} />
       <Line name="Not needed any more">

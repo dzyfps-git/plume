@@ -227,7 +227,7 @@ export function demoSaved(id: string, options: { ms: number; seed?: number; skil
     healing: i === 7 ? Math.round(ms * 8.4) : i === 6 ? Math.round(ms * 2.1) : i === 0 ? Math.round(ms * 0.4) : 0,
     given: i === 6 ? Math.round(mine * 0.04) : 0, got: i === 0 && !dummy ? Math.round(mine * 0.04) : 0,
     stagger: dummy ? 0 : 900 - i * 80, curve: dps, skills: demoSkills(damage),
-    heals: i === 7 ? demoSkills(Math.round(ms * 8.4)).slice(0, 3).map((s, n) => ({ ...s, name: ["Healing Wind", "Light of Dawn", "Radiant Cure"][n] })) : [],
+    heals: i === 7 ? demoSkills(Math.round(ms * 8.4)).slice(0, 3).map((s, n) => ({ ...s, name: ["Healing Wind", "Light of Dawn", "Radiant Cure"][n], weighed: s.damage, over: Math.round(s.damage * [0.51, 0.42, 0.18][n]) })) : [],
   });
   const rows = [row(0, "You", "assassin", mine, curve), ...others.map(([name, job, dps], i) => row(i + 1, name, job, theirs(dps)[seconds - 1], theirs(dps)))];
   const total = rows.reduce((sum, r) => sum + r.damage, 0);

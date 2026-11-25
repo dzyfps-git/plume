@@ -1,4 +1,4 @@
-import type { Saved } from "../../live/types.ts";
+import type { Job, Saved } from "../../live/types.ts";
 
 export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session" | "table";
 
@@ -11,8 +11,30 @@ export function filtered(fights: readonly Saved[], filter: Filter, search: strin
   );
 }
 
-/** Fights that can be held against each other: one target, or dummies over about the same time. */
-const kind = (f: Saved) => (f.dummy ? `dummy ${Math.round(f.ms / 30_000)}` : `boss ${f.code || f.target}`);
+/** Fights that can be held against each other: of one class, on one target, or on dummies over about the same time. */
+const kind = (f: Saved) => `${f.you?.job ?? ""} ${f.dummy ? `dummy ${Math.round(f.ms / 30_000)}` : `boss ${f.code || f.target}`}`;
+
+export interface Character {
+  name: string;
+  job: Job;
+  fights: number;
+}
+
+/** Your characters, the one played last first. A fight in which your name was not known yet is nobody's. */
+export function characters(fights: readonly Saved[]): Character[] {
+  const all = new Map<string, Character>();
+  for (const { you } of fights) {
+    if (!you?.name) continue;
+    const c = all.get(you.name) ?? { name: you.name, job: you.job, fights: 0 };
+    all.set(you.name, c);
+    c.fights++;
+    c.job ||= you.job;
+  }
+  return [...all.values()];
+}
+
+/** The fights ticked to compare, at most two of them: a third takes the place of the first. */
+export const tick = (ticked: readonly string[], id: string): string[] => (ticked.includes(id) ? ticked.filter((t) => t !== id) : [...ticked, id].slice(-2));
 
 /** The best of each kind by your damage a second. A short fight proves nothing. */
 export function bests(fights: readonly Saved[]): Map<string, Saved> {

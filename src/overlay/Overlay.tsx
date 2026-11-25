@@ -1,7 +1,7 @@
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { editOverlays, type Editing } from "../api";
 import { FEATURES } from "../features";
-import { overlayName } from "../features/types";
+import { overlayName, type Feature } from "../features/types";
 import { demoFight, demoNear } from "../live/demo";
 import { fight, near, sampleNear, showFight } from "../live/store";
 import { NO_FIGHT } from "../live/types";
@@ -10,17 +10,18 @@ import { place, rule } from "../store/settings";
 import { Frame } from "./Frame";
 import { allowed } from "./rules";
 
-const ALL = FEATURES.filter((f) => f.overlay);
+const FIXED = FEATURES.filter((f) => f.overlay);
 
 /** Every overlay, on one clear page over the game. */
 export function Overlay(props: { editing: () => Editing }) {
   const moving = () => props.editing() === "move";
   let root!: HTMLDivElement;
-  const at = (id: string) => place(settings.places[id], FEATURES.find((f) => f.id === id)!.overlay!.place);
+  const all = createMemo(() => [...FIXED, ...FEATURES.flatMap((f) => f.more?.() ?? [])]);
+  const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
   const shown = () =>
-    ALL.filter((f) => at(f.id).on && (moving() || (allowed(rule(settings.rules[f.id]), near) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
-  const hidden = () => ALL.filter((f) => !at(f.id).on);
-  const turn = (id: string, on: boolean) => change((s) => (s.places = { ...s.places, [id]: { ...at(id), on } }), true);
+    all().filter((f) => at(f).on && (moving() || (allowed(rule(settings.rules[f.id]), near) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
+  const hidden = () => all().filter((f) => !at(f).on);
+  const turn = (f: Feature, on: boolean) => change((s) => (s.places = { ...s.places, [f.id]: { ...at(f), on } }), true);
   const boxes = () =>
     [...root.querySelectorAll<HTMLElement>("[data-frame]")].map((el) => {
       const { x, y, width, height } = el.getBoundingClientRect();
@@ -64,9 +65,9 @@ export function Overlay(props: { editing: () => Editing }) {
       <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} others={boxes} />}</For>
       <Show when={props.editing() === "quick"}>
         <div class="edit-bar quick-bar ui-bar" role="toolbar" aria-label="Overlays">
-          <For each={ALL}>
+          <For each={all()}>
             {(f) => (
-              <button class="ui-chip" aria-pressed={at(f.id).on} onClick={() => turn(f.id, !at(f.id).on)}>
+              <button class="ui-chip" aria-pressed={at(f).on} onClick={() => turn(f, !at(f).on)}>
                 <span class="ui-icon" aria-hidden="true">{f.icon}</span>
                 {overlayName(f)}
               </button>
@@ -83,7 +84,7 @@ export function Overlay(props: { editing: () => Editing }) {
           </small>
           <For each={hidden()}>
             {(f) => (
-              <button class="ui-button" onClick={() => turn(f.id, true)}>
+              <button class="ui-button" onClick={() => turn(f, true)}>
                 <span class="ui-icon" aria-hidden="true">{""}</span>
                 {overlayName(f)}
               </button>

@@ -214,7 +214,8 @@ pub fn only_yours(fight: &Value) -> Value {
     kept.insert("deaths".into(), json!(deaths));
     let buffs: Vec<Value> = list(fight, "buffs")
         .iter()
-        .filter(|b| mine(&b["on"]) || (!player(&b["on"]) && mine(&b["by"])))
+        // Yours, and what the boss put on itself: that names no player.
+        .filter(|b| mine(&b["on"]) || (!player(&b["on"]) && (mine(&b["by"]) || b["by"] == b["on"])))
         .map(|b| {
             let mut b = b.clone();
             // Someone else's: that it was there matters, not whose it was.
@@ -284,6 +285,7 @@ mod tests {
             "buffs": [
                 { "id": 7, "on": 2, "by": 4111 }, { "id": 8, "on": 4111, "by": 2 }, { "id": 9, "on": 900, "by": 2 },
                 { "id": 10, "on": 900, "by": 4111 }, { "id": 11, "on": 2, "by": 900 },
+                { "id": 12, "on": 900, "by": 900 }, { "id": 13, "on": 4111, "by": 4111 },
             ],
             "stagger": [{ "start": 1, "by": { "2": 30, "4111": 70, "900": 5 } }],
             "credits": [{ "by": 4111, "to": 2, "damage": 5 }],
@@ -292,7 +294,7 @@ mod tests {
         assert_eq!((&kept["you"]["name"], &kept["others"], &kept["players"]), (&json!("Me"), &json!(20), &json!(2)));
         assert_eq!(kept["deaths"].as_array().unwrap().len(), 1);
         let buffs: Vec<_> = list(&kept, "buffs").iter().map(|b| (b["id"].as_i64().unwrap(), b["by"].as_i64().unwrap())).collect();
-        assert_eq!(buffs, [(7, 0), (9, 2), (11, 900)]);
+        assert_eq!(buffs, [(7, 0), (9, 2), (11, 900), (12, 900)]);
         assert_eq!((&kept["stagger"][0]["by"], &kept["casts"][0][2]), (&json!({ "2": 30, "0": 75 }), &json!(10)));
         let text = kept.to_string();
         assert!(!text.contains("4111") && !text.contains("credits"));

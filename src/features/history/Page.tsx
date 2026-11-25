@@ -2,22 +2,32 @@ import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import { exportFile } from "../../api";
 import type { Saved } from "../../live/types";
 import { clock, day, full, short, time } from "../../ui/format";
-import { Report } from "../report/Report";
+import { CLASSES } from "../../ui/classes";
+import { Pair, Report } from "../report/Report";
 import { left } from "../report/logic";
 import { bytes, csv } from "../report/share";
-import { alike, bestOf, bests, byDay, filtered, rdps, runs, session, tries, type Filter, type Run } from "./logic";
+import { alike, bestOf, bests, byDay, characters, filtered, rdps, runs, session, tick, tries, type Filter, type Run } from "./logic";
 import { fights, followFights } from "./store";
 import "./history.css";
 
 const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"], ["runs", "Dungeon runs"], ["session", "Last session"], ["table", "Table"]];
+
+/** Whose fights to show. Empty is every character's. */
+const [mine, setMine] = createSignal("");
 
 export function HistoryPage() {
   followFights();
   const [filter, setFilter] = createSignal<Filter>("all");
   const [search, setSearch] = createSignal("");
   const [picked, setPicked] = createSignal<string>();
-  const best = createMemo(() => bests(fights()));
-  const list = createMemo(() => filtered(filter() === "session" ? session(fights()) : fights(), filter(), search()));
+  const [ticked, setTicked] = createSignal<string[]>([]);
+  const people = createMemo(() => characters(fights()));
+  const person = () => (people().some((c) => c.name === mine()) ? mine() : "");
+  const own = createMemo(() => (person() ? fights().filter((f) => f.you?.name === person()) : fights()));
+  const best = createMemo(() => bests(own()));
+  const list = createMemo(() => filtered(filter() === "session" ? session(own()) : own(), filter(), search()));
+  // The older one is what the newer is held against.
+  const pair = createMemo(() => own().filter((f) => ticked().includes(f.id)).sort((a, b) => a.start - b.start));
   const show = (id: string) => {
     setFilter("all");
     setPicked(id);
@@ -35,6 +45,12 @@ export function HistoryPage() {
             )}
           </For>
         </div>
+        <Show when={people().length > 1}>
+          <select class="ui-select" aria-label="Character" value={person()} onChange={(e) => setMine(e.currentTarget.value)}>
+            <option value="">Every character</option>
+            <For each={people()}>{(c) => <option value={c.name} selected={c.name === person()}>{c.name}{c.job ? `, ${CLASSES[c.job].name}` : ""}</option>}</For>
+          </select>
+        </Show>
         <input class="ui-input" placeholder="Search targets" aria-label="Search targets" onInput={(e) => setSearch(e.currentTarget.value)} />
         <button
           class="ui-icon-button"
@@ -66,13 +82,28 @@ export function HistoryPage() {
           <Match when={true}>
         <div class="history-panes">
           <div class="history-list">
+            <Show when={pair().length}>
+              <div class="history-pair">
+                <span class="ui-muted ui-small">{pair().length < 2 ? "Tick one more to compare." : "Two fights compared."}</span>
+                <button class="ui-button" onClick={() => setTicked([])}>Untick</button>
+              </div>
+            </Show>
             <For each={byDay(list(), day)}>
               {([name, items]) => (
                 <>
                   <div class="ui-heading">{name}</div>
                   <For each={items}>
                     {(f) => (
-                      <button class="ui-row-item history-item" aria-selected={f.id === open()?.id} onClick={() => setPicked(f.id)}>
+                      <div class="history-line">
+                      <input type="checkbox" class="ui-check" aria-label={`Compare ${f.target}, ${time(f.start)}`} checked={ticked().includes(f.id)} onChange={() => setTicked((t) => tick(t, f.id))} />
+                      <button
+                        class="ui-row-item history-item"
+                        aria-selected={pair().length === 2 ? ticked().includes(f.id) : f.id === open()?.id}
+                        onClick={() => {
+                          setTicked([]);
+                          setPicked(f.id);
+                        }}
+                      >
                         <span class="history-name">
                           {f.target}
                           <Show when={bestOf(best(), f)?.id === f.id}>
@@ -84,13 +115,16 @@ export function HistoryPage() {
                           {time(f.start)}, {clock(f.ms)}{f.dummy ? "" : f.killed ? ", killed" : left(f) !== undefined ? `, ${(left(f)! * 100).toFixed(0)}% left` : ", not killed"}
                         </small>
                       </button>
+                      </div>
                     )}
                   </For>
                 </>
               )}
             </For>
           </div>
-          <Show when={open()}>{(f) => <Report fight={f()} best={bestOf(best(), f())} others={alike(fights(), f())} />}</Show>
+          <Show when={pair().length === 2} fallback={<Show when={open()}>{(f) => <Report fight={f()} best={bestOf(best(), f())} others={alike(own(), f())} />}</Show>}>
+            <Pair older={pair()[0]} newer={pair()[1]} />
+          </Show>
         </div>
           </Match>
         </Switch>

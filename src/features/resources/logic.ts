@@ -11,6 +11,8 @@ export interface Left {
   value: string;
   /** On top of it, as the game says it second. */
   more: string;
+  /** Runs it is enough for. */
+  runs?: number;
 }
 
 const DAY = 86_400_000;
@@ -32,10 +34,14 @@ export function wait(ms: number): string {
 
 export const nameOf = (id: number, chosen: readonly Resource[]) => chosen.find((r) => r.id === id)?.name || KNOWN[id] || "";
 
+/** Runs that are left, when each takes `perRun`. */
+export const runsLeft = (odyle: readonly [number, number], perRun: number) => Math.floor((Math.max(0, odyle[0]) + Math.max(0, odyle[1])) / perRun);
+export const counted = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 /** What you chose to see, with what is there of it. What is not known is left out. */
-export function strip(entries: Entries, odyle: readonly [number, number], chosen: readonly Resource[]): Left[] {
+export function strip(entries: Entries, odyle: readonly [number, number], chosen: readonly Resource[], perRun = 40): Left[] {
   const list: Left[] = [];
-  if (odyle[0] >= 0) list.push({ key: "odyle", name: "Odyle", value: full(odyle[0]), more: odyle[1] > 0 ? `+${full(odyle[1])}` : "" });
+  if (odyle[0] >= 0) list.push({ key: "odyle", name: "Odyle", value: full(odyle[0]), more: odyle[1] > 0 ? `+${full(odyle[1])}` : "", runs: runsLeft(odyle, perRun) });
   for (const r of chosen) {
     const found = r.show && entries.counts.find(([id]) => id === r.id);
     if (found) list.push({ key: String(r.id), name: nameOf(r.id, chosen) || `No. ${r.id}`, value: full(found[1]), more: found[2] > 0 ? `+${full(found[2])}` : "" });

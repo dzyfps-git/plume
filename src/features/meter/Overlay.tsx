@@ -18,7 +18,7 @@ export function MeterOverlay() {
   const sum = () => (view() === "damage" || view().endsWith("dps") ? partyDps(fight) : all().reduce((n, r) => n + r.rate, 0));
   // In one fixed order: a row moved in the page would jump instead of glide.
   const still = createMemo(() => [...fight.rows].sort((a, b) => a.id - b.id));
-  const foot = createMemo(() => footer(settings.meter.footer, near, fight, words(strip(entries(), near.odyle, settings.resources))));
+  const foot = createMemo(() => footer(settings.meter.footer, near, fight, words(strip(entries(), near.odyle, settings.resources)), settings.odyleRun));
   return (
     <section class="meter glass" data-style={settings.meter.style} aria-label="Damage meter">
       <Show when={settings.meter.head}><You /></Show>

@@ -15,7 +15,7 @@ import { forgetFight } from "../history/store";
 import { label, length } from "../meter/logic";
 import { Skills } from "../meter/Skills";
 import { figures, luck, skillGains, statChanges, type Figure } from "./compare";
-import { buffsBySkill, opening, partyCurve, pings, players, rates, unclean } from "./deep";
+import { buffsBySkill, mvp, opening, overheal, partyCurve, pings, players, rates, unclean, type Mvp } from "./deep";
 import { Lanes, type Lane } from "./Lanes";
 import { activeDps, casts, chains, findings, gaps, nameOf, opener, parts, procs, resultText, rhythm, starts, untouchable, waited, wipeLine } from "./logic";
 import { bytes, fileName, picture } from "./share";
@@ -26,6 +26,20 @@ import "./report.css";
 const TABS = [["all", "Overview"], ["casts", "Rotation"], ["buffs", "Buffs"], ["taken", "Taken"], ["heals", "Healing"], ["stagger", "Stagger"], ["compare", "Compare"], ["play", "Play back"]] as const;
 type Tab = (typeof TABS)[number][0];
 const [tab, setTab] = createSignal<Tab>("all");
+
+/** Two fights ticked in the list. */
+export function Pair(props: { older: Saved; newer: Saved }) {
+  const [whole] = createResource(() => props.newer.id, loadFight);
+  const ready = () => (whole()?.id === props.newer.id ? whole()! : undefined);
+  return (
+    <section class="history-detail">
+      <header class="page-head">
+        <h2>{props.newer.target === props.older.target ? props.newer.target : `${props.newer.target} against ${props.older.target}`}</h2>
+      </header>
+      <Show when={ready()}>{(f) => <Compare fight={f()} others={[props.older]} />}</Show>
+    </section>
+  );
+}
 
 /** One fight, in full. `others` are fights of the same kind, to compare with. */
 export function Report(props: { fight: Saved; best?: Saved; others: Saved[] }) {
@@ -149,6 +163,12 @@ const up = (f: Saved, b: Buff) => percent(b.up, f.ms);
 const ownBuffs = (f: Saved) =>
   (f.buffs ?? []).filter((b) => !b.passive && (b.on === f.you?.id || b.by === f.you?.id)).sort((a, b) => Math.abs(a.up / f.ms - 0.5) - Math.abs(b.up / f.ms - 0.5));
 
+const mvpWords = (m: Mvp) =>
+  [["damage with buffs", m.damage], ["healing", m.healing], ["stagger", m.stagger], ["deaths", -m.deaths]]
+    .filter(([, points]) => Math.round(points as number) !== 0)
+    .map(([name, points]) => `${name} ${Math.round(points as number)}`)
+    .join(", ") + ` points`;
+
 function Overview(props: { fight: Saved; best?: Saved }) {
   const [picked, setPicked] = createSignal<number>();
   createEffect(on(() => props.fight.id, () => setPicked(undefined)));
@@ -161,6 +181,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
   const you = () => props.fight.you;
   const why = createMemo(() => unclean(props.fight));
   const trip = createMemo(() => pings(props.fight));
+  const top = createMemo(() => mvp(props.fight));
   const credited = () => (you()?.damage ?? 0) - (you()?.got ?? 0) + (you()?.given ?? 0);
   return (
     <>
@@ -235,7 +256,12 @@ function Overview(props: { fight: Saved; best?: Saved }) {
               >
                 <i class="meter-bar" />
                 <ClassMark job={r.job} />
-                <span class="meter-name">{label(r, settings.meter.hideNames, i() + 1)}</span>
+                <span class="meter-name">
+                  {label(r, settings.meter.hideNames, i() + 1)}
+                  <Show when={top()?.id === r.id}>
+                    <span class="ui-tag mvp" style={{ "--tag": "var(--accent)" }} data-tip={mvpWords(top()!)}>MVP</span>
+                  </Show>
+                </span>
                 <small class="ui-num">{short(r.damage)}</small>
                 <small class="ui-num">{r.share.toFixed(1)}%</small>
                 <b class="ui-num">{short(r.dps)}</b>
@@ -244,10 +270,10 @@ function Overview(props: { fight: Saved; best?: Saved }) {
           </For>
         </div>
         <Show when={rows().length > 1}>
-          <section class="block by-skill players ui-num" role="table" aria-label="Players" style={{ "--columns": 5 }}>
+          <section class="block by-skill players ui-num" role="table" aria-label="Players" style={{ "--columns": 6 }}>
             <div role="row" class="ui-muted ui-small">
               <span role="columnheader">A second</span>
-              <For each={[["Damage", "As it was"], ["rDPS", "With what their buffs gave others"], ["nDPS", "Without what others' buffs gave them"], ["Healing", ""], ["Support", "How long their passing buffs were on others, added up"]]}>
+              <For each={[["Damage", "As it was"], ["rDPS", "With what their buffs gave others"], ["nDPS", "Without what others' buffs gave them"], ["Healing", ""], ["Overheal", "The part of it that was too much, about"], ["Support", "How long their passing buffs were on others, added up"]]}>
                 {([name, tip]) => <span role="columnheader" data-tip={tip || undefined}>{name}</span>}
               </For>
             </div>
@@ -259,6 +285,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
                   <span role="cell">{short(p.rdps)}</span>
                   <span role="cell">{short(p.ndps)}</span>
                   <span role="cell">{p.hps ? short(p.hps) : ""}</span>
+                  <span role="cell">{p.over === undefined ? "" : percent(p.over, 1)}</span>
                   <span role="cell">{p.support ? clock(p.support) : ""}</span>
                 </div>
               )}
@@ -433,9 +460,9 @@ function Buffs(props: { fight: Saved }) {
       <Show when={by().rows.length}>
         <section class="block">
           <h2>Buffs by skill</h2>
-          <div class="by-skill ui-num" role="table" aria-label="Share of each skill's hits that had each buff" style={{ "--columns": by().buffs.length }}>
+          <div class="by-skill ui-num" role="table" aria-label="Share of each skill's casts that had each buff" style={{ "--columns": by().buffs.length }}>
             <div role="row">
-              <span role="columnheader" class="ui-muted ui-small">Share of its hits</span>
+              <span role="columnheader" class="ui-muted ui-small">Share of its casts</span>
               <For each={by().buffs}>
                 {(b) => <span role="columnheader" aria-label={b.name || `Buff ${b.id}`} data-tip={`${b.name || `Buff ${b.id}`}${b.on === f().you?.id ? "" : `, on ${who(f(), b.on)}`}`}><Pic effect={b.id} skill={b.skill} name={b.name || "Buff"} /></span>}
               </For>
@@ -443,17 +470,17 @@ function Buffs(props: { fight: Saved }) {
             <For each={by().rows}>
               {(r) => (
                 <div role="row">
-                  <span role="rowheader"><Pic skill={r.skill} name={nameOf(f(), r.skill)} /> {nameOf(f(), r.skill)} <small class="ui-muted">{r.hits}</small></span>
+                  <span role="rowheader"><Pic skill={r.skill} name={nameOf(f(), r.skill)} /> {nameOf(f(), r.skill)} <small class="ui-muted">{r.casts}</small></span>
                   <For each={r.shares}>{(s) => <span role="cell" data-share style={{ "--share": s }}>{percent(s, 1)}</span>}</For>
                 </div>
               )}
             </For>
           </div>
-          <p class="ui-muted ui-small">Your direct hits. Buffs that were nearly always or never on are left out.</p>
+          <p class="ui-muted ui-small">As each cast began. Buffs that were nearly always or never on are left out.</p>
         </section>
       </Show>
       <Show when={!f().rows}>
-        <p class="ui-muted ui-small">Only buffs on you, and yours on the target, are kept after a session.</p>
+        <p class="ui-muted ui-small">Only buffs on you, yours on the target and the boss's own are kept after a session.</p>
       </Show>
     </>
   );
@@ -520,9 +547,10 @@ function Heals(props: { fight: Saved }) {
   const [picked, setPicked] = createSignal<number>();
   const row = () => rows().find((r) => r.id === picked()) ?? rows()[0];
   const total = () => rows().reduce((sum, r) => sum + r.healing!, 0);
+  const over = (r: FightRow) => overheal(r.heals);
   return (
     <>
-      <div class="board">
+      <div class="board" data-heals>
         <For each={rows()}>
           {(r) => (
             <button
@@ -536,6 +564,7 @@ function Heals(props: { fight: Saved }) {
               <span class="meter-name">{who(props.fight, r.id)}</span>
               <small class="ui-num">{short(r.healing!)}</small>
               <small class="ui-num">{percent(r.healing!, total())}</small>
+              <small class="ui-num">{over(r) === undefined ? "" : `${percent(over(r)!, 1)} over`}</small>
               <b class="ui-num">{short(r.healing! / Math.max(1, props.fight.ms / 1000))}</b>
             </button>
           )}
@@ -546,15 +575,19 @@ function Heals(props: { fight: Saved }) {
           <h2>{who(props.fight, row()!.id)}</h2>
           <For each={row()!.heals}>
             {(s) => (
-              <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 90px 110px 110px" }}>
+              <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 90px 110px 90px 110px" }}>
                 <span><Pic skill={s.code} name={s.name || "Skill"} /> {s.name || `Skill ${s.code}`}{s.dot ? " over time" : ""}</span>
                 <span class="ui-muted ui-num">{full(s.hits)} heals</span>
                 <span class="ui-muted ui-num">{short(s.damage / Math.max(1, s.hits))} each</span>
+                <span class="ui-muted ui-num">{overheal([s]) === undefined ? "" : `${percent(overheal([s])!, 1)} over`}</span>
                 <span class="ui-share" style={{ "--share": s.damage / row()!.heals![0].damage }}>{short(s.damage)}</span>
               </div>
             )}
           </For>
         </section>
+      </Show>
+      <Show when={rows().some((r) => over(r) !== undefined)}>
+        <p class="ui-muted ui-small">Over is healing beyond what was missing, worked out from the health seen before and after. An estimate.</p>
       </Show>
     </>
   );
@@ -606,7 +639,7 @@ function Compare(props: { fight: Saved; others: Saved[]; best?: Saved }) {
   return (
     <>
       <div class="report-line">
-        <select class="ui-select" aria-label="Compare with" value={id()} onChange={(e) => setPicked(e.currentTarget.value)}>
+        <select class="ui-select" aria-label="Compare with" disabled={props.others.length < 2} value={id()} onChange={(e) => setPicked(e.currentTarget.value)}>
           <For each={props.others.slice(0, 100)}>
             {(f) => <option value={f.id}>{new Date(f.start).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}, {short(f.you?.dps ?? 0)}{f.id === props.best?.id ? ", your best" : ""}</option>}
           </For>

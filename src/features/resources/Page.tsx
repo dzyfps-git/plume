@@ -1,10 +1,11 @@
 import { For, Show } from "solid-js";
 import { entries, near } from "../../live/store";
 import { change, settings } from "../../store";
-import type { Resource } from "../../store/settings";
+import { ODYLE_RUN, type Resource } from "../../store/settings";
 import { full } from "../../ui/format";
+import { Choices, Line } from "../../ui/Line";
 import { Waiting } from "../../ui/Waiting";
-import { KNOWN, resets, wait } from "./logic";
+import { KNOWN, resets, runsLeft, wait } from "./logic";
 import { minutes } from "./Overlay";
 import "./resources.css";
 
@@ -23,6 +24,7 @@ export function ResourcesPage() {
     [
       ["Odyle Energy", near.odyle[0] < 0 ? "" : full(near.odyle[0])],
       ["Odyle charged", near.odyle[1] <= 0 ? "" : full(near.odyle[1])],
+      ["Runs left", near.odyle[0] < 0 ? "" : String(runsLeft(near.odyle, settings.odyleRun))],
       ["Daily Duties", entries().duty[0] < 0 ? "" : `${entries().duty[0]} of ${entries().duty[1]}`],
       ["Abyss Points this week", entries().points[0] < 0 ? "" : `${full(entries().points[0])} of ${full(entries().points[1])}`],
       ["Kinah today", entries().kinah < 0 ? "" : full(entries().kinah)],
@@ -38,6 +40,11 @@ export function ResourcesPage() {
         <div class="stats">
           <For each={stats()}>{([name, value]) => <div class="stat"><small>{name}</small><b class="ui-num">{value}</b></div>}</For>
         </div>
+        <section class="block">
+          <Line name="Odyle Energy a run takes" about="80 is claiming twice in one run, with a membership: half the runs.">
+            <Choices name="Odyle Energy a run takes" all={ODYLE_RUN.map((n) => [n, String(n)] as const)} value={settings.odyleRun} set={(n) => change((s) => (s.odyleRun = n))} />
+          </Line>
+        </section>
         <section class="block">
           <h2>Tickets and entries</h2>
           <p class="ui-muted ui-small">The game gives each a number and no name. Find it by its two figures, name it once, and choose what the overlay and the meter's footer show.</p>

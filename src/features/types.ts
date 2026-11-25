@@ -9,6 +9,8 @@ export interface Feature {
   icon: string;
   page?: Component;
   overlay?: Overlay;
+  /** Overlays that come and go, each with a place of its own. The same one is the same object each time. */
+  more?: () => Feature[];
 }
 
 export const GROUPS = ["Fight", "Health", "Effects", "Other"] as const;

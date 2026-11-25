@@ -1,4 +1,4 @@
-import type { Near, Saved } from "../../live/types.ts";
+import type { Job, Near, Saved } from "../../live/types.ts";
 import type { AuraRule, Named } from "../../store/settings.ts";
 import { cooling, type Known } from "../actions/logic.ts";
 import { called, effects, same } from "../effects/logic.ts";
@@ -34,6 +34,10 @@ export interface State {
 }
 
 const name = (rule: AuraRule) => (rule.kind === "low" ? "Low health" : called(rule.of));
+/** What the settings call it. */
+export const ruleName = (a: AuraRule) => (a.kind === "low" || a.of.id || a.of.name ? name(a) : "Nothing chosen yet");
+/** Where its own place is kept. */
+export const placeOf = (key: string) => `aura:${key}`;
 
 /** The auras that show now. */
 export function states(
@@ -99,7 +103,7 @@ export function effectsOf(fights: readonly Saved[]): (Named & { onYou: boolean; 
 }
 
 export const blank = (key: string, edit: Partial<AuraRule> = {}): AuraRule => ({
-  key, kind: "on", of: { id: 0, name: "" }, value: 0, look: "icon", glow: false, fight: true, on: true, sound: "", say: false, ...edit,
+  key, kind: "on", of: { id: 0, name: "" }, value: 0, look: "icon", glow: false, fight: true, own: false, on: true, sound: "", say: false, ...edit,
 });
 
 /** Auras to start from: what you keep up, what you put on the target, and your longest cooldowns. */
@@ -116,3 +120,18 @@ export function starter(fights: readonly Saved[], skills: readonly Known[], key:
     ...long.map((s) => ({ kind: "ready" as const, of: { id: s.skill, name: s.name }, look: "icon" as const, glow: true })),
   ].map((edit, n) => blank(key(n), edit));
 }
+
+const on = (id: number, name: string): Partial<AuraRule> => ({ kind: "on", of: { id, name } });
+const target = (id: number, name: string): Partial<AuraRule> => ({ kind: "target", of: { id, name }, look: "bar" });
+const ready = (id: number, name: string): Partial<AuraRule> => ({ kind: "ready", of: { id, name }, glow: true });
+
+/** Ready-made sets, by class. A skill you do not have, or whose cooldown is not learned yet, shows nothing. */
+export const SETS: Partial<Record<Job, readonly Partial<AuraRule>[]>> = {
+  assassin: [
+    on(131_500_001, "Frenzied Accord"), on(133_900_001, "Swift Contract"), on(133_700_001, "Evasion Contract"), on(130_800_001, "Evasion Stance"),
+    target(137_300_071, "Poison"),
+    ready(13_350_000, "Heart Gore"), ready(13_130_000, "Insignia Explosion"), ready(13_220_000, "Shadow Fall"), ready(13_310_000, "Illusive Clone"),
+    ready(13_300_000, "Triniel's Dagger"),
+    { kind: "low", value: 35, look: "text", glow: true },
+  ],
+};

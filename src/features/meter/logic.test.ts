@@ -79,6 +79,6 @@ test("an estimate of everyone else is never a name", () => {
 
 test("the footer says what you chose and what is known", () => {
   const near = { ping: 40, odyle: [120, 0] as [number, number], flight: null };
-  assert.deepEqual(footer(["ping", "total", "flight", "odyle"], near, { total: 1_500 }), ["40 ms", "1.50K total", "Odyle 120"]);
+  assert.deepEqual(footer(["ping", "total", "flight", "odyle"], near, { total: 1_500 }), ["40 ms", "1.50K total", "Odyle 120, 3 runs"]);
   assert.deepEqual(footer(["ping"], { ...near, ping: -1 }, { total: 0 }), []);
 });

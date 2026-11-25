@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoSaved } from "../../live/demo.ts";
 import type { Saved } from "../../live/types.ts";
-import { alike, bestOf, bests, byDay, filtered, pace, path, rdps, runs, session, tries } from "./logic.ts";
+import { alike, bestOf, bests, byDay, characters, filtered, pace, path, rdps, runs, session, tick, tries } from "./logic.ts";
 
 const fight = (id: string, more: Partial<Saved> & { dps?: number } = {}): Saved => ({
   id, target: "Warden", code: 7, start: 1, ms: 60_000, total: 0, maxHp: 0, killed: false, dummy: false, dungeon: 0, others: 0, players: 1,
@@ -30,6 +30,25 @@ test("the best is by target, and short or foreign fights do not count", () => {
 test("dummies are held against runs of the same length", () => {
   const [short, long] = [fight("s", { dummy: true, ms: 30_000, dps: 9 }), fight("l", { dummy: true, ms: 120_000, dps: 5 })];
   assert.equal(bestOf(bests([short, long]), long)?.id, "l");
+});
+
+test("one class is not held against another", () => {
+  const as = (id: string, job: string, dps: number) => ({ ...fight(id), you: { name: id, job, dps } as Saved["you"] });
+  const all = [as("a", "assassin", 5), as("b", "cleric", 9)];
+  assert.equal(bestOf(bests(all), all[0])?.id, "a");
+  assert.deepEqual(alike(all, all[0]), []);
+});
+
+test("characters are told apart by name, the last played first", () => {
+  const as = (name: string, job: string) => ({ ...fight(name), you: { name, job } as Saved["you"] });
+  assert.deepEqual(characters([as("Nyx", ""), as("Vel", "cleric"), as("Nyx", "assassin"), as("", "ranger"), fight("x", { you: null })]), [
+    { name: "Nyx", job: "assassin", fights: 2 }, { name: "Vel", job: "cleric", fights: 1 },
+  ]);
+});
+
+test("two fights are ticked at most", () => {
+  assert.deepEqual(["a", "b", "c", "b"].reduce<string[]>(tick, []), ["c"]);
+  assert.deepEqual(["a", "b", "c"].reduce<string[]>(tick, []), ["b", "c"]);
 });
 
 test("days keep their order", () => {

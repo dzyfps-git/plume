@@ -1,3 +1,4 @@
+import { counted, runsLeft } from "../resources/logic.ts";
 import type { Fight, Near, Row, Saved, Skill } from "../../live/types.ts";
 import type { Footer, View } from "../../store/settings.ts";
 import { short } from "../../ui/format.ts";
@@ -76,12 +77,12 @@ export interface Against {
   change?: number;
 }
 
-/** This fight against your kept ones of the same target. One that was just kept is this one. */
+/** This fight against your kept ones of the same target, with the same class. One that was just kept is this one. */
 export function against(fight: Pick<Fight, "ms" | "target" | "rows">, kept: readonly Saved[]): Against | undefined {
   const you = fight.rows.find((r) => r.you);
   const { code, name } = fight.target;
   if (!you || (!code && !name)) return undefined;
-  const same = kept.filter((f) => (code ? f.code === code : f.target === name) && f.you && f.you.damage !== you.damage);
+  const same = kept.filter((f) => (code ? f.code === code : f.target === name) && f.you && f.you.damage !== you.damage && !(you.job && f.you.job && f.you.job !== you.job));
   const best = Math.max(0, ...same.filter((f) => f.ms >= PROOF).map((f) => f.you!.dps));
   return { pull: same.length + 1, ...(best > 0 && { best, ...(fight.ms >= PROOF && { change: you.dps / best - 1 }) }) };
 }
@@ -95,12 +96,13 @@ export function footer(
   near: Pick<Near, "ping" | "odyle" | "flight">,
   fight: Pick<Fight, "total">,
   entries: readonly string[] = [],
+  perRun = 40,
 ): string[] {
   const words: Record<Footer, string> = {
     ping: near.ping >= 0 ? `${near.ping} ms` : "",
     total: fight.total > 0 ? `${short(fight.total)} total` : "",
     flight: near.flight ? `flight ${Math.round(near.flight.now)}` : "",
-    odyle: near.odyle[0] >= 0 ? `Odyle ${near.odyle[0]}${near.odyle[1] > 0 ? ` + ${near.odyle[1]}` : ""}` : "",
+    odyle: near.odyle[0] >= 0 ? `Odyle ${near.odyle[0]}${near.odyle[1] > 0 ? ` + ${near.odyle[1]}` : ""}, ${counted(runsLeft(near.odyle, perRun), "run")}` : "",
     entries: "",
   };
   return chosen.flatMap((f) => (f === "entries" ? entries : [words[f]])).filter(Boolean);

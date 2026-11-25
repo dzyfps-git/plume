@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoSaved, demoSkills } from "../../live/demo.ts";
 import type { Entry, Saved } from "../../live/types.ts";
-import { buffsBySkill, opening, partyCurve, pings, players, rates, unclean } from "./deep.ts";
+import { buffsBySkill, mvp, opening, overheal, partyCurve, pings, players, rates, unclean } from "./deep.ts";
 
 const skill = demoSkills(1000)[0];
 
@@ -19,18 +19,18 @@ test("the opener is casts, not hits", () => {
   assert.deepEqual(opening({ casts: hits }).map((c) => [c.skill, c.hits]), [[1, 2], [2, 1]]);
 });
 
-test("buffs are counted for the hits of each skill", () => {
+test("buffs are counted for the casts of each skill", () => {
   const buff = (id: number, on: number, by: number, spans: [number, number, number][], passive = false) => ({
     id, name: `B${id}`, on, by, skill: 0, passive, up: spans.reduce((n, s) => n + s[1] - s[0], 0), spans,
   });
   const fight = {
     ms: 10_000, you: { id: 1 }, rows: [{ id: 1, you: true }, { id: 2, you: false }],
-    casts: [[1_000, 7, 10, 0], [6_000, 7, 10, 0], [2_000, 8, 50, 0], [2_500, 8, 5, 256]],
+    casts: [[1_000, 7, 10, 0], [1_300, 7, 10, 0], [6_000, 7, 10, 0], [2_000, 8, 50, 0], [2_500, 8, 5, 256]],
     buffs: [buff(1, 1, 1, [[0, 5_000, 1]]), buff(2, 900, 1, [[5_500, 7_000, 1]]), buff(3, 2, 1, [[0, 5_000, 1]]), buff(4, 1, 1, [], true), buff(5, 1, 1, [[0, 10_000, 1]])],
   } as unknown as Saved;
   const { buffs, rows } = buffsBySkill(fight);
   assert.deepEqual(buffs.map((b) => b.id), [1, 2]);
-  assert.deepEqual(rows, [{ skill: 8, hits: 1, shares: [1, 0] }, { skill: 7, hits: 2, shares: [0.5, 0.5] }]);
+  assert.deepEqual(rows, [{ skill: 8, casts: 1, shares: [1, 0] }, { skill: 7, casts: 2, shares: [0.5, 0.5] }]);
   assert.deepEqual(buffsBySkill({ ...fight, buffs: [] }).rows, []);
 });
 
@@ -44,6 +44,26 @@ test("buffs move damage between players, and none of it is lost", () => {
   assert.equal(all.find((p) => p.id === 1)!.support, 0, "your buffs on yourself support nobody");
   assert.equal(partyCurve(fight)!.at(-1), fight.total);
   assert.equal(partyCurve({ ...fight, rows: undefined }), undefined);
+});
+
+test("overheal is a part of what could be weighed", () => {
+  assert.equal(overheal([{ ...skill, weighed: 300, over: 100 }, { ...skill, weighed: 100 }, skill]), 0.25);
+  assert.equal(overheal([skill]), undefined);
+  assert.ok(Math.abs(players(demoSaved("x", { ms: 60_000, killed: true })).find((p) => p.id === 8)!.over! - 0.4) < 0.1);
+});
+
+test("the MVP did the most for the party, not only the most damage", () => {
+  const row = (id: number, more: object) => ({ id, damage: 0, taken: 0, deaths: 0, skills: [], ...more });
+  const of = (...rows: object[]) => mvp({ rows, dummy: false } as unknown as Saved);
+  assert.equal(of(row(1, { damage: 100 }), row(2, { damage: 90 }))?.id, 1);
+  assert.equal(of(row(1, { damage: 100, got: 10 }), row(2, { damage: 90, given: 10 }))?.id, 2);
+  assert.equal(of(row(1, { damage: 100, deaths: 1 }), row(2, { damage: 95 }))?.id, 2);
+  assert.equal(of(row(1, { damage: 60, taken: 100 }), row(2, { damage: 45, healing: 100 }))?.id, 2);
+  // Healing that nobody needed does not count.
+  assert.equal(of(row(1, { damage: 60, taken: 10_000 }), row(2, { damage: 45, healing: 100 }))?.id, 1);
+  assert.equal(of(row(1, { damage: 60, taken: 100 }), row(2, { damage: 45, healing: 100, heals: [{ ...skill, weighed: 100, over: 100 }] }))?.id, 1);
+  assert.equal(of(row(1, { damage: 100 })), undefined);
+  assert.equal(mvp(demoSaved("x", { ms: 60_000, dummy: true })), undefined);
 });
 
 test("ping holds until the next is known", () => {

@@ -7,7 +7,7 @@ export const pvp: Feature = {
   name: "PvP",
   icon: "",
   overlay: {
-    view: PvpOverlay, group: "Other", about: "Kills, streak, Abyss Points and how long players held you, since the overlays began.", width: 270,
+    view: PvpOverlay, group: "Other", about: "Kills, streak, Abyss Points and how long players held you. Begins anew after six hours without any.", width: 270,
     place: { on: false, x: 1, y: 0.12, scale: 1 },
     empty: () => !near.foe && !tally().kills && !tally().deaths && !tally().points,
     beside: followPvp,

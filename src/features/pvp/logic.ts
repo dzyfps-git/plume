@@ -19,6 +19,19 @@ export interface Tally {
 
 export const NONE: Tally = { kills: 0, assists: 0, deaths: 0, points: 0, streak: 0, best: 0, last: 0, killedAt: 0, held: 0, heldMs: 0 };
 
+/** A break this long begins a new count. */
+const BREAK = 6 * 3_600_000;
+
+/** The count as it was kept at a time, or none when that is too long ago or not a count. */
+export function resume(kept: unknown, now: number): Tally {
+  const { at, tally } = (kept ?? {}) as { at?: unknown; tally?: Record<string, unknown> };
+  const age = typeof at === "number" ? now - at : BREAK;
+  if (!tally || !(age >= 0 && age < BREAK)) return NONE;
+  const whole = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v >= 0;
+  const keys = Object.keys(NONE) as (keyof Tally)[];
+  return keys.every((k) => whole(tally[k])) ? (Object.fromEntries(keys.map((k) => [k, tally[k]])) as unknown as Tally) : NONE;
+}
+
 /** Points come just after the kill they are for. */
 const WITH = 3_000;
 

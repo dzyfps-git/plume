@@ -1,15 +1,27 @@
-import { createEffect, createSignal, Show, untrack } from "solid-js";
+import { createEffect, createSignal, on, Show, untrack } from "solid-js";
 import { near, onHappened, sampling } from "../../live/store";
 import { full } from "../../ui/format";
-import { count, hold, NONE } from "./logic";
+import { count, hold, NONE, resume } from "./logic";
 import "../meter/meter.css";
 import "./pvp.css";
 
 const [tally, setTally] = createSignal(NONE);
 export { tally };
 
-/** Counts for as long as the overlay window is open. Nothing of it is kept. */
+/** Your own counts alone, on this PC: the overlay window closes as it sleeps. */
+const KEY = "pvp";
+function kept() {
+  try {
+    return resume(JSON.parse(localStorage.getItem(KEY) ?? "null"), Date.now());
+  } catch {
+    return NONE;
+  }
+}
+
+/** Counts for as long as the overlay window is open, and goes on from where it was. */
 export function followPvp() {
+  setTally(kept());
+  createEffect(on(tally, (tally) => localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), tally })), { defer: true }));
   const seen = new Map<string, number>();
   onHappened((h) => setTally((t) => count(t, h)));
   createEffect(() => {

@@ -3,7 +3,8 @@ import { test } from "node:test";
 import { demoAura, demoNear, demoSaved } from "../../live/demo.ts";
 import type { AuraRule } from "../../store/settings.ts";
 import { learned } from "../actions/logic.ts";
-import { blank, effectsOf, fresh, starter, states } from "./logic.ts";
+import { read } from "../../store/settings.ts";
+import { blank, effectsOf, fresh, ruleName, SETS, starter, states } from "./logic.ts";
 
 const near = demoNear(0, 0);
 near.fighting = true;
@@ -65,4 +66,13 @@ test("a set to start from comes from your own fights", () => {
   assert.ok(set.some((a) => a.kind === "ready" && a.of.name === "Ambush"));
   assert.equal(new Set(set.map((a) => a.key)).size, set.length);
   assert.ok(!effectsOf(fights).some((e) => e.name === "Nimble Body"));
+});
+
+test("a ready-made set is made of auras the settings keep as they are", () => {
+  for (const set of Object.values(SETS)) {
+    const rules = set.map((edit, n) => blank(`s${n}`, edit));
+    assert.deepEqual(read({ auras: JSON.parse(JSON.stringify(rules)) }).auras, rules);
+    assert.equal(new Set(rules.map((r) => `${r.kind} ${ruleName(r)}`)).size, rules.length);
+    assert.ok(rules.every((r) => r.kind === "low" || (r.of.id && r.of.name)));
+  }
 });

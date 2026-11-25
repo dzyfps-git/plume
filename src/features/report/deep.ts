@@ -1,5 +1,5 @@
 // What lies deeper in a kept fight: rates, the opener, buffs by skill, ping, and whether a training run was clean.
-import { FLAG, type Buff, type Saved, type Skill } from "../../live/types.ts";
+import type { Buff, FightRow, Saved, Skill } from "../../live/types.ts";
 import { clock } from "../../ui/format.ts";
 import { casts, gaps, type Cast } from "./logic.ts";
 
@@ -29,11 +29,11 @@ export const opening = (fight: Pick<Saved, "casts">, ms = 20_000, most = 24): Ca
 
 export interface BySkill {
   buffs: Buff[];
-  /** Hits of each skill, with the share of them that had each of `buffs`. */
-  rows: { skill: number; hits: number; shares: number[] }[];
+  /** Casts of each skill, with the share of them that had each of `buffs`. */
+  rows: { skill: number; casts: number; shares: number[] }[];
 }
 
-/** How many of each skill's hits had each buff: those on you, and yours on the target. Always or never on says nothing. */
+/** How many of each skill's casts had each buff: those on you, and yours on the target. Always or never on says nothing. */
 export function buffsBySkill(fight: Saved, columns = 8, lines = 12): BySkill {
   const you = fight.you?.id;
   const coming = (b: Buff) => b.up > fight.ms * 0.02 && b.up < fight.ms * 0.98;
@@ -42,8 +42,7 @@ export function buffsBySkill(fight: Saved, columns = 8, lines = 12): BySkill {
     .sort((a, b) => b.up - a.up)
     .slice(0, columns);
   const by = new Map<number, { damage: number; at: number[] }>();
-  for (const [ms, skill, damage, flags] of fight.casts ?? []) {
-    if (flags & FLAG.dot) continue;
+  for (const { ms, skill, damage } of casts(fight.casts)) {
     const s = by.get(skill) ?? { damage: 0, at: [] };
     by.set(skill, s);
     s.damage += damage;
@@ -54,7 +53,7 @@ export function buffsBySkill(fight: Saved, columns = 8, lines = 12): BySkill {
     .slice(0, lines)
     .map(([skill, { at }]) => ({
       skill,
-      hits: at.length,
+      casts: at.length,
       shares: buffs.map((b) => at.filter((t) => b.spans.some(([from, to]) => t >= from && t <= to)).length / at.length),
     }));
   return { buffs, rows: buffs.length ? rows : [] };
@@ -110,6 +109,15 @@ export interface Player {
   hps: number;
   /** How long their passing buffs were on others, all added up, in ms. */
   support: number;
+  /** The part of their healing that was too much, 0 to 1. Nothing when it could not be weighed. */
+  over?: number;
+}
+
+/** The part of some heals that was too much, 0 to 1, of what could be weighed. An estimate. */
+export function overheal(heals: readonly Skill[] = []): number | undefined {
+  const sum = (of: (s: Skill) => number | undefined) => heals.reduce((n, s) => n + (of(s) ?? 0), 0);
+  const weighed = sum((s) => s.weighed);
+  return weighed > 0 ? sum((s) => s.over) / weighed : undefined;
 }
 
 /** What each player did for the others. The rDPS of all add up to the DPS of all. */
@@ -124,5 +132,39 @@ export function players(fight: Saved): Player[] {
     ndps: (r.damage - (r.got ?? 0)) / seconds,
     hps: (r.healing ?? 0) / seconds,
     support: (fight.buffs ?? []).filter((b) => !b.passive && b.by === r.id && b.on !== r.id && ids.has(b.on)).reduce((n, b) => n + b.up, 0),
+    over: overheal(r.heals),
   }));
+}
+
+export interface Mvp {
+  id: number;
+  points: number;
+  damage: number;
+  healing: number;
+  stagger: number;
+  deaths: number;
+}
+
+/** What each part of the MVP's points is worth at most. */
+const WORTH = { damage: 100, healing: 25, stagger: 15, death: 10 } as const;
+
+/**
+ * Who did the most for a party. Our own rule: the share of the damage with buffs counted, of the healing that did something
+ * and of the stagger, less ten for each death. Healing counts by how much of what hit the party it made good.
+ */
+export function mvp(fight: Saved): Mvp | undefined {
+  const rows = fight.rows ?? [];
+  if (fight.dummy || rows.length < 2) return undefined;
+  const credited = (r: FightRow) => Math.max(0, r.damage - (r.got ?? 0) + (r.given ?? 0));
+  const useful = (r: FightRow) => (r.healing ?? 0) * (1 - (overheal(r.heals) ?? 0));
+  const all = (of: (r: FightRow) => number) => Math.max(1, rows.reduce((n, r) => n + of(r), 0));
+  const needed = Math.max(all((r) => r.taken), all(useful));
+  const list = rows.map((r) => {
+    const damage = (WORTH.damage * credited(r)) / all(credited);
+    const healing = (WORTH.healing * useful(r)) / needed;
+    const stagger = (WORTH.stagger * (r.stagger ?? 0)) / all((x) => x.stagger ?? 0);
+    const deaths = WORTH.death * r.deaths;
+    return { id: r.id, points: damage + healing + stagger - deaths, damage, healing, stagger, deaths };
+  });
+  return list.reduce((a, b) => (b.points > a.points ? b : a));
 }

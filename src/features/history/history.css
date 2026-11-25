@@ -1,7 +1,10 @@
 .history { display: flex; flex-direction: column; height: 100%; padding-bottom: 0; overflow: hidden; }
 .history .page-head .ui-input { width: 160px; }
-.history-panes { display: grid; flex: 1; grid-template-columns: 250px minmax(0, 1fr); gap: var(--space-4); min-height: 0; }
+.history-panes { display: grid; flex: 1; grid-template-columns: 272px minmax(0, 1fr); gap: var(--space-4); min-height: 0; }
 .history-list, .history-detail { padding-bottom: var(--space-4); overflow: auto; }
+.history-line { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-1); padding-left: 4px; }
+.history-line .ui-check:not(:checked, :hover, :focus-visible) { opacity: 0.45; }
+.history-pair { display: flex; position: sticky; top: 0; z-index: 1; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-2); background: var(--surface-base); }
 .history-item { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--space-2); padding: 6px var(--space-2); }
 .history-item small { grid-column: 1 / -1; font-size: 12px; }
 .history-item b { font-weight: 600; }

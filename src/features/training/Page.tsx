@@ -1,6 +1,6 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js";
 import { runOver } from "./logic";
-import { engineSend } from "../../api";
+import { engineSend, fight as loadFight } from "../../api";
 import { fight, live, skills } from "../../live/store";
 import { settings } from "../../store";
 import { clock, day, short, time } from "../../ui/format";
@@ -8,11 +8,16 @@ import { Waiting } from "../../ui/Waiting";
 import { Skills } from "../meter/Skills";
 import { bestOf, bests } from "../history/logic";
 import { fights, followFights } from "../history/store";
+import { unclean } from "../report/deep";
 import "../meter/meter.css";
 import "../meter/page.css";
 
 const LENGTHS: [number, string][] = [[30, "30 s"], [60, "1 min"], [120, "2 min"], [180, "3 min"], [300, "5 min"], [0, "No limit"]];
 const [seconds, setSeconds] = createSignal(60);
+
+/** What kept each run from being clean, by run. The list does not hold casts, so each is read whole, once. */
+const judged = new Map<string, string[]>();
+const SHOWN = 20;
 
 /** A timed run on a dummy. Only your own damage counts, from your first hit. */
 export function TrainingPage() {
@@ -50,6 +55,15 @@ export function TrainingPage() {
   const left = () => Math.max(0, length() - fight.ms);
   const runs = createMemo(() => fights().filter((f) => f.dummy && f.you));
   const best = createMemo(() => bests(runs()));
+  const listed = createMemo(() => runs().slice(0, SHOWN));
+  const run = (f: { id: string; ms: number }) => `${f.id} ${f.ms}`;
+  const [verdicts] = createResource(listed, async (list) => {
+    for (const f of list.filter((f) => !judged.has(run(f)))) {
+      const whole = await loadFight(f.id).catch(() => null);
+      if (whole?.casts?.length) judged.set(run(f), unclean(whole));
+    }
+    return new Map(judged);
+  });
 
   return (
     <div class="page">
@@ -98,13 +112,20 @@ export function TrainingPage() {
         <section class="block">
           <h2>Runs before</h2>
           <p class="ui-muted ui-small">Open one in History to compare two runs: what was luck, what was a real gain.</p>
-          <For each={runs().slice(0, 20)}>
+          <For each={listed()}>
             {(f) => (
               <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) auto auto 90px" }}>
                 <span>
                   {f.target}{" "}
                   <Show when={bestOf(best(), f)?.id === f.id}>
                     <span class="ui-tag" style={{ "--tag": "var(--accent)" }}>Best</span>
+                  </Show>{" "}
+                  <Show when={verdicts.latest?.get(run(f))}>
+                    {(why) => (
+                      <Show when={why().length} fallback={<span class="ui-tag" style={{ "--tag": "var(--success-ink)" }}>Clean run</span>}>
+                        <small class="ui-muted">{why().join(", ")}</small>
+                      </Show>
+                    )}
                   </Show>
                 </span>
                 <span class="ui-muted">{day(f.start)}, {time(f.start)}</span>

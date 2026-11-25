@@ -94,6 +94,9 @@ export interface Skill {
   fronts?: number;
   min: number;
   max: number;
+  /** Of a heal: how much of it could be weighed, and how much of that was too much. Missing when nothing. */
+  weighed?: number;
+  over?: number;
 }
 
 export interface FightRow {

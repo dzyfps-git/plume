@@ -14,6 +14,7 @@ Not made, approved or supported by NC. Made for private use.
 - Other players' names and numbers stay in memory and are gone when it closes. Only your own part of a fight is saved,
   with everyone else as one sum.
 - What is near you (health, effects, the player you fight) and others' Combat Power are never written down at all.
+- Your own PvP counts are kept on this PC, for six hours after the last one.
 - It writes to the registry only when you turn on "Start with Windows": one line in your own `Run` key.
 - A fight leaves it only when you save one: CSV, JSON or a picture, written into Downloads. CSV and JSON hold your own
   part alone. The picture numbers other players instead of naming them.
@@ -61,6 +62,9 @@ overlay, switch and place by itself.
 
 Skill and effect pictures are read from the `icons` folder in the app's data, which Settings opens: `index.json` and PNG
 files. Letters stand in for those that are not there. They belong to NC, so none are in this repository.
+
+The MVP of a fight is our own rule, `mvp` in `src/features/report/deep.ts`: the share of the damage with buffs counted, up to
+25 for healing that did something, up to 15 for stagger, less 10 for each death.
 
 Your own sounds for alerts go into the `sounds` folder, which the Alerts page opens.
 
