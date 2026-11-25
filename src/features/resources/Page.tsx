@@ -8,11 +8,13 @@ import { Chips, Choices, Line } from "../../ui/Line";
 import { Switch } from "../../ui/Switch";
 import { Waiting } from "../../ui/Waiting";
 import { guess, KIND_NAMES, kindOf, nameOf, ODYLE_NAMES, resets, runsLeft, wait } from "./logic";
+import { followFights, runMs } from "../history/store";
 import { minutes } from "./Overlay";
 import { seen } from "./watch";
 import "./resources.css";
 
 export function ResourcesPage() {
+  followFights();
   const now = minutes();
   const known = (id: number): Resource => settings.resources.find((r) => r.id === id) ?? { id, name: "", kind: "", show: false };
   const set = (id: number, to: Partial<Resource>) =>
@@ -30,6 +32,7 @@ export function ResourcesPage() {
       ["Odyle Energy", near.odyle[0] < 0 ? "" : full(near.odyle[0]), "odyle"],
       ["Odyle charged", near.odyle[1] <= 0 ? "" : `+${full(near.odyle[1])}`, "odyle"],
       ["Runs left", near.odyle[0] < 0 ? "" : String(runsLeft(near.odyle, settings.odyleRun))],
+      ["Time for them, about", near.odyle[0] < 0 || !runMs() || !runsLeft(near.odyle, settings.odyleRun) ? "" : wait(runsLeft(near.odyle, settings.odyleRun) * runMs()!)],
       ["Daily Duties", entries().duty[0] < 0 ? "" : `${entries().duty[0]} of ${entries().duty[1]}`],
       ["Abyss Points this week", entries().points[0] < 0 ? "" : `${full(entries().points[0])} of ${full(entries().points[1])}`, "points"],
       ["Kina today", entries().kinah < 0 ? "" : full(entries().kinah), "kina"],
@@ -49,7 +52,7 @@ export function ResourcesPage() {
           <Line name="Odyle Energy a run takes" about="80 is claiming twice in one run, with a membership: half the runs.">
             <Choices name="Odyle Energy a run takes" all={ODYLE_RUN.map((n) => [n, String(n)] as const)} value={settings.odyleRun} set={(n) => change((s) => (s.odyleRun = n))} />
           </Line>
-          <Line name="Odyle Energy shows as"><Chips name="Odyle Energy shows as" all={ODYLE} names={ODYLE_NAMES} value={settings.odyle.parts} set={(v) => change((s) => (s.odyle.parts = v))} /></Line>
+          <Line name="Odyle Energy shows as" about="Time is by how long your last runs took."><Chips name="Odyle Energy shows as" all={ODYLE} names={ODYLE_NAMES} value={settings.odyle.parts} set={(v) => change((s) => (s.odyle.parts = v))} /></Line>
           <Switch name="Membership" about="Odyle Energy grows to 840 in place of 560, and Shugo keys to 21 in place of 12. Nothing comes faster." on={settings.odyle.member} set={(on) => change((s) => (s.odyle.member = on))} />
         </section>
         <section class="block">

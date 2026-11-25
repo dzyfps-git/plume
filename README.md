@@ -1,8 +1,8 @@
 # Plume
 
 A companion app for AION 2 on Windows: a damage meter, boss health and timers, party and target frames, buffs and
-debuffs, auras you build, alerts, fight reports, dungeon runs and timed training runs, as overlays over the game and as
-pages of its own. The name is a placeholder.
+debuffs, auras you build, alerts, fight reports, dungeon runs and timed training runs, as overlays over the game, on a second
+screen, and as pages of its own. It sets you against your own best. The name is a placeholder.
 
 Not made, approved or supported by NC. Made for private use.
 
@@ -55,6 +55,7 @@ npm run tauri dev
 |---|---|
 | `src/features` | one folder a feature: page, overlay, logic, tests. `index.ts` lists them |
 | `src/overlay` | the window over the game: places, edit mode, panel, buttons that take the mouse, when each overlay shows |
+| `src/second` | the window for a second screen, and what can stand on it |
 | `src/app` | the main window: menu, palette, first start, the pages of settings |
 | `src/live` | what the engine says. Features know only this |
 | `src/store` | settings and their defaults |
@@ -66,7 +67,7 @@ npm run tauri dev
 To add a feature, make a folder with a `feature.ts` and add it to `src/features/index.ts`. It gets its menu entry,
 overlay, switch and place by itself.
 
-The game's pictures (skills, effects, classes, Combat Power, Kina, Odyle, tickets) are read from the `icons` folder in the
+The game's pictures (skills, effects, classes, class art as `art_assassin.png` and so on, Combat Power, Kina, Odyle, tickets) are read from the `icons` folder in the
 app's data, which Settings opens: `index.json` and PNG files. Letters and our own drawings stand in for those that are not
 there. They belong to NC, so none are in this repository. `src/ui/icons.tsx` says which is for what. Each is drawn at the
 exact size it has on the screen (`src/ui/Sharp.tsx`), and overlays are sized by layout with `--px` as one point of the
@@ -74,6 +75,11 @@ screen, so nothing is stretched and soft.
 
 The MVP of a fight and the places are our own rule, `standing` in `src/features/report/deep.ts`: the share of the damage with buffs counted, up to
 25 for healing that did something, up to 15 for stagger, less 10 for each death.
+
+A grade is the share of your own other kills of that boss, with that class, that this one beat; for a training run, of the
+runs of that length. It needs three others, and 100 is a new best. Your best kill, as the mark on the boss bar, is the
+fastest of the same boss with about the same health. Both are in `src/features/best/logic.ts`. Nobody else's numbers are
+in them.
 
 Your own sounds for alerts go into the `sounds` folder, which the Alerts page opens.
 

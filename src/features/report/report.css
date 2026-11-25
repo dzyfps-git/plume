@@ -61,3 +61,5 @@
 .playback-boss { margin-bottom: var(--space-4); }
 .playback-boss .ui-meter > i { transition: none; animation: none; }
 .still .meter-bar { transition: none; }
+.page-head.report-head { min-height: 72px; border-radius: var(--radius); }
+.report-head .class-art { right: 180px; opacity: 0.45; }

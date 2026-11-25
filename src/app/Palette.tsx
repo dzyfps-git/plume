@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onMount } from "solid-js";
-import { editOverlays, engineSend } from "../api";
+import { editOverlays, engineSend, secondScreen } from "../api";
 import { change, settings } from "../store";
 import type { Page } from "./App";
 
@@ -20,6 +20,7 @@ export function Palette(props: { pages: Page[]; go: (page: Page) => void; close:
     ...props.pages.map((p) => ({ name: p.name, icon: p.icon, run: () => props.go(p) })),
     { name: "Move the overlays", icon: "", run: () => void editOverlays("move") },
     { name: "Turn overlays on and off over the game", icon: "\ue7b3", run: () => void editOverlays("quick") },
+    { name: "Second screen", icon: "\ue7f4", run: () => void secondScreen() },
     { name: "Start the fight again", icon: "", run: () => void engineSend({ cmd: "reset" }) },
     {
       name: settings.overlay.on ? "Hide the overlays" : "Show the overlays",

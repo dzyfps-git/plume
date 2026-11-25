@@ -159,6 +159,43 @@ fn open_page(app: AppHandle, page: String) {
     windowing::show_main(&app);
 }
 
+/// Opens the page for another screen, or closes it.
+#[tauri::command(async)]
+fn second_screen(app: AppHandle) {
+    if open_second(&app) {
+        edit_settings(&app, &|s| s["second"]["open"] = true.into());
+    }
+}
+
+fn open_second(app: &AppHandle) -> bool {
+    let second = app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner())["second"].clone();
+    windowing::second(app, serde_json::from_value(second["at"].clone()).ok(), second["full"] == true)
+}
+
+/// Remembers where the page for another screen is, and whether it opens with Plume.
+fn keep_second(app: &AppHandle, place: Option<(windowing::Rect, bool)>, open: bool) {
+    edit_settings(app, &|s| {
+        s["second"]["open"] = open.into();
+        if let Some((at, full)) = place {
+            s["second"]["at"] = json!(at);
+            s["second"]["full"] = full.into();
+        }
+    });
+}
+
+/// Nothing before the first start is done: what is written then would pass for settings.
+fn edit_settings(app: &AppHandle, edit: &dyn Fn(&mut Value)) {
+    let saved = app.state::<Saved>();
+    let mut settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    if !settings.is_object() {
+        return;
+    }
+    edit(&mut settings);
+    if let Err(e) = save_settings(app.clone(), saved, settings) {
+        eprintln!("{e}");
+    }
+}
+
 #[tauri::command(async)]
 fn fights(engine: State<Arc<Engine>>) -> Vec<Value> {
     engine.fights.list()
@@ -253,14 +290,7 @@ fn turn(value: &mut Value, unset: bool) {
 /// A key pressed over the game. Never on the main thread: a window cannot be built from inside its loop.
 fn pressed(app: &AppHandle, action: &str) {
     let overlay = app.state::<Overlay>();
-    let set = |edit: &dyn Fn(&mut Value)| {
-        let saved = app.state::<Saved>();
-        let mut settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
-        edit(&mut settings);
-        if let Err(e) = save_settings(app.clone(), saved, settings) {
-            eprintln!("{e}");
-        }
-    };
+    let set = |edit: &dyn Fn(&mut Value)| edit_settings(app, edit);
     match action {
         "overlay" => set(&|s| s["overlay"]["on"] = (!overlay.on.load(SeqCst)).into()),
         "view" => set(&|s| {
@@ -283,6 +313,7 @@ fn pressed(app: &AppHandle, action: &str) {
         "discreet" => set(&|s| turn(&mut s["discreet"], false)),
         // Both are off until you turn them on.
         "buffs" | "actions" => set(&|s| turn(&mut s["places"][action]["on"], false)),
+        "second" => second_screen(app.clone()),
         "history" | "details" | "settings" => open_page(app.clone(), action.into()),
         _ => {}
     }
@@ -335,6 +366,7 @@ fn main() {
             restore,
             set_zones,
             open_page,
+            second_screen,
             sound_files,
             sound_file,
             open_sounds_folder,
@@ -385,6 +417,9 @@ fn main() {
             if !settings.is_object() || !std::env::args().any(|a| a == startup::HIDDEN) {
                 windowing::show_main(&handle);
             }
+            if settings["second"]["open"] == true {
+                open_second(&handle);
+            }
             windowing::point(handle.clone());
             windowing::watch(handle);
             Ok(())
@@ -401,6 +436,13 @@ fn main() {
             for command in [json!({ "cmd": "limit", "ms": 0 }), json!({ "cmd": "mode", "mode": mode }), json!({ "cmd": "watch" })] {
                 let _ = engine.send(command);
             }
+        }
+        RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. } if label == windowing::SECOND => {
+            let (app, place) = (app.clone(), windowing::second_at(app));
+            std::thread::spawn(move || keep_second(&app, place, false));
+        }
+        RunEvent::ExitRequested { code: Some(_), .. } if app.get_webview_window(windowing::SECOND).is_some() => {
+            keep_second(app, windowing::second_at(app), true);
         }
         // Closing the main window leaves the overlays over the game. The tray quits.
         RunEvent::ExitRequested { api, code: None, .. } => api.prevent_exit(),

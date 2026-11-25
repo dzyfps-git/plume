@@ -1,18 +1,18 @@
 import type { Job, Saved } from "../../live/types.ts";
 
-export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session" | "table";
+export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session" | "table" | "records";
 
 export function filtered(fights: readonly Saved[], filter: Filter, search: string): Saved[] {
   const words = search.trim().toLowerCase();
   return fights.filter(
     (f) =>
-      (filter === "all" || filter === "session" || filter === "table" || (filter === "runs" ? !!f.run : filter === "dummies" ? f.dummy : !f.dummy && (filter === "bosses" || f.killed))) &&
+      (filter === "all" || filter === "session" || filter === "table" || filter === "records" || (filter === "runs" ? !!f.run : filter === "dummies" ? f.dummy : !f.dummy && (filter === "bosses" || f.killed))) &&
       (!words || f.target.toLowerCase().includes(words)),
   );
 }
 
 /** Fights that can be held against each other: of one class, on one target, or on dummies over about the same time. */
-const kind = (f: Saved) => `${f.you?.job ?? ""} ${f.dummy ? `dummy ${Math.round(f.ms / 30_000)}` : `boss ${f.code || f.target}`}`;
+export const kind = (f: Saved) => `${f.you?.job ?? ""} ${f.dummy ? `dummy ${Math.round(f.ms / 30_000)}` : `boss ${f.code || f.target}`}`;
 
 export interface Character {
   name: string;

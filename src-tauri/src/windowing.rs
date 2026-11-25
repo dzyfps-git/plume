@@ -11,6 +11,7 @@ use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetForegroundWindow,
 
 pub const MAIN: &str = "main";
 pub const OVERLAY: &str = "overlay";
+pub const SECOND: &str = "second";
 const LOOK: Duration = Duration::from_millis(400);
 /// How often it is asked whether the pointer is on a button, while there are buttons.
 const POINT_LOOK: Duration = Duration::from_millis(30);
@@ -57,6 +58,68 @@ pub fn show_main(app: &AppHandle) {
     if let Err(e) = built {
         eprintln!("{e}");
     }
+}
+
+/// Left, top, width and height, in points of the screen.
+pub type Rect = [i32; 4];
+
+/// Opens the page for another screen, or closes it. `at` is where it was when it closed. True when it opened.
+pub fn second(app: &AppHandle, at: Option<Rect>, full: bool) -> bool {
+    let state = app.state::<Overlay>();
+    let _building = state.building.lock().unwrap_or_else(|p| p.into_inner());
+    if let Some(w) = app.get_webview_window(SECOND) {
+        let _ = w.close();
+        return false;
+    }
+    let screens: Vec<Rect> = app
+        .available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| [m.position().x, m.position().y, m.size().width as i32, m.size().height as i32])
+        .collect();
+    let game = *state.place.lock().unwrap_or_else(|p| p.into_inner());
+    let game = if game.2 > 0 {
+        (game.0, game.1)
+    } else {
+        app.primary_monitor().ok().flatten().map_or((0, 0), |m| (m.position().x, m.position().y))
+    };
+    let built = WebviewWindowBuilder::new(app, SECOND, WebviewUrl::App("second.html".into()))
+        .title("Plume second screen")
+        .min_inner_size(360.0, 280.0)
+        .decorations(false)
+        // The page shows it once there is something to see.
+        .visible(false)
+        .build();
+    let Ok(w) = built.inspect_err(|e| eprintln!("{e}")) else { return false };
+    let [x, y, width, height] = spot(&screens, game, at);
+    let _ = w.set_position(PhysicalPosition::new(x, y));
+    let _ = w.set_size(PhysicalSize::new(width as u32, height as u32));
+    if full {
+        let _ = w.maximize();
+    }
+    true
+}
+
+/// Where the page for another screen is now, and whether it fills it. Nothing while it is down.
+pub fn second_at(app: &AppHandle) -> Option<(Rect, bool)> {
+    let w = app.get_webview_window(SECOND)?;
+    if w.is_minimized().unwrap_or(true) {
+        return None;
+    }
+    let (at, size) = (w.outer_position().ok()?, w.inner_size().ok()?);
+    Some(([at.x, at.y, size.width as i32, size.height as i32], w.is_maximized().unwrap_or(false)))
+}
+
+/// Where it was, while there is still a screen there. Else in the middle of a screen that is not the game's, if there is one.
+fn spot(screens: &[Rect], game: (i32, i32), at: Option<Rect>) -> Rect {
+    let on = |s: &Rect, x: i32, y: i32| (s[0]..s[0] + s[2]).contains(&x) && (s[1]..s[1] + s[3]).contains(&y);
+    if let Some(a) = at.filter(|a| a[2] > 0 && a[3] > 0 && screens.iter().any(|s| on(s, a[0] + a[2] / 2, a[1] + a[3] / 2))) {
+        return a;
+    }
+    let other = screens.iter().find(|s| !on(s, game.0, game.1)).or(screens.first());
+    let [x, y, width, height] = other.copied().unwrap_or([0, 0, 1280, 800]);
+    let (w, h) = (width * 4 / 5, height * 4 / 5);
+    [x + (width - w) / 2, y + (height - h) / 2, w, h]
 }
 
 fn overlay(app: &AppHandle) -> Option<WebviewWindow> {
@@ -202,13 +265,25 @@ pub fn watch(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_game, within};
+    use super::{is_game, spot, within};
 
     #[test]
     fn a_zone_takes_the_mouse_inside_its_edges() {
         let zones = [[10, 10, 20, 20], [0, 50, 5, 60]];
         assert!(within(&zones, 10, 19) && within(&zones, 4, 50));
         assert!(!within(&zones, 20, 10) && !within(&zones, 9, 10) && !within(&[], 0, 0));
+    }
+
+    #[test]
+    fn the_second_page_goes_beside_the_game_and_back_to_where_it_was() {
+        let screens = [[0, 0, 1920, 1080], [1920, 0, 1000, 1000]];
+        assert_eq!(spot(&screens, (0, 0), None), [2020, 100, 800, 800]);
+        assert_eq!(spot(&screens, (1920, 0), None), [192, 108, 1536, 864]);
+        let was = [1930, 20, 400, 300];
+        assert_eq!(spot(&screens, (0, 0), Some(was)), was);
+        // Its screen is gone.
+        assert_eq!(spot(&screens[..1], (0, 0), Some(was)), [192, 108, 1536, 864]);
+        assert_eq!(spot(&[], (0, 0), None)[2], 1024);
     }
 
     #[test]

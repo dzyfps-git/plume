@@ -1,0 +1,21 @@
+html, body, #root { height: 100%; overflow: hidden; user-select: none; }
+.second { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100%; }
+.second > .second-grid:nth-child(2) { grid-row: 2 / -1; }
+.second .ui-titlebar { gap: var(--space-2); }
+.second .status { flex: 1; color: var(--text-muted); font-size: 12px; }
+.second .status::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: var(--space-2); border-radius: 50%; background: var(--text-muted); }
+.second .status[data-state="live"]::before { background: var(--success-ink); box-shadow: 0 0 8px var(--success-ink); }
+.caption { width: 40px; font-size: 10px; }
+.second-choose { display: grid; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border); }
+.second-choose .ui-row { flex-wrap: wrap; }
+.slide { display: flex; align-items: center; gap: var(--space-3); width: 240px; }
+.slide > span { min-width: 56px; text-align: right; }
+/* Columns that fill from the top, so cards of any height lie close. */
+.second-grid { padding: var(--space-4); overflow: auto; columns: calc(340px * var(--size)); column-gap: var(--space-4); }
+.second-card { display: inline-block; width: 100%; margin: 0 0 var(--space-4); padding: var(--space-3); break-inside: avoid; border: 1px solid var(--border); border-radius: var(--radius-large); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.second-card h2 { margin: 0 0 var(--space-2); color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.second-card[data-empty] { opacity: .6; }
+.second-card p, .second-card .chart { margin: 0; }
+.second-card figcaption { flex-wrap: wrap; gap: 0 var(--space-3); }
+.second-card figcaption span { white-space: nowrap; }
+.second-body { --px: 1px; width: min(100%, calc(var(--wide) * var(--size) * 1.4)); zoom: var(--size); overflow: hidden; }

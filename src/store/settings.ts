@@ -8,21 +8,25 @@ export const FPS = [30, 60, 120, 144, 0] as const;
 export const STYLES = ["bar", "line", "cards", "gauge", "table"] as const;
 export const ACCENTS = ["", "ocean", "forest", "ember", "rose", "mono"] as const;
 /** What a key over the game can do. `pressed` in `src-tauri/src/main.rs` does it. */
-export const ACTIONS = ["overlay", "edit", "reset", "view", "quick", "compact", "lock", "peek", "discreet", "history", "details", "settings", "buffs", "actions"] as const;
+export const ACTIONS = ["overlay", "edit", "reset", "view", "quick", "compact", "lock", "peek", "discreet", "history", "details", "settings", "buffs", "actions", "second"] as const;
 /** What the meter shows, in the order its key goes through. The same as in `src-tauri/src/main.rs`. */
 export const VIEWS = ["damage", "rdps", "ndps", "healing", "taken", "hits"] as const;
 export const WHEN = ["always", "fight", "boss", "dungeon", "pvp", "calm"] as const;
 export const FOOTER = ["ping", "total", "flight", "odyle", "entries", "kina", "points", "crit", "back"] as const;
 /** Buttons on the meter. */
-export const BUTTONS = ["view", "clear", "history", "compact", "lock", "sound", "clock", "news", "menu"] as const;
+export const BUTTONS = ["view", "clear", "history", "compact", "lock", "sound", "clock", "news", "second", "menu"] as const;
 /** What can stand beside a row's number, and by a name. */
 export const SIDES = ["", "total", "share"] as const;
 export const CORNERS = ["power", "level", ""] as const;
 export const THEMES = ["glass", "minimal", "solid", "light"] as const;
 export const OUTLINES = ["", "soft", "solid"] as const;
 export const FONTS = ["house", "narrow", "round", "mono"] as const;
-export const ODYLE = ["energy", "charged", "cap", "runs"] as const;
+export const ODYLE = ["energy", "charged", "cap", "runs", "time"] as const;
 export const ONLY = ["", "boss", "dungeon"] as const;
+/** What can stand on the second screen, by its feature. `curve` is its own. */
+export const SECOND = ["meter", "boss", "curve", "splits", "finish", "timers", "target", "foe", "resources", "party", "force", "buffs", "debuffs", "partyDebuffs", "actions", "flight", "ping"] as const;
+/** You against your best: what shows of it. */
+export const AGAINST = ["rival", "time", "wipes", "grade", "burst", "tip", "streak", "art"] as const;
 /** What a colour says, everywhere. */
 export const TONES = ["bonus", "best", "ready", "ending", "danger", "you"] as const;
 /** How many fights are kept. 0 is all. */
@@ -34,7 +38,7 @@ export const KINDS = ["shugo", "invasion", "nightmare", "ascension", "transcende
 export const AURA_KINDS = ["on", "missing", "target", "untarget", "ready", "low", "party"] as const;
 export const LOOKS = ["icon", "bar", "text"] as const;
 /** What each is stands in `src/features/alerts/logic.ts`. */
-export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best"] as const;
+export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best", "record"] as const;
 export const JOBS: readonly Job[] = ["gladiator", "templar", "ranger", "assassin", "sorcerer", "cleric", "spiritmaster", "chanter", "fighter", ""];
 /** Odyle Energy a run takes: once, or claimed twice. */
 export const ODYLE_RUN = [40, 80] as const;
@@ -114,6 +118,18 @@ export interface Alert extends Signal {
   value: number;
   /** How loud its sound is, of the whole. */
   volume: number;
+}
+
+/** The page for another screen: what stands on it, by its size, and where it is. */
+export interface Second {
+  parts: (typeof SECOND)[number][];
+  size: number;
+  /** Left, top, width and height in points of the screen, as it was when it closed. */
+  at?: number[];
+  /** It filled its screen. */
+  full: boolean;
+  /** Opens with Plume. */
+  open: boolean;
 }
 
 /** A boss's skill or effect that you want a word about. */
@@ -259,6 +275,8 @@ export interface Settings {
   odyle: { parts: (typeof ODYLE)[number][]; /** A membership: it may grow further. */ member: boolean; warn: boolean; pop: boolean; ring: boolean; place: "bottom" | "top" | "out" };
   /** Skills and effects with the game's pictures, when there are some. */
   pictures: boolean;
+  against: Record<(typeof AGAINST)[number], boolean>;
+  second: Second;
   alerts: Record<AlertId, Alert>;
   /** Starts with Windows. */
   startup: boolean;
@@ -281,7 +299,7 @@ export const DEFAULTS: Settings = {
   hotkeys: {
     overlay: "Ctrl+Alt+F9", edit: "Ctrl+Alt+F10", reset: "Ctrl+Alt+F11", view: "Ctrl+Alt+F12", quick: "Ctrl+Alt+F8",
     // Empty, so that none takes a key you use.
-    compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "",
+    compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "", second: "",
   },
   overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true },
   meter: {
@@ -313,6 +331,8 @@ export const DEFAULTS: Settings = {
   odyleRun: 40,
   odyle: { parts: ["energy", "charged", "runs"], member: false, warn: true, pop: true, ring: true, place: "bottom" },
   pictures: true,
+  against: { rival: true, time: true, wipes: true, grade: true, burst: true, tip: true, streak: true, art: true },
+  second: { parts: ["meter", "boss", "curve", "splits", "timers", "resources", "party", "buffs"], size: 1.1, full: false, open: false },
   alerts: {
     low: { on: false, banner: true, sound: "alarm", say: false, value: 30, volume: 1 },
     ally: { on: false, banner: true, sound: "drop", say: false, value: 25, volume: 1 },
@@ -323,6 +343,7 @@ export const DEFAULTS: Settings = {
     kill: { on: false, banner: true, sound: "rise", say: false, value: 0, volume: 1 },
     slain: { on: false, banner: false, sound: "fall", say: false, value: 0, volume: 1 },
     best: { on: true, banner: true, sound: "rise", say: false, value: 0, volume: 1 },
+    record: { on: true, banner: true, sound: "chime", say: false, value: 0, volume: 0.6 },
   },
   startup: false,
   sleep: true,
@@ -401,6 +422,8 @@ export function read(value: unknown): Settings {
   const d = DEFAULTS;
   const [overlay, meter, hotkeys, voice, alerts] = [object(s.overlay), object(s.meter), object(s.hotkeys), object(s.voice), object(s.alerts)];
   const [look, fights, training, party, cooldowns, buffs, control, odyle] = [s.look, s.fights, s.training, s.party, s.cooldowns, s.buffs, s.control, s.odyle].map(object);
+  const [against, second] = [s.against, s.second].map(object);
+  const at = numbers(second.at, -100_000, 100_000, 4);
   const m = d.meter;
   return {
     version: VERSION,
@@ -530,6 +553,14 @@ export function read(value: unknown): Settings {
       place: one(odyle.place, ["bottom", "top", "out"] as const, d.odyle.place),
     },
     pictures: flag(s.pictures, d.pictures),
+    against: Object.fromEntries(AGAINST.map((a) => [a, flag(against[a], d.against[a])])) as Settings["against"],
+    second: {
+      parts: some(second.parts, SECOND, d.second.parts),
+      size: number(second.size, 0.7, 2, d.second.size),
+      ...(at.length === 4 && at[2] > 0 && at[3] > 0 && { at }),
+      full: flag(second.full, d.second.full),
+      open: flag(second.open, d.second.open),
+    },
     alerts: Object.fromEntries(
       ALERTS.map((id) => {
         const a = object(alerts[id]);

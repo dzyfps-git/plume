@@ -5,8 +5,10 @@ import { plan } from "../../store/settings";
 import { ticking } from "../../ui/now";
 import { key } from "../bosses/logic";
 import { left, remaining } from "../effects/logic";
-import { onKept } from "../history/store";
+import { records, skillKey } from "../best/logic";
+import { fights, followFights, onKept } from "../history/store";
 import { gain, signed } from "../meter/logic";
+import { short } from "../../ui/format";
 import { count, NONE } from "../pvp/logic";
 import { speak } from "../timers/voice";
 import { ahead, look, notes, onBlow, onEffects, raised, safe, streakText, type Call, type Look, type Raised } from "./logic";
@@ -70,12 +72,24 @@ export function followAlerts() {
       });
     });
 
+    // Your biggest hits so far. A skill without one has nothing to beat yet.
+    followFights();
+    const kept = createMemo(() => new Map(records(fights()).map((r) => [skillKey({ code: r.skill, name: r.name }), r.amount])));
+    const beaten = new Map<string, number>();
+
     let tally = NONE;
     onHappened((h) => {
       tally = count(tally, h);
       if (h.what === "kill") alert({ id: "kill", text: streakText(tally.streak) });
       else if (h.what === "death") alert({ id: "slain", text: "Killed" });
-      else if (h.what === "blow" && onBoss()) call(onBlow(set(), h, job()));
+      else if (h.what === "big") {
+        const skill = skillKey({ code: h.skill, name: h.name });
+        const before = Math.max(kept().get(skill) ?? 0, beaten.get(skill) ?? 0);
+        if (before && h.amount > before) {
+          beaten.set(skill, h.amount);
+          alert({ id: "record", text: `Record: ${h.name || "a hit"}, ${short(h.amount)}` });
+        }
+      } else if (h.what === "blow" && onBoss()) call(onBlow(set(), h, job()));
     });
 
     onKept((kept, all) => {

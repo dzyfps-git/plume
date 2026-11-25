@@ -28,10 +28,18 @@ const ACTION_NAMES: Record<Action, string> = {
   settings: "Open Settings",
   buffs: "Buffs on or off",
   actions: "Action bars on or off",
+  second: "Second screen",
 };
 
 /** What came with this version, newest first. */
 const NEWS = [
+  "A grade for every kill and every dummy run, against your own: grey to violet, and gold for a new best.",
+  "Your best kill on the boss bar: where its health was by now, and how many seconds you are ahead.",
+  "Splits for dungeon runs, against your best run of that dungeon.",
+  "A page for another screen. Choose its parts on the Overlays page, and give it a key.",
+  "Records: your biggest hit with each skill, your fastest kills, and streaks, in History.",
+  "The card at the end says your grade, whether your bursts were on time, and one thing to do better.",
+  "Odyle Energy as time, by how long your runs take.",
   "The meter is one bar out of fights, and opens with the next one.",
   "Buttons on the meter, for while it is locked and while it is not. A panel over the game: Ctrl+Alt+F8.",
   "Gauges as a fifth style, four themes, four fonts, outlines, and your own colour for every class and meaning.",

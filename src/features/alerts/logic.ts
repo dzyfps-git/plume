@@ -13,6 +13,7 @@ export const ALERT_NAMES: Record<AlertId, { name: string; about: string; value?:
   kill: { name: "You killed a player", about: "With how many in a row." },
   slain: { name: "A player killed you", about: "Your streak ends." },
   best: { name: "A new best", about: "Your damage a second was higher than in any fight of that target before." },
+  record: { name: "A record hit", about: "Bigger than any you made with that skill before. Dummies do not count." },
 };
 
 /** What of now matters to an alert, small enough to hold against the next. */

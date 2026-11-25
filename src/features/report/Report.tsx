@@ -4,15 +4,17 @@ import { NAME } from "../../app/brand";
 import type { Buff, FightRow, Saved } from "../../live/types";
 import { hideNames, settings } from "../../store";
 import { plan } from "../../store/settings";
-import { ClassMark, classOf } from "../../ui/classes";
+import { ClassArt, ClassMark, classOf } from "../../ui/classes";
 import { clock, full, percent, short } from "../../ui/format";
 import { Drawn } from "../../ui/icons";
 import { Choices } from "../../ui/Line";
 import { Pic } from "../../ui/Pic";
+import { Grade } from "../best/Grade";
+import { burst, burstText } from "../best/logic";
 import { key } from "../bosses/logic";
 import { Chart } from "../history/Chart";
 import { path } from "../history/logic";
-import { forgetFight } from "../history/store";
+import { allGrades, forgetFight } from "../history/store";
 import { label, length } from "../meter/logic";
 import { Skills } from "../meter/Skills";
 import { figures, luck, skillGains, statChanges, type Figure } from "./compare";
@@ -64,8 +66,10 @@ export function Report(props: { fight: Saved; best?: Saved; others: Saved[] }) {
 
   return (
     <section class="history-detail">
-      <header class="page-head">
+      <header class="page-head report-head">
+        <ClassArt job={props.fight.you?.job ?? ""} />
         <h2>{props.fight.target}</h2>
+        <Grade of={allGrades().get(props.fight.id)} large />
         <Share fight={props.fight} whole={ready()} />
       </header>
       <Show when={ready()}>
@@ -184,6 +188,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
   const trip = createMemo(() => pings(props.fight));
   const top = createMemo(() => mvp(props.fight));
   const named = createMemo(() => titles(props.fight));
+  const timed = createMemo(() => burst(props.fight));
   const credited = () => (you()?.damage ?? 0) - (you()?.got ?? 0) + (you()?.given ?? 0);
   return (
     <>
@@ -210,6 +215,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
       <Show when={(props.fight.lost ?? 0) > props.fight.total}>
         <p class="report-line">It lost {short(props.fight.lost!)} health, so players you could not see did about {short(props.fight.lost! - props.fight.total)} of it.</p>
       </Show>
+      <Show when={timed()}>{(b) => <p class="report-line">{burstText(b())}</p>}</Show>
       <Show when={list().length}>
         <section class="block">
           <h2>What to do better</h2>

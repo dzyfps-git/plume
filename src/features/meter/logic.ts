@@ -1,4 +1,4 @@
-import { capOf, counted, runsLeft, type Left } from "../resources/logic.ts";
+import { capOf, counted, runsLeft, wait, type Left } from "../resources/logic.ts";
 import type { Entries, Fight, Job, Near, Row, Saved, Skill } from "../../live/types.ts";
 import type { Footer, Kind, Settings, View } from "../../store/settings.ts";
 import { full, short } from "../../ui/format.ts";
@@ -156,21 +156,22 @@ export interface Foot {
   tone?: "ending" | "best" | "muted";
 }
 
-export type FootSet = Pick<Settings, "odyleRun" | "odyle" | "pingAs">;
+export type FootSet = Pick<Settings, "odyleRun" | "odyle" | "pingAs"> & { /** How long a run of yours takes. */ runMs?: number };
 
 /** Of its cap, this much is near it. */
 const NEAR_CAP = 0.9;
 
 /** Odyle Energy in the parts you chose. */
-export function odyleFoot([daily, charged]: readonly [number, number], set: Pick<FootSet, "odyle" | "odyleRun">): Foot {
+export function odyleFoot([daily, charged]: readonly [number, number], set: Omit<FootSet, "pingAs">): Foot {
   const { parts, member, warn } = set.odyle;
   const has = (part: (typeof parts)[number]) => parts.includes(part);
   const base = { key: "odyle", name: "Odyle Energy", thing: "odyle" } as const;
   if (daily < 0) return { ...base, value: "\u2013", more: "log in once more", tone: "muted" };
   const cap = capOf("odyle", member)!;
   const near = warn && daily >= cap * NEAR_CAP;
-  const runs = counted(runsLeft([daily, charged], set.odyleRun), "run");
-  const more = [has("cap") ? `of ${full(cap)}` : "", has("runs") ? runs : "", near ? (daily >= cap ? "full" : "nearly full") : ""];
+  const left = runsLeft([daily, charged], set.odyleRun);
+  const time = left > 0 && set.runMs ? `about ${wait(left * set.runMs)}` : "";
+  const more = [has("cap") ? `of ${full(cap)}` : "", has("runs") ? counted(left, "run") : "", has("time") ? time : "", near ? (daily >= cap ? "full" : "nearly full") : ""];
   return {
     ...base, value: has("energy") ? full(daily) : "", bonus: has("charged") && charged > 0 ? `+${full(charged)}` : "", more: more.filter(Boolean).join(", "), n: daily,
     ...(near && { tone: "ending" as const }),

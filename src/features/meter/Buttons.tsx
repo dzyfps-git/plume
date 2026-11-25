@@ -1,5 +1,5 @@
 import { For } from "solid-js";
-import { editOverlays, engineSend, openPage } from "../../api";
+import { editOverlays, engineSend, openPage, secondScreen } from "../../api";
 import { change, settings } from "../../store";
 import { VIEWS, type Button } from "../../store/settings";
 import { VIEW_NAMES } from "./logic";
@@ -22,6 +22,7 @@ export const ACTS: Record<Button, Act> = {
   sound: { name: "Sound", icon: () => (settings.voice.mute ? "" : ""), run: () => set((s) => (s.voice.mute = !s.voice.mute)), on: () => !settings.voice.mute },
   clock: { name: "Fight clock", icon: () => "", run: () => set((s) => (s.meter.clock = !s.meter.clock)), on: () => settings.meter.clock },
   news: { name: "What is new", icon: () => "", run: () => void openPage("news") },
+  second: { name: "Second screen", icon: () => "\ue7f4", run: () => void secondScreen().catch(console.error) },
   menu: { name: "Panel", icon: () => "", run: () => void editOverlays("quick") },
 };
 

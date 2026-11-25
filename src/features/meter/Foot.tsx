@@ -3,6 +3,7 @@ import { entries, fight, live, near } from "../../live/store";
 import { settings } from "../../store";
 import type { Footer } from "../../store/settings";
 import { Drawn, PingBars, Thing, type ThingName } from "../../ui/icons";
+import { followFights, runMs } from "../history/store";
 import { coming, kindOf, strip } from "../resources/logic";
 import { minutes } from "../resources/Overlay";
 import { seen } from "../resources/watch";
@@ -38,10 +39,11 @@ export function Ringed(props: { id: string; of: ThingName; n: number; now: numbe
 }
 
 const items = (which: readonly Footer[]) =>
-  footer(which, near, fight, entries(), strip(entries(), near.odyle, settings.resources, settings.odyleRun), settings).filter((f) => f.tone !== "muted" || live());
+  footer(which, near, fight, entries(), strip(entries(), near.odyle, settings.resources, settings.odyleRun), { odyle: settings.odyle, odyleRun: settings.odyleRun, pingAs: settings.pingAs, runMs: runMs() }).filter((f) => f.tone !== "muted" || live());
 
 /** Figures you chose. Odyle Energy and entries can stand elsewhere. */
 export function Feet(props: { of: readonly Footer[]; class: string }) {
+  followFights();
   const now = minutes();
   return (
     <Show when={items(props.of).length}>

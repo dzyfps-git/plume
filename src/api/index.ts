@@ -36,6 +36,8 @@ export const deleteFight = (id: string) => invoke<void>("delete_fight", { id });
 export const editOverlays = (mode: Editing) => invoke<void>("edit_overlays", { mode });
 /** Opens the main window on a page. */
 export const openPage = (page: string) => invoke<void>("open_page", { page });
+/** Opens the page for another screen, or closes it. */
+export const secondScreen = () => invoke<void>("second_screen");
 /** Settings and fights in one file in Downloads, and back from one. Gives back how many fights came. */
 export const backup = (name: string) => invoke<void>("backup", { name });
 export const restore = (value: unknown) => invoke<number>("restore", { value });

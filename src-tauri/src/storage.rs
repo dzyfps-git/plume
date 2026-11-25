@@ -190,6 +190,11 @@ fn brief(mut fight: Value) -> Value {
             f.remove(long);
         }
         if let Some(you) = f.get_mut("you").and_then(Value::as_object_mut) {
+            // Of the skills, the biggest hit with each: records are looked for in the list.
+            let direct = you.get("skills").and_then(Value::as_array).into_iter().flatten();
+            let direct = direct.filter(|s| s["dot"] != true && s["max"].as_i64().is_some_and(|m| m > 0));
+            let big: Vec<Value> = direct.map(|s| json!([s["code"], s["name"], s["max"]])).collect();
+            you.insert("big".into(), big.into());
             for long in ["skills", "heals", "curve"] {
                 you.remove(long);
             }
@@ -370,7 +375,7 @@ mod tests {
     #[test]
     fn fights_are_listed_newest_first_and_an_id_cannot_leave_the_folder() {
         let fights = Fights::new(folder("fights"));
-        let fight = |id: &str, start: i64| json!({ "id": id, "start": start, "curve": [1], "health": [9, 4], "you": { "name": "Me", "skills": [1] } });
+        let fight = |id: &str, start: i64| json!({ "id": id, "start": start, "curve": [1], "health": [9, 4], "you": { "name": "Me", "skills": [{ "code": 5, "name": "Cut", "max": 90 }, { "code": 6, "dot": true, "max": 7 }] } });
         fights.save(&fight("a", 1)).unwrap();
         assert_eq!(fights.list().len(), 1);
         fights.save(&fight("b", 2)).unwrap();
@@ -378,6 +383,7 @@ mod tests {
         assert_eq!((&list[0]["left"], list[0].get("health")), (&json!(4), None));
         assert_eq!((list.len(), &list[0]["id"]), (2, &json!("b")));
         assert!(list[0].get("curve").is_none() && list[0]["you"].get("skills").is_none());
+        assert_eq!(list[0]["you"]["big"], json!([[5, "Cut", 90]]));
         assert_eq!(fights.load("a").unwrap()["curve"], json!([1]));
         for bad in ["", "..", "../a", "a/b", "C:\\x"] {
             assert!(fights.delete(bad).is_err(), "{bad}");

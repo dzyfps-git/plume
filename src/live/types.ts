@@ -127,6 +127,8 @@ export interface FightRow {
   curve?: number[];
   skills: Skill[];
   heals?: Skill[];
+  /** Your biggest direct hit with each skill. Only in the list, which is without the skills themselves. */
+  big?: [skill: number, name: string, most: number][];
 }
 
 /** ms, skill, damage, and one more: for your hits what they were, for hits taken the health left or -1. */
@@ -279,6 +281,8 @@ export interface Near {
   foe: Unit | null;
   fighting: boolean;
   dungeon: number;
+  /** When this run of the dungeon began. 0 outside one. */
+  run: number;
   flight: Flight | null;
   /** In ms. -1 when not known. */
   ping: number;
@@ -299,8 +303,8 @@ export interface Entries {
 
 /** Something that just happened. */
 export interface Happened {
-  /** Yours, but for `blow`, which is a monster's. */
-  what: "cast" | "blow" | "kill" | "assist" | "death" | "points";
+  /** Yours, but for `blow`, which is a monster's. `big` is your biggest hit with a skill since the engine connected. */
+  what: "cast" | "blow" | "kill" | "assist" | "death" | "points" | "big";
   at: number;
   skill: number;
   name: string;
@@ -308,7 +312,7 @@ export interface Happened {
 }
 
 export const NO_NEAR: Near = {
-  you: null, party: [], target: null, foe: null, fighting: false, dungeon: 0, flight: null, ping: -1, jitter: -1, odyle: [-1, -1],
+  you: null, party: [], target: null, foe: null, fighting: false, dungeon: 0, run: 0, flight: null, ping: -1, jitter: -1, odyle: [-1, -1],
 };
 
 export const NO_ENTRIES: Entries = { counts: [], duty: [-1, -1], points: [-1, -1], kinah: -1 };

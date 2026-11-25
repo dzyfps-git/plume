@@ -7,6 +7,9 @@
 .history-pair { display: flex; position: sticky; top: 0; z-index: 1; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-2); background: var(--surface-base); }
 .history-item { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--space-2); padding: 6px var(--space-2); }
 .history-item small { grid-column: 1 / -1; font-size: 12px; }
+.history-grade { display: flex; align-items: center; gap: 6px; }
+.history-skill { display: flex; align-items: center; gap: var(--space-2); }
+.stat b small { font-size: 12px; font-weight: 400; }
 .history-item b { font-weight: 600; }
 .history-name { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chart { position: relative; margin: 0 0 var(--space-4); }
@@ -20,7 +23,7 @@
 .chart-death::before { content: ""; position: absolute; top: -4px; left: 1px; width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--tone-danger) 55%, transparent); }
 .chart-death[data-you]::before { background: var(--tone-danger); }
 .history-table { display: grid; overflow-x: auto; }
-.history-table .ui-row-item { --columns: 124px minmax(120px, 1fr) 76px 48px 64px 110px 60px 92px 50px; }
+.history-table .ui-row-item { --columns: 124px minmax(120px, 1fr) 76px 48px 64px 110px 50px 60px 92px 50px; }
 .history-table .ui-row-item > :nth-child(n + 4) { text-align: right; }
 .history-table-head { color: var(--text-muted); }
 .chart figcaption { display: flex; justify-content: space-between; padding-top: 4px; color: var(--text-muted); font-size: 12px; }

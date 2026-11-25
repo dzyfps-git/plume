@@ -1,0 +1,2 @@
+.class-art { position: absolute; top: 0; right: 0; z-index: -1; width: 160px; height: 160px; opacity: 0.6; pointer-events: none; mask: linear-gradient(90deg, transparent, #000 70%); }
+:has(> .class-art) { position: relative; z-index: 0; overflow: hidden; }

@@ -109,6 +109,7 @@ export function demoNear(ms: number, at: number): Near {
     },
     fighting: true,
     dungeon: 600_091,
+    run: at - ms - 400_000,
     flight: { now: 60 - ((ms / 1000) % 50), max: 60, back: 2, out: 1, flying: true, at },
     ping: 38 + Math.round(6 * Math.sin(ms / 3_000)),
     jitter: 4,

@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show, type Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
-import { editOverlays } from "../api";
+import { editOverlays, secondScreen } from "../api";
 import { FEATURES } from "../features";
 import { followActions, skills } from "../features/actions/store";
 import { SignalLines } from "../features/alerts/SignalLines";
@@ -9,9 +9,10 @@ import { called, CONTROL, same } from "../features/effects/logic";
 import { GROUPS, overlayName, widthOf, type Feature } from "../features/types";
 import { WHEN_NAMES } from "../overlay/rules";
 import { change, settings } from "../store";
-import { FPS, place, rule, WHEN, type Rule, type Settings, type When } from "../store/settings";
+import { FPS, place, rule, SECOND, WHEN, type Rule, type Settings, type When } from "../store/settings";
 import { CLASSES } from "../ui/classes";
 import { Group } from "../ui/Group";
+import { SECOND_NAMES } from "../second/parts";
 import { Chips, Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
 import { Preview } from "./Preview";
@@ -54,10 +55,24 @@ export function OverlayGroups(props: { still?: boolean }) {
           <Slide name="Numbers change every" least={50} most={1000} step={50} value={settings.updateMs} text={`${settings.updateMs} ms`} set={(v) => change((s) => (s.updateMs = v))} />
         </Line>
       </Group>
+      <SecondGroup />
       <For each={GROUPS}>
         {(group) => <Group name={group}><For each={FEATURES.filter((f) => f.overlay?.group === group)}>{(f) => <One of={f} still={props.still} />}</For></Group>}
       </For>
     </>
+  );
+}
+
+function SecondGroup() {
+  const set = <K extends keyof Settings["second"]>(key: K) => (value: Settings["second"][K]) => change((s) => (s.second[key] = value));
+  return (
+    <Group name="Second screen">
+      <Line name="A page for another screen" about={`Opens beside the game and remembers its place. ${settings.hotkeys.second || "No key"}`}>
+        <button class="ui-button" onClick={() => void secondScreen().catch(console.error)}>Open or close</button>
+      </Line>
+      <Line name="What is on it" wide><Chips name="What is on it" all={SECOND} names={SECOND_NAMES} value={settings.second.parts} set={set("parts")} /></Line>
+      <Line name="Size of its parts"><Slide name="Size of its parts" least={0.7} most={2} step={0.05} value={settings.second.size} text={`${Math.round(settings.second.size * 100)}%`} set={set("size")} /></Line>
+    </Group>
   );
 }
 
@@ -104,7 +119,31 @@ function One(props: { of: Feature; still?: boolean }) {
 }
 
 /** What else an overlay can be told, by its id. */
-const MORE: Partial<Record<string, Component>> = { party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control };
+const MORE: Partial<Record<string, Component>> = { boss: Boss, finish: Finish, party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control };
+
+const against = (key: keyof Settings["against"]) => ({ on: settings.against[key], set: (on: boolean) => change((s) => (s.against[key] = on)) });
+
+function Boss() {
+  return (
+    <>
+      <Switch name="Your best kill as a mark" about="Where its health was by now. Green while you are ahead." {...against("rival")} />
+      <Switch name="Seconds ahead of it, or behind" {...against("time")} />
+      <Switch name="Where earlier pulls ended" about="Small marks on the bar, the last eight." {...against("wipes")} />
+    </>
+  );
+}
+
+function Finish() {
+  return (
+    <>
+      <Switch name="Grades" about="0 to 100 against your own kills of that boss with that class, from three others on. In History too." {...against("grade")} />
+      <Switch name="Bursts" about="How much of them came under others' buffs and just after a stagger break." {...against("burst")} />
+      <Switch name="One thing to do better" {...against("tip")} />
+      <Switch name="Streaks" {...against("streak")} />
+      <Switch name="Class art" about="From your picture folder. In reports too." {...against("art")} />
+    </>
+  );
+}
 
 /** Party and Force frames look the same. */
 function Party() {

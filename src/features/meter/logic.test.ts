@@ -112,6 +112,8 @@ test("Odyle Energy says what you want of it, and warns", () => {
   const said = (odyle: [number, number], more: object) => odyleFoot(odyle, { odyleRun: 40, odyle: { ...DEFAULTS.odyle, ...more } });
   assert.deepEqual([said([420, 35], { parts: ["energy", "cap"] }).more, said([420, 35], { parts: ["energy", "cap"] }).bonus], ["of 560", ""]);
   assert.equal(said([420, 0], { parts: ["cap"], member: true }).more, "of 840");
+  const took = (runMs: number) => odyleFoot([420, 35], { odyleRun: 40, odyle: { ...DEFAULTS.odyle, parts: ["time"] }, runMs }).more;
+  assert.deepEqual([took(600_000), took(0)], ["about 1 h 50 m", ""]);
   assert.deepEqual([said([520, 0], {}).tone, said([520, 0], {}).more, said([560, 0], { parts: [] }).more, said([520, 0], { warn: false }).tone], ["ending", "13 runs, nearly full", "full", undefined]);
   assert.deepEqual([said([520, 0], { member: true }).tone, said([-1, -1], {}).more], [undefined, "log in once more"]);
 });

@@ -14,6 +14,11 @@ test("what is there is kept, inside its limits", () => {
   assert.equal(s.hotkeys.overlay, DEFAULTS.hotkeys.overlay);
 });
 
+test("where the second screen was is four numbers or nothing", () => {
+  assert.deepEqual(read({ second: { at: [1920, -20, 900, 700], parts: ["boss", "?"], size: 9 } }).second, { ...DEFAULTS.second, at: [1920, -20, 900, 700], parts: ["boss"], size: 2 });
+  for (const at of [[1, 2, 3], [0, 0, 0, 5], "x"]) assert.equal(read({ second: { at } }).second.at, undefined);
+});
+
 test("settings read twice are the same", () => {
   const once = read({ accent: "rose", places: { meter: { on: true, x: 0.5, y: 0.5, scale: 1 } } });
   assert.deepEqual(read(JSON.parse(JSON.stringify(once))), once);

@@ -1,7 +1,9 @@
+import { Show } from "solid-js";
 import type { Job } from "../live/types";
 import { settings } from "../store";
 import { GameIcon } from "./Pic";
 import "./icons.css";
+import "./art.css";
 
 /** Each class's name, colour and mark. The marks are drawn for this app, and stand in for the game's emblems. */
 export const CLASSES: Record<Exclude<Job, "">, { name: string; color: string; mark: string }> = {
@@ -38,5 +40,14 @@ export function ClassMark(props: { job: Job }) {
         <svg viewBox="0 0 24 24"><path d={classOf(props.job).mark} /></svg>
       </GameIcon>
     </span>
+  );
+}
+
+/** NC's picture of a class, behind what it is in. Nothing when there is none in the folder. */
+export function ClassArt(props: { job: Job }) {
+  return (
+    <Show when={settings.against.art && props.job}>
+      <span class="class-art" aria-hidden="true"><GameIcon name={`art_${props.job}`}>{null}</GameIcon></span>
+    </Show>
   );
 }
