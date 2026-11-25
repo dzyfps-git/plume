@@ -32,7 +32,7 @@ test("what comes next, nearest first", () => {
 });
 
 test("marks, timers and the enrage are each said once", () => {
-  const plan = { enrage: 100, marks: [80, 50], avoid: [], timers: [{ skill: 1, name: "Stomp", at: [20] }] };
+  const plan = { enrage: 100, marks: [80, 50], avoid: [], timers: [{ skill: 1, name: "Stomp", at: [20] }], mechanics: [], notes: "" };
   const said = (a: number, b: number, from = 1, to = 1) => calls(plan, { ms: a, share: from }, { ms: b, share: to }, 5);
   assert.deepEqual(said(14_900, 15_100), ["Stomp"]);
   assert.deepEqual(said(15_100, 15_300), []);

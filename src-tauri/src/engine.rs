@@ -32,6 +32,7 @@ struct Inner {
     state: Value,
     reads: Value,
     fight: Value,
+    near: Value,
     session: Vec<Value>,
 }
 
@@ -56,6 +57,7 @@ impl Engine {
                 state: Value::Null,
                 reads: Value::Null,
                 fight: Value::Null,
+                near: Value::Null,
                 session: Vec::new(),
             }),
             change: Condvar::new(),
@@ -71,7 +73,12 @@ impl Engine {
 
     pub fn now(&self) -> Value {
         let i = self.lock();
-        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight })
+        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight, "near": i.near })
+    }
+
+    /// The game is connected and talking.
+    pub fn live(&self) -> bool {
+        self.lock().state["live"] == true
     }
 
     pub fn start(self: &Arc<Self>) {
@@ -140,6 +147,7 @@ impl Engine {
             if status != "running" {
                 i.state = Value::Null;
                 i.reads = Value::Null;
+                i.near = Value::Null;
             }
         }
         (self.tell)("engine", &value);
@@ -238,6 +246,7 @@ impl Engine {
             Some("state") => self.lock().state = message.clone(),
             Some("reads") => self.lock().reads = message.clone(),
             Some("fight") => self.lock().fight = message.clone(),
+            Some("near") => self.lock().near = message.clone(),
             Some("saved") => {
                 {
                     let mut i = self.lock();
@@ -304,6 +313,16 @@ mod tests {
         assert!(disk.contains("Me") && !disk.contains("Stranger"));
         assert!(!folder.join("y.json").exists());
         std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn what_is_near_is_gone_with_the_engine() {
+        let e = engine(&std::env::temp_dir());
+        e.hear(json!({ "t": "state", "live": true }));
+        e.hear(json!({ "t": "near", "party": [{ "name": "Stranger" }] }));
+        assert!(e.live() && e.now()["near"]["party"][0]["name"] == "Stranger");
+        e.say("failed", "");
+        assert!(!e.live() && e.now()["near"].is_null());
     }
 
     #[test]

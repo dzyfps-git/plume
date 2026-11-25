@@ -1,5 +1,6 @@
-import type { Fight, Row, Skill } from "../../live/types.ts";
-import type { View } from "../../store/settings.ts";
+import type { Fight, Near, Row, Skill } from "../../live/types.ts";
+import type { Footer, View } from "../../store/settings.ts";
+import { short } from "../../ui/format.ts";
 
 export const VIEW_NAMES: Record<View, string> = {
   damage: "Damage",
@@ -58,6 +59,21 @@ export const partyDps = (fight: Pick<Fight, "total" | "ms">) => (fight.ms >= 100
 
 export const label = (row: Pick<Row, "name" | "you"> & { others?: boolean }, hide: boolean, rank: number) =>
   row.others ? "Everyone else, about" : row.you ? row.name || "You" : hide || !row.name ? `Player ${rank}` : row.name;
+
+/** The words of the footer you chose. What is not known is left out. */
+export function footer(
+  chosen: readonly Footer[],
+  near: Pick<Near, "ping" | "odyle" | "flight">,
+  fight: Pick<Fight, "total">,
+): string[] {
+  const words: Record<Footer, string> = {
+    ping: near.ping >= 0 ? `${near.ping} ms` : "",
+    total: fight.total > 0 ? `${short(fight.total)} total` : "",
+    flight: near.flight ? `flight ${Math.round(near.flight.now)}` : "",
+    odyle: near.odyle[0] >= 0 ? `Odyle ${near.odyle[0]}${near.odyle[1] > 0 ? ` + ${near.odyle[1]}` : ""}` : "",
+  };
+  return chosen.map((f) => words[f]).filter(Boolean);
+}
 
 export interface SkillLine extends Skill {
   share: number;

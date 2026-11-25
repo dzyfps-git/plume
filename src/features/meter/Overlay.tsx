@@ -1,9 +1,9 @@
 import { createMemo, For, Show } from "solid-js";
-import { fight } from "../../live/store";
+import { fight, near } from "../../live/store";
 import { settings } from "../../store";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, short } from "../../ui/format";
-import { label, partyDps, ranked, shown, VIEW_NAMES } from "./logic";
+import { footer, label, partyDps, ranked, shown, VIEW_NAMES } from "./logic";
 import "./meter.css";
 
 /** One compact piece: the target, the clock and the party's damage in the header, then the bars. */
@@ -54,6 +54,11 @@ export function MeterOverlay() {
           )}
         </For>
       </div>
+      <Show when={footer(settings.meter.footer, near, fight).length}>
+        <footer class="meter-foot ui-num">
+          <For each={footer(settings.meter.footer, near, fight)}>{(words) => <span>{words}</span>}</For>
+        </footer>
+      </Show>
     </section>
   );
 }

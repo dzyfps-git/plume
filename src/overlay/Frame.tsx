@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
-import type { Feature } from "../features/types";
+import { overlayName, type Feature } from "../features/types";
 import { change, settings } from "../store";
 import { place } from "../store/settings";
 import { hold, snap, toPixels, toShare, type Spot } from "./layout";
@@ -54,7 +54,7 @@ export function Frame(props: Props) {
   });
 
   function grab(event: PointerEvent) {
-    if (!props.editing || event.button !== 0 || (event.target as Element).closest("button")) return;
+    if (!props.editing || at().locked || event.button !== 0 || (event.target as Element).closest("button")) return;
     frame.setPointerCapture(event.pointerId);
     const from = { x: event.clientX - spot().x, y: event.clientY - spot().y };
     setHeld(spot());
@@ -76,7 +76,7 @@ export function Frame(props: Props) {
 
   function walk(event: KeyboardEvent) {
     const [x, y] = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key] ?? [0, 0];
-    if (!props.editing || (!x && !y)) return;
+    if (!props.editing || at().locked || (!x && !y)) return;
     event.preventDefault();
     const by = event.shiftKey ? 10 : 1;
     putAt({ x: spot().x + x * by, y: spot().y + y * by });
@@ -91,7 +91,8 @@ export function Frame(props: Props) {
       data-editing={props.editing || undefined}
       data-frame={props.feature.id}
       tabIndex={props.editing ? 0 : undefined}
-      aria-label={props.feature.name}
+      data-locked={at().locked || undefined}
+      aria-label={overlayName(props.feature)}
       style={{ width: `${overlay.width}px`, transform: `translate(${spot().x}px, ${spot().y}px) scale(${at().scale})` }}
       onPointerDown={grab}
       onKeyDown={walk}
@@ -100,7 +101,8 @@ export function Frame(props: Props) {
       <overlay.view />
       <Show when={props.editing}>
         <div class="frame-bar">
-          <span>{props.feature.name}</span>
+          <span>{overlayName(props.feature)}</span>
+          <button class="ui-icon-button" aria-label={at().locked ? "Unlock" : "Lock"} aria-pressed={!!at().locked} onClick={() => put({ locked: !at().locked })}>{at().locked ? "\ue72e" : "\ue785"}</button>
           <button class="ui-icon-button" aria-label="Smaller" onClick={() => scale(-0.05)}>{""}</button>
           <small class="ui-num">{Math.round(at().scale * 100)}%</small>
           <button class="ui-icon-button" aria-label="Bigger" onClick={() => scale(0.05)}>{""}</button>

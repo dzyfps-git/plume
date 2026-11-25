@@ -1,0 +1,38 @@
+import { createEffect, createSignal, Show, untrack } from "solid-js";
+import { near, onHappened, sampling } from "../../live/store";
+import { full } from "../../ui/format";
+import { count, hold, NONE } from "./logic";
+import "../meter/meter.css";
+import "./pvp.css";
+
+const [tally, setTally] = createSignal(NONE);
+export { tally };
+
+/** Counts for as long as the overlay window is open. Nothing of it is kept. */
+export function followPvp() {
+  const seen = new Map<string, number>();
+  onHappened((h) => setTally((t) => count(t, h)));
+  createEffect(() => {
+    const auras = sampling() ? [] : near.you?.auras.map((a) => ({ ...a })) ?? [];
+    untrack(() => setTally((t) => hold(t, auras, seen)));
+  });
+}
+
+export function PvpOverlay() {
+  return (
+    <section class="pvp glass" aria-label="PvP">
+      <div><b class="ui-num">{tally().kills}</b><small>kills</small></div>
+      <div><b class="ui-num">{tally().deaths}</b><small>deaths</small></div>
+      <div><b class="ui-num">{tally().assists}</b><small>assists</small></div>
+      <div data-streak={tally().streak > 1 || undefined}><b class="ui-num">{tally().streak}</b><small>in a row, best {tally().best}</small></div>
+      <p class="ui-num">
+        <Show when={tally().points} fallback="No Abyss Points yet">
+          {full(tally().points)} Abyss Points{tally().last ? `, ${full(tally().last)} for the last kill` : ""}
+        </Show>
+      </p>
+      <Show when={tally().held}>
+        <p class="ui-num">Held {tally().held} {tally().held === 1 ? "time" : "times"}, {(tally().heldMs / 1000).toFixed(1)} s by players</p>
+      </Show>
+    </section>
+  );
+}

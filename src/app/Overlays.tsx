@@ -1,12 +1,16 @@
-import { For } from "solid-js";
+import { For, Show } from "solid-js";
 import { editOverlays } from "../api";
 import { FEATURES } from "../features";
+import { GROUPS, overlayName } from "../features/types";
 import { change, settings } from "../store";
 import { VIEW_NAMES } from "../features/meter/logic";
-import { FPS, place, STYLES, VIEWS, type View } from "../store/settings";
+import { WHEN_NAMES } from "../overlay/rules";
+import { FOOTER, FPS, place, rule, STYLES, VIEWS, WHEN, type Footer, type Rule, type View, type When } from "../store/settings";
+import { CLASSES } from "../ui/classes";
 import { Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
 
+const FOOTER_NAMES: Record<Footer, string> = { ping: "Ping", total: "Total", flight: "Flight", odyle: "Odyle Energy" };
 const STYLE_NAMES = { bar: "Full bars", line: "Thin lines", table: "Table" } as const;
 
 export function OverlaysPage() {
@@ -14,7 +18,7 @@ export function OverlaysPage() {
     <div class="page">
       <header class="page-head">
         <h1>Overlays</h1>
-        <button class="ui-button" data-main aria-keyshortcuts={settings.hotkeys.edit} onClick={() => void editOverlays(true)}>
+        <button class="ui-button" data-main aria-keyshortcuts={settings.hotkeys.edit} onClick={() => void editOverlays("move")}>
           <span class="ui-icon" aria-hidden="true">{""}</span>
           Move them
         </button>
@@ -24,22 +28,31 @@ export function OverlaysPage() {
         <Switch name="Only over the game" about="Hidden while another window is in front." on={settings.overlay.onlyInGame} set={(on) => change((s) => (s.overlay.onlyInGame = on))} />
         <Switch name="Hide when there is nothing to show" on={settings.overlay.hideEmpty} set={(on) => change((s) => (s.overlay.hideEmpty = on))} />
       </section>
-      <section class="block">
-        <h2>Which</h2>
-        <For each={FEATURES.filter((f) => f.overlay)}>
-          {(f) => {
-            const at = () => place(settings.places[f.id], f.overlay!.place);
-            return (
-              <Switch
-                name={f.name}
-                about={f.overlay!.about}
-                on={at().on}
-                set={(on) => change((s) => (s.places = { ...s.places, [f.id]: { ...at(), on } }))}
-              />
-            );
-          }}
-        </For>
-      </section>
+      <For each={GROUPS}>
+        {(group) => (
+          <section class="block">
+            <h2>{group}</h2>
+            <For each={FEATURES.filter((f) => f.overlay?.group === group)}>
+              {(f) => {
+                const at = () => place(settings.places[f.id], f.overlay!.place);
+                return (
+                  <>
+                    <Switch
+                      name={overlayName(f)}
+                      about={f.overlay!.about}
+                      on={at().on}
+                      set={(on) => change((s) => (s.places = { ...s.places, [f.id]: { ...at(), on } }))}
+                    />
+                    <Show when={at().on}>
+                      <ShowRule id={f.id} name={overlayName(f)} />
+                    </Show>
+                  </>
+                );
+              }}
+            </For>
+          </section>
+        )}
+      </For>
       <section class="block">
         <h2>Look</h2>
         <Line name="Background">
@@ -86,8 +99,40 @@ export function OverlaysPage() {
         <Switch name="Share of the damage" on={settings.meter.share} set={(on) => change((s) => (s.meter.share = on))} />
         <Switch name="Total damage" on={settings.meter.total} set={(on) => change((s) => (s.meter.total = on))} />
         <Switch name="Class marks" on={settings.meter.icons} set={(on) => change((s) => (s.meter.icons = on))} />
-        <Switch name="Hide other players' names" on={settings.meter.hideNames} set={(on) => change((s) => (s.meter.hideNames = on))} />
+        <Switch name="Hide other players' names" about="In every overlay." on={settings.meter.hideNames} set={(on) => change((s) => (s.meter.hideNames = on))} />
+        <Line name="Footer" about="A line under the bars.">
+          <div class="ui-row" role="group" aria-label="Footer">
+            <For each={FOOTER}>
+              {(f) => (
+                <button
+                  class="ui-chip"
+                  aria-pressed={settings.meter.footer.includes(f)}
+                  onClick={() => change((s) => (s.meter.footer = s.meter.footer.includes(f) ? s.meter.footer.filter((x) => x !== f) : [...s.meter.footer, f]))}
+                >
+                  {FOOTER_NAMES[f]}
+                </button>
+              )}
+            </For>
+          </div>
+        </Line>
       </section>
+    </div>
+  );
+}
+
+/** When one overlay may show, and for which class. */
+function ShowRule(props: { id: string; name: string }) {
+  const now = () => rule(settings.rules[props.id]);
+  const set = (to: Partial<Rule>) => change((s) => (s.rules = { ...s.rules, [props.id]: { ...now(), ...to } }));
+  return (
+    <div class="show-rule">
+      <select class="ui-select" aria-label={`When ${props.name} shows`} value={now().when} onChange={(e) => set({ when: e.currentTarget.value as When })}>
+        <For each={WHEN}>{(w) => <option value={w}>{WHEN_NAMES[w]}</option>}</For>
+      </select>
+      <select class="ui-select" aria-label={`Class ${props.name} shows for`} value={now().job} onChange={(e) => set({ job: e.currentTarget.value as Rule["job"] })}>
+        <option value="">Every class</option>
+        <For each={Object.entries(CLASSES)}>{([job, c]) => <option value={job}>{c.name}</option>}</For>
+      </select>
     </div>
   );
 }

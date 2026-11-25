@@ -1,0 +1,31 @@
+.tiles { display: flex; flex-wrap: wrap; gap: 4px; }
+.tile {
+  position: relative; display: grid; place-items: center; flex: none; width: 36px; height: 36px; overflow: hidden; border-radius: var(--radius);
+  border: 1px solid oklch(0.72 0.1 var(--hue)); background: oklch(0.36 0.09 var(--hue)); color: #fff; isolation: isolate;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 85%);
+}
+/* The dark part turns like the hand of a clock as it runs out. */
+.tile::before { content: ""; position: absolute; inset: 0; z-index: -1; background: conic-gradient(rgb(0 0 0 / 62%) var(--gone), transparent 0); }
+.tile b { font-size: 13px; font-weight: 700; line-height: 1; }
+.tile em { position: absolute; inset: auto 0 1px; font-size: 10px; font-style: normal; font-weight: 600; line-height: 1; text-align: center; }
+.tile:has(em) b { translate: 0 -5px; }
+.tile small { position: absolute; top: 1px; right: 3px; font-size: 10px; font-weight: 700; line-height: 1; }
+.tile[data-bad] { border-color: var(--danger-ink); box-shadow: inset 0 0 0 1px var(--danger-ink); }
+.tile[data-ending] em { color: var(--fresh); }
+.tile[data-glow] { border-color: var(--accent); box-shadow: 0 0 10px 1px var(--accent), inset 0 0 6px var(--accent); }
+.tile[data-small] { width: 24px; height: 24px; border-radius: 6px; }
+.tile[data-small] b { font-size: 10px; }
+.tile[data-small] em { bottom: 0; font-size: 9px; }
+.tile[data-small]:has(em) b { translate: 0 -4px; }
+.strip { min-height: 48px; padding: 6px; }
+.held { display: grid; gap: 5px; padding: 8px 12px 10px; text-align: center; }
+.held b { color: var(--fresh); font-size: 22px; font-weight: 700; line-height: 1.1; }
+.held span { color: var(--text-muted); font-size: 12px; }
+.held-bar { height: 6px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.held-bar i { display: block; height: 100%; background: var(--fresh); transform: translateX(calc((var(--length) - 1) * 100%)); }
+.sick { display: grid; gap: 4px; padding: 6px; }
+.sick > div { display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.sick > div > span { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.lacks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-2); padding: 7px 10px; }
+.lacks strong { color: var(--fresh); font-weight: 600; }
+.lacks span { padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; }

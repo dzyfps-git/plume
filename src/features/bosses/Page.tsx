@@ -1,13 +1,16 @@
-import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, on, Show } from "solid-js";
 import { fight as loadFight } from "../../api";
+import { near } from "../../live/store";
 import type { Saved } from "../../live/types";
 import { change, settings } from "../../store";
-import { plan, type BossPlan } from "../../store/settings";
+import { plan, type BossPlan, type Mechanic } from "../../store/settings";
+import { CLASSES } from "../../ui/classes";
 import { clock, full, short } from "../../ui/format";
-import { Line, Slide } from "../../ui/Line";
+import { Line } from "../../ui/Line";
 import { Switch } from "../../ui/Switch";
 import { fights, followFights } from "../history/store";
-import { speak, voices } from "../timers/voice";
+import { bossEffects } from "../alerts/logic";
+import { Voice } from "../alerts/Voice";
 import { hitBy, key, learn, seconds, trend } from "./logic";
 import "../history/history.css";
 import "./bosses.css";
@@ -114,6 +117,20 @@ function Boss(props: { id: string; pulls: Saved[] }) {
           />
         </Line>
       </section>
+      <section class="block">
+        <h2>Notes</h2>
+        <Notes value={set().notes} set={(text) => edit((p) => (p.notes = text))} />
+        <p class="ui-muted ui-small">Shown in the Callouts overlay as the fight begins.</p>
+      </section>
+      <Mechanics
+        all={set().mechanics}
+        offers={[
+          ...hits().map((h) => ({ id: h.skill, name: h.name, effect: false })),
+          ...learned().map((t) => ({ id: t.skill, name: t.name, effect: false })),
+          ...[...bossEffects(pulls()), ...(near.target?.boss && near.target.name === props.pulls[0].target ? near.target.auras.filter((a) => !a.yours) : [])].map((e) => ({ id: e.id, name: e.name, effect: true })),
+        ]}
+        set={(all) => edit((p) => (p.mechanics = all))}
+      />
       <Voice />
       <section class="block">
         <h2>Timers from your pulls</h2>
@@ -174,33 +191,57 @@ function Entry(props: { name: string; value: string; hint: string; set: (text: s
   return <input ref={input} class="ui-input boss-entry" aria-label={props.name} placeholder={props.hint} onChange={(e) => props.set(e.currentTarget.value.trim())} />;
 }
 
-function Voice() {
-  // Windows gives its voices a moment after they are first asked for.
-  const [names, setNames] = createSignal(voices().map((v) => v.name));
-  const refresh = () => setNames(voices().map((v) => v.name));
-  speechSynthesis.addEventListener("voiceschanged", refresh);
-  onCleanup(() => speechSynthesis.removeEventListener("voiceschanged", refresh));
+function Notes(props: { value: string; set: (text: string) => void }) {
+  let area!: HTMLTextAreaElement;
+  createEffect(on(() => props.value, (v) => (area.value = v)));
+  return <textarea ref={area} class="ui-input boss-notes" aria-label="Notes" maxlength={2000} placeholder="Stack at the pillar." onChange={(e) => props.set(e.currentTarget.value.trim())} />;
+}
+
+type Offer = Pick<Mechanic, "id" | "name" | "effect">;
+
+/** Your own word about each thing it does, said as it lands. */
+function Mechanics(props: { all: Mechanic[]; offers: Offer[]; set: (all: Mechanic[]) => void }) {
+  const of = (o: Offer) => `${o.effect} ${o.name || o.id}`;
+  const left = createMemo(() => {
+    const known = new Set(props.all.map(of));
+    const unique = new Map(props.offers.map((o) => [of(o), o]));
+    return [...unique].filter(([k]) => !known.has(k)).map(([, o]) => o);
+  });
+  const edit = (at: number, to: Partial<Mechanic>) => props.set(props.all.map((m, i) => (i === at ? { ...m, ...to } : { ...m })));
   return (
     <section class="block">
-      <h2>Voice</h2>
-      <Switch name="Say marks, timers and the enrage" about="With a voice of Windows, on this PC. The overlays have to be on." on={settings.voice.on} set={(v) => change((s) => (s.voice.on = v))} />
-      <Show when={settings.voice.on}>
-        <Line name="Voice" about={names().length ? undefined : "Windows has no voice installed."} bad>
-          <span class="ui-row">
-            <select class="ui-select" aria-label="Voice" value={settings.voice.name} onChange={(e) => change((s) => (s.voice.name = e.currentTarget.value))}>
-              <option value="">Windows' own</option>
-              <For each={names()}>{(name) => <option value={name}>{name}</option>}</For>
+      <h2>Mechanics</h2>
+      <For each={props.all}>
+        {(m, i) => (
+          <div class="mechanic">
+            <span>{m.name || (m.effect ? `Effect ${m.id}` : `Skill ${m.id}`)}<Show when={m.effect}> <small class="ui-muted">effect</small></Show></span>
+            <Entry name={`Note for ${m.name}`} value={m.note} hint="What to do" set={(note) => edit(i(), { note })} />
+            <select class="ui-select" aria-label={`Class ${m.name} is for`} value={m.job} onChange={(e) => edit(i(), { job: e.currentTarget.value as Mechanic["job"] })}>
+              <option value="">Every class</option>
+              <For each={Object.entries(CLASSES)}>{([job, c]) => <option value={job}>{c.name}</option>}</For>
             </select>
-            <button class="ui-button" onClick={() => speak("Fifty percent")}>Try it</button>
-          </span>
-        </Line>
-        <Line name="Volume">
-          <Slide name="Volume" least={0} most={1} step={0.05} value={settings.voice.volume} text={`${Math.round(settings.voice.volume * 100)}%`} set={(v) => change((s) => (s.voice.volume = v))} />
-        </Line>
-        <Line name="Ahead of a timer">
-          <Slide name="Seconds ahead" least={2} most={15} step={1} value={settings.voice.lead} text={`${settings.voice.lead} s`} set={(v) => change((s) => (s.voice.lead = v))} />
-        </Line>
-      </Show>
+            <button class="ui-chip" aria-pressed={m.say} onClick={() => edit(i(), { say: !m.say })}>Say it</button>
+            <button class="ui-icon-button" aria-label={`Remove ${m.name}`} onClick={() => props.set(props.all.filter((_, n) => n !== i()))}>{"\ue711"}</button>
+          </div>
+        )}
+      </For>
+      <Line name="Add one" about={left().length ? "What hit you in your pulls, and what it had on itself this session." : "Nothing more was seen yet."}>
+        <select
+          class="ui-select aura-pick"
+          aria-label="Add a mechanic"
+          value=""
+          disabled={!left().length}
+          onChange={(e) => {
+            const found = left().find((o) => of(o) === e.currentTarget.value);
+            e.currentTarget.value = "";
+            if (found) props.set([...props.all, { ...found, note: "", job: "", say: false }]);
+          }}
+        >
+          <option value="">Choose</option>
+          <For each={left()}>{(o) => <option value={of(o)}>{o.name || o.id}{o.effect ? ", effect" : ""}</option>}</For>
+        </select>
+      </Line>
+      <p class="ui-muted ui-small">A skill is known as its first hit lands, so a word ahead of it needs a timer from the list below. The boss's own lines on screen are not read.</p>
     </section>
   );
 }

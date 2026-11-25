@@ -1,7 +1,7 @@
 import { createEffect, untrack } from "solid-js";
-import { fight } from "../../live/store";
+import { fight, near } from "../../live/store";
 import { settings } from "../../store";
-import { plan } from "../../store/settings";
+import { plan, type BossPlan } from "../../store/settings";
 import { hp } from "../boss/logic";
 import { calls, key } from "../bosses/logic";
 
@@ -19,6 +19,12 @@ export function speak(text: string) {
   speechSynthesis.speak(words);
 }
 
+/** Without the timers that a mechanic of yours already says with its note. */
+const unsaid = (p: BossPlan): BossPlan => {
+  const said = (skill: number) => p.mechanics.some((m) => m.say && !m.effect && m.id === skill && (!m.job || m.job === near.you?.job));
+  return { ...p, timers: p.timers.filter((t) => !said(t.skill)) };
+};
+
 /** Says marks, timers and the enrage as the fight passes them. */
 export function followVoice() {
   let before = { id: "", ms: 0, share: 1 };
@@ -29,7 +35,7 @@ export function followVoice() {
     untrack(() => {
       // Another target, or the same again: nothing before it was passed.
       const same = before.id === id && now.ms >= before.ms;
-      if (same && boss && settings.voice.on) for (const text of calls(plan(settings.bosses[id]), before, now, settings.voice.lead)) speak(text);
+      if (same && boss && settings.voice.on) for (const text of calls(unsaid(plan(settings.bosses[id])), before, now, settings.voice.lead)) speak(text);
       before = now;
     });
   });

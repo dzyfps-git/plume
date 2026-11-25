@@ -1,8 +1,9 @@
 //! Plume's own windows: the main one, and one clear window over the game that holds every overlay.
 
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
-use std::time::Duration;
+use crate::engine::Engine;
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering::SeqCst};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow};
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
@@ -10,6 +11,13 @@ use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowText
 pub const MAIN: &str = "main";
 pub const OVERLAY: &str = "overlay";
 const LOOK: Duration = Duration::from_millis(400);
+/// The overlay window is closed once the game is gone for this long.
+const SLEEP: Duration = Duration::from_secs(60);
+/// What the overlay window is open for. The pages know them by these names.
+pub const MODES: [&str; 3] = ["", "move", "quick"];
+pub const NONE: u8 = 0;
+pub const MOVE: u8 = 1;
+pub const QUICK: u8 = 2;
 /// How the game names its window.
 const GAME: [&str; 2] = ["AION 2", "AION2"];
 
@@ -17,7 +25,9 @@ const GAME: [&str; 2] = ["AION 2", "AION2"];
 pub struct Overlay {
     pub on: AtomicBool,
     pub only_in_game: AtomicBool,
-    pub editing: AtomicBool,
+    pub sleep: AtomicBool,
+    /// One of `MODES`.
+    pub editing: AtomicU8,
     place: Mutex<(i32, i32, i32, i32)>,
     /// Two threads ask for the window. A half-built one would lose what the other tells it.
     building: Mutex<()>,
@@ -68,12 +78,13 @@ fn overlay(app: &AppHandle) -> Option<WebviewWindow> {
     Some(w)
 }
 
-/// Lets the overlays be moved, or passes every click to the game again.
-pub fn edit(app: &AppHandle, on: bool) {
+/// Lets the overlays be moved or the quick bar be used, or passes every click to the game again.
+pub fn edit(app: &AppHandle, mode: u8) {
     let state = app.state::<Overlay>();
-    if state.editing.swap(on, SeqCst) == on {
+    if state.editing.swap(mode, SeqCst) == mode {
         return;
     }
+    let on = mode != NONE;
     if let Some(w) = overlay(app) {
         let _ = w.set_ignore_cursor_events(!on);
         let _ = w.set_focusable(on);
@@ -83,7 +94,7 @@ pub fn edit(app: &AppHandle, on: bool) {
             let _ = w.set_focus();
         }
     }
-    let _ = app.emit("edit", on);
+    let _ = app.emit("edit", MODES[usize::from(mode)]);
 }
 
 /// Covers the screen of the window in front: the game's when it plays, yours while you edit.
@@ -120,10 +131,11 @@ fn is_game(title: &str) -> bool {
 pub fn watch(app: AppHandle) {
     std::thread::spawn(move || {
         let mut shown = false;
+        let mut seen = Instant::now();
         loop {
             let state = app.state::<Overlay>();
             let front = game_in_front();
-            let wanted = state.editing.load(SeqCst)
+            let wanted = state.editing.load(SeqCst) != NONE
                 || state.on.load(SeqCst) && (front || !state.only_in_game.load(SeqCst));
             if wanted && let Some(w) = overlay(&app) {
                 if front {
@@ -139,6 +151,16 @@ pub fn watch(app: AppHandle) {
                 let _ = w.hide();
             }
             shown = wanted;
+            if wanted || front || app.state::<Arc<Engine>>().live() {
+                seen = Instant::now();
+            } else if state.sleep.load(SeqCst)
+                && seen.elapsed() > SLEEP
+                && let Some(w) = app.get_webview_window(OVERLAY)
+            {
+                // It holds the most memory of all, for a game that is not there.
+                let _ = w.destroy();
+                *state.place.lock().unwrap_or_else(|p| p.into_inner()) = Default::default();
+            }
             std::thread::sleep(LOOK);
         }
     });

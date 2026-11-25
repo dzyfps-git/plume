@@ -2,6 +2,7 @@
 
 mod engine;
 mod hotkeys;
+mod startup;
 mod storage;
 mod windowing;
 
@@ -29,7 +30,7 @@ fn start_state(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>) 
     let settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
     let mut now = engine.now();
     now["settings"] = settings;
-    now["editing"] = app.state::<Overlay>().editing.load(SeqCst).into();
+    now["editing"] = windowing::MODES[usize::from(app.state::<Overlay>().editing.load(SeqCst))].into();
     now
 }
 
@@ -47,6 +48,14 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
     let overlay = app.state::<Overlay>();
     overlay.on.store(settings["overlay"]["on"].as_bool().unwrap_or(true), SeqCst);
     overlay.only_in_game.store(settings["overlay"]["onlyInGame"].as_bool().unwrap_or(true), SeqCst);
+    overlay.sleep.store(settings["sleep"].as_bool().unwrap_or(true), SeqCst);
+    let startup = settings["startup"].as_bool().unwrap_or(false);
+    // Nothing is written to Windows until you turn it on, nor by a test with its own files.
+    if startup != before["startup"].as_bool().unwrap_or(false) && std::env::var_os("PLUME_DATA").is_none()
+        && let Err(e) = startup::set(startup)
+    {
+        eprintln!("{e}");
+    }
     let _ = engine.send(json!({ "cmd": "rate", "ms": settings["updateMs"].as_i64().unwrap_or(250) }));
     // Only when it changed: a training run has a mode of its own until its page closes.
     if before["mode"] != settings["mode"] {
@@ -56,7 +65,7 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
     let _ = engine.send(json!({ "cmd": "credit", "on": settings["meter"]["view"] == "rdps" }));
     engine.want(settings["live"].as_bool().unwrap_or(false));
     let key = |action: &str| settings["hotkeys"][action].as_str().unwrap_or_default().to_string();
-    hotkeys::set(["overlay", "edit", "reset", "view"].map(|a| (a.to_string(), key(a))).to_vec())
+    hotkeys::set(["overlay", "edit", "reset", "view", "quick"].map(|a| (a.to_string(), key(a))).to_vec())
 }
 
 #[tauri::command]
@@ -94,15 +103,38 @@ fn export(app: AppHandle, name: String, bytes: Vec<u8>) -> Result<(), String> {
 }
 
 #[tauri::command(async)]
-fn edit_overlays(app: AppHandle, on: bool) {
-    windowing::edit(&app, on);
+fn edit_overlays(app: AppHandle, mode: String) {
+    let mode = windowing::MODES.iter().position(|m| *m == mode).unwrap_or(0);
+    windowing::edit(&app, mode as u8);
+}
+
+#[tauri::command(async)]
+fn sound_files(app: AppHandle) -> Result<Vec<String>, String> {
+    Ok(storage::sounds(&sounds_folder(&app)?))
+}
+
+#[tauri::command(async)]
+fn sound_file(app: AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
+    storage::sound(&sounds_folder(&app)?, &name).map(tauri::ipc::Response::new)
+}
+
+#[tauri::command(async)]
+fn open_sounds_folder(app: AppHandle) -> Result<(), String> {
+    show_folder(sounds_folder(&app)?)
+}
+
+fn sounds_folder(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("sounds"))
+}
+
+fn show_folder(folder: PathBuf) -> Result<(), String> {
+    std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    std::process::Command::new("explorer").arg(folder).spawn().map(drop).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
 fn open_engine_folder(app: AppHandle) -> Result<(), String> {
-    let folder = engine_folder(&app)?;
-    std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
-    std::process::Command::new("explorer").arg(folder).spawn().map(drop).map_err(|e| e.to_string())
+    show_folder(engine_folder(&app)?)
 }
 
 fn engine_folder(app: &AppHandle) -> Result<PathBuf, String> {
@@ -126,7 +158,10 @@ fn pressed(app: &AppHandle, action: &str) {
             let at = VIEWS.iter().position(|v| s["meter"]["view"] == *v).unwrap_or(0);
             s["meter"]["view"] = VIEWS[(at + 1) % VIEWS.len()].into();
         }),
-        "edit" => windowing::edit(app, !overlay.editing.load(SeqCst)),
+        "edit" | "quick" => {
+            let mode = if action == "edit" { windowing::MOVE } else { windowing::QUICK };
+            windowing::edit(app, if overlay.editing.load(SeqCst) == mode { windowing::NONE } else { mode });
+        }
         "reset" => {
             let _ = app.state::<Arc<Engine>>().send(json!({ "cmd": "reset" }));
         }
@@ -175,7 +210,10 @@ fn main() {
             delete_fight,
             export,
             edit_overlays,
-            open_engine_folder
+            open_engine_folder,
+            sound_files,
+            sound_file,
+            open_sounds_folder
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -210,10 +248,14 @@ fn main() {
             });
             // The first start has no settings: the page makes them and saves.
             if settings.is_object() {
-                apply(&handle, &Value::Null, &settings);
+                apply(&handle, &settings, &settings);
+                let _ = handle.state::<Arc<Engine>>().send(json!({ "cmd": "mode", "mode": settings["mode"].as_str().unwrap_or("bossTargets") }));
             }
             tray(&handle)?;
-            windowing::show_main(&handle);
+            // Windows starting it is no reason to open a window. Without settings it is the first start.
+            if !settings.is_object() || !std::env::args().any(|a| a == startup::HIDDEN) {
+                windowing::show_main(&handle);
+            }
             windowing::watch(handle);
             Ok(())
         })

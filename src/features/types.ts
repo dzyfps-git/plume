@@ -11,8 +11,13 @@ export interface Feature {
   overlay?: Overlay;
 }
 
+export const GROUPS = ["Fight", "Health", "Effects", "Other"] as const;
+
 export interface Overlay {
   view: Component;
+  /** When it is not the feature's own. */
+  name?: string;
+  group: (typeof GROUPS)[number];
   /** One line for the overlay list. */
   about: string;
   /** In CSS pixels at scale 1. The height follows the content. */
@@ -25,3 +30,5 @@ export interface Overlay {
   /** Runs once beside the overlays, shown or not. */
   beside?: () => void;
 }
+
+export const overlayName = (f: Feature) => f.overlay?.name ?? f.name;

@@ -1,5 +1,5 @@
 // A made-up fight, to place overlays by and to try the app without the game.
-import type { Buff, Entry, Fight, FightRow, Job, Saved, Skill, StaggerWindow } from "./types";
+import type { Aura, Buff, Entry, Fight, FightRow, Job, Near, Saved, Skill, StaggerWindow, Unit } from "./types";
 
 const PARTY: [string, Job, number][] = [
   ["You", "assassin", 46_200],
@@ -58,6 +58,58 @@ export function demoFight(ms: number): Fight {
     timeup: false,
     dungeon: 0,
     rows,
+  };
+}
+
+export const demoAura = (id: number, name: string, more: Partial<Aura> = {}): Aura => ({
+  key: `${id}:${more.by ?? 1}`, id, name, skill: 0, bad: false, tag: "", item: false, by: 1, yours: false, foe: false, stacks: 1, start: 0, end: 0, ...more,
+});
+
+/** What is around you `ms` into a made-up fight. `at` is the time on the clock. */
+export function demoNear(ms: number, at: number): Near {
+  // An effect that comes again every so often, and stays a while.
+  const cycle = (every: number, long: number, shift = 0): Pick<Aura, "start" | "end"> | undefined => {
+    const into = (ms + shift) % every;
+    return into < long ? { start: at - into, end: at - into + long } : undefined;
+  };
+  const list = (...all: (Aura | undefined)[]) => all.filter((a) => a !== undefined);
+  const aura = (id: number, name: string, time: ReturnType<typeof cycle>, more: Partial<Aura> = {}) => time && demoAura(id, name, { ...time, ...more });
+  const wave = (least: number, beat: number, shift: number) => least + (1 - least) * (0.5 + 0.5 * Math.sin(ms / beat + shift));
+  const unit = (i: number, hp: number, auras: Aura[]): Unit => ({
+    key: String(i + 1), id: i + 1, name: PARTY[i][0], job: PARTY[i][1], you: i === 0, boss: false, hp: Math.round(hp * 42_000), maxHp: 42_000, auras,
+  });
+  const wind = (i: number) => aura(904, "Word of Wind", i < 6 ? cycle(30_000, 22_000) : undefined, { by: 7 });
+  const you = unit(0, wave(0.15, 5_000, 0), list(
+    aura(900, "Swift Contract", cycle(20_000, 15_000), { yours: true }),
+    aura(902, "Shadow Edge", cycle(26_000, 9_000, 4_000), { yours: true, stacks: 3 }),
+    wind(0),
+    demoAura(910, "Herb Soup", { item: true, start: at - 600_000, end: at + 900_000 - ms }),
+    aura(920, "Storm Mark", cycle(18_000, 6_000, 7_000), { bad: true, by: 900 }),
+    aura(921, "Thunder Stomp", cycle(24_000, 3_500, 2_000), { bad: true, tag: "stun", by: 900 }),
+  ));
+  return {
+    you,
+    party: PARTY.map((_, i) => unit(i, i === 5 && ms % 60_000 > 50_000 ? 0 : i === 0 ? you.hp / 42_000 : wave(0.2 + i * 0.08, 6_000 + i * 900, i * 2), i === 0 ? [] : list(
+      wind(i), aura(920, "Storm Mark", cycle(20_000, 6_000, i * 5_000), { bad: true, by: 900 }), aura(930, "Venom", i === 2 ? cycle(15_000, 8_000) : undefined, { bad: true, by: 900 }),
+    ))),
+    target: {
+      key: "900", id: 900, name: "Stormbound Warden", job: "", you: false, boss: true, hp: Math.round(43_000_000 * (1 - (ms % LENGTH) / LENGTH)), maxHp: 43_000_000,
+      auras: list(
+        aura(901, "Heart Gore", cycle(12_000, 8_000), { bad: true, yours: true }),
+        aura(931, "Sunder", cycle(25_000, 15_000), { bad: true, by: 5, stacks: 4 }),
+        aura(940, "Storm Shell", cycle(45_000, 8_000, 20_000), { tag: "safe", by: 900 }),
+      ),
+    },
+    foe: {
+      key: "50", id: 50, name: "Rival", job: "ranger", you: false, boss: false, hp: Math.round(38_000 * wave(0.3, 7_000, 3)), maxHp: 38_000,
+      auras: list(aura(950, "Hawk Eye", cycle(16_000, 10_000), { by: 50 }), aura(901, "Heart Gore", cycle(12_000, 5_000, 3_000), { bad: true, yours: true })),
+    },
+    fighting: true,
+    dungeon: 600_091,
+    flight: { now: 60 - ((ms / 1000) % 50), max: 60, back: 2, out: 1, flying: true, at },
+    ping: 38 + Math.round(6 * Math.sin(ms / 3_000)),
+    jitter: 4,
+    odyle: [420, 35],
   };
 }
 

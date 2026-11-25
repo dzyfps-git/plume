@@ -1,0 +1,6 @@
+.callouts { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.callout { font-size: 26px; font-weight: 700; line-height: 1.2; text-wrap: balance; text-shadow: 0 2px 4px #000, 0 0 3px #000; animation: callout 160ms ease-out; }
+.callout[data-safe] { color: var(--fresh); }
+.callout-notes { max-width: 100%; margin: 4px 0 0; padding: 8px 12px; text-align: left; white-space: pre-wrap; }
+@keyframes callout { from { opacity: 0; scale: 1.15; } }
+@media (prefers-reduced-motion: reduce) { .callout { animation: none; } }

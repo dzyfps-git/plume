@@ -2,3 +2,6 @@
 .trend { display: flex; align-items: flex-end; gap: 3px; height: 44px; margin-bottom: var(--space-2) !important; }
 .trend i { width: 10px; height: calc(4px + var(--part) * 36px); border-radius: 3px; background: var(--danger-ink); }
 .trend span { margin-left: var(--space-2); font-size: 12px; }
+.boss-notes { width: 100%; }
+.mechanic { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) auto auto auto; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-2); }
+.mechanic .boss-entry { width: 100%; }

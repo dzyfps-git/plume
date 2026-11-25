@@ -11,4 +11,5 @@ html, body, #root { height: 100%; background: transparent; overflow: hidden; use
 .frame-bar span { margin-right: var(--space-2); font-weight: 600; }
 .frame-bar small { min-width: 36px; color: var(--text-muted); text-align: center; }
 .frame-bar .ui-icon-button { width: 24px; height: 24px; border-radius: 50%; }
-.edit-bar { position: fixed; bottom: 48px; left: 50%; translate: -50% 0; background: var(--overlay-solid); }
+.frame[data-locked] { outline-color: var(--text-muted); cursor: default; }
+.edit-bar { position: fixed; bottom: 48px; left: 50%; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); width: max-content; max-width: min(980px, 92vw); height: auto; translate: -50% 0; background: var(--overlay-solid); }

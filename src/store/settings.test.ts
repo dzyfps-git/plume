@@ -32,6 +32,26 @@ test("bars move in as many steps as the frame rate gives", () => {
 
 test("a boss's plan keeps only what can be", () => {
   const { bosses } = read({ bosses: { 7: { enrage: -3, marks: [50, 50, 80, 0, "x"], avoid: [5], timers: [{ skill: 1, at: [4, -1] }, { skill: 2, at: [] }, 9] }, 8: 3 } });
-  assert.deepEqual(bosses["7"], { enrage: 0, marks: [80, 50], avoid: [5], timers: [{ skill: 1, name: "", at: [4] }] });
-  assert.deepEqual(bosses["8"], { enrage: 0, marks: [], avoid: [], timers: [] });
+  assert.deepEqual(bosses["7"], { enrage: 0, marks: [80, 50], avoid: [5], timers: [{ skill: 1, name: "", at: [4] }], mechanics: [], notes: "" });
+  assert.deepEqual(bosses["8"], { enrage: 0, marks: [], avoid: [], timers: [], mechanics: [], notes: "" });
+});
+
+test("auras, rules, alerts and the rest keep only what can be", () => {
+  const s = read({
+    auras: [{ kind: "ready", of: { id: 5, name: "Ambush" }, value: 9_999, look: "?", sound: "file:a.wav" }, 3],
+    rules: { meter: { when: "boss", job: "cleric" }, boss: { when: "?", job: "x" } },
+    alerts: { low: { on: true, value: 400, sound: "" }, nope: { on: true } },
+    ready: [{ id: 0, name: "" }, { id: 4, name: "Soup" }],
+    skip: [7, "x"],
+    meter: { footer: ["odyle", "ping", "ping", "x"] },
+    bosses: { 1: { notes: "n".repeat(9_000), mechanics: [{ id: 9, name: "Stomp", note: "jump", job: "x" }, { id: 0 }] } },
+  });
+  const [a, b] = s.auras;
+  assert.deepEqual([a.kind, a.of, a.value, a.look, a.sound, b.kind, a.key === b.key], ["ready", { id: 5, name: "Ambush" }, 600, "icon", "file:a.wav", "on", false]);
+  assert.deepEqual(s.rules, { meter: { when: "boss", job: "cleric" }, boss: { when: "always", job: "" } });
+  assert.deepEqual([s.alerts.low.on, s.alerts.low.value, s.alerts.low.sound, s.alerts.low.banner, "nope" in s.alerts], [true, 100, "", true, false]);
+  assert.deepEqual([s.ready.length, s.skip, s.meter.footer], [2, [7], ["ping", "odyle"]]);
+  assert.equal(s.bosses["1"].notes.length, 2_000);
+  assert.deepEqual(s.bosses["1"].mechanics, [{ id: 9, name: "Stomp", effect: false, note: "jump", job: "", say: false }]);
+  assert.deepEqual(read(JSON.parse(JSON.stringify(s))), s);
 });

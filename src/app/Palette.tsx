@@ -18,7 +18,8 @@ export function Palette(props: { pages: Page[]; go: (page: Page) => void; close:
 
   const items: Item[] = [
     ...props.pages.map((p) => ({ name: p.name, icon: p.icon, run: () => props.go(p) })),
-    { name: "Move the overlays", icon: "", run: () => void editOverlays(true) },
+    { name: "Move the overlays", icon: "", run: () => void editOverlays("move") },
+    { name: "Turn overlays on and off over the game", icon: "\ue7b3", run: () => void editOverlays("quick") },
     { name: "Start the fight again", icon: "", run: () => void engineSend({ cmd: "reset" }) },
     {
       name: settings.overlay.on ? "Hide the overlays" : "Show the overlays",

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { demoFight, demoSkills } from "../../live/demo.ts";
 import type { Row } from "../../live/types.ts";
 import { VIEWS } from "../../store/settings.ts";
-import { label, length, lines, partyDps, ranked, shown } from "./logic.ts";
+import { footer, label, length, lines, partyDps, ranked, shown } from "./logic.ts";
 
 const row = (id: number, damage: number, you = false) => ({ id, name: you ? "Me" : `P${id}`, damage, you }) as Row;
 const rows = [row(1, 100), row(2, 50), row(3, 25), row(4, 10, true)];
@@ -61,4 +61,10 @@ test("each view ranks by its own number, and counting buffs keeps the total", ()
 
 test("an estimate of everyone else is never a name", () => {
   assert.equal(label({ name: "Others", you: false, others: true }, false, 2), "Everyone else, about");
+});
+
+test("the footer says what you chose and what is known", () => {
+  const near = { ping: 40, odyle: [120, 0] as [number, number], flight: null };
+  assert.deepEqual(footer(["ping", "total", "flight", "odyle"], near, { total: 1_500 }), ["40 ms", "1.50K total", "Odyle 120"]);
+  assert.deepEqual(footer(["ping"], { ...near, ping: -1 }, { total: 0 }), []);
 });

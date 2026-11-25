@@ -198,13 +198,95 @@ export interface Saved {
   credits?: Credit[];
 }
 
+/** A buff or debuff that is on. */
+export interface Aura {
+  key: string;
+  id: number;
+  /** Empty when not known. */
+  name: string;
+  skill: number;
+  /** Bad for whoever has it. */
+  bad: boolean;
+  /** What it does, when that is known: "stun", "safe" and so on. Else empty. */
+  tag: string;
+  /** From food, a scroll or another item. */
+  item: boolean;
+  by: number;
+  yours: boolean;
+  /** Another player outside your party put it on. */
+  foe: boolean;
+  stacks: number;
+  /** By this PC's clock, in ms. The end is 0 when there is none. */
+  start: number;
+  end: number;
+}
+
+export interface Unit {
+  key: string;
+  id: number;
+  name: string;
+  job: Job;
+  you: boolean;
+  boss: boolean;
+  /** -1 when not known. */
+  hp: number;
+  /** The most that was said or seen. 0 when not known. */
+  maxHp: number;
+  /** Yours are only in `Near.you`. */
+  auras: Aura[];
+}
+
+export interface Flight {
+  now: number;
+  /** 0 until the game says it. */
+  max: number;
+  /** What comes back each second, and what flying takes each second. */
+  back: number;
+  out: number;
+  flying: boolean;
+  at: number;
+}
+
+/** What is going on around you. None of it is kept. */
+export interface Near {
+  you: Unit | null;
+  party: Unit[];
+  target: Unit | null;
+  /** The player you fought last. Gone seconds after. */
+  foe: Unit | null;
+  fighting: boolean;
+  dungeon: number;
+  flight: Flight | null;
+  /** In ms. -1 when not known. */
+  ping: number;
+  jitter: number;
+  /** Odyle Energy: the daily part and the charged part. -1 when not known. */
+  odyle: [daily: number, charged: number];
+}
+
+/** Something that just happened. */
+export interface Happened {
+  /** Yours, but for `blow`, which is a monster's. */
+  what: "cast" | "blow" | "kill" | "assist" | "death" | "points";
+  at: number;
+  skill: number;
+  name: string;
+  amount: number;
+}
+
+export const NO_NEAR: Near = {
+  you: null, party: [], target: null, foe: null, fighting: false, dungeon: 0, flight: null, ping: -1, jitter: -1, odyle: [-1, -1],
+};
+
 export type Status = "off" | "missing" | "starting" | "running" | "failed";
 
 export type Message =
   | ({ t: "state" } & State)
   | ({ t: "reads" } & Reads)
   | ({ t: "fight" } & Fight)
-  | { t: "skills"; id: number; skills: Skill[] };
+  | { t: "skills"; id: number; skills: Skill[] }
+  | ({ t: "near" } & Near)
+  | ({ t: "happened" } & Happened);
 
 export const NO_FIGHT: Fight = {
   mode: "",

@@ -14,6 +14,7 @@ const ACTION_NAMES: Record<Action, string> = {
   edit: "Move overlays",
   reset: "Start the fight again",
   view: "Next meter view",
+  quick: "Turn overlays on and off",
 };
 
 export function SettingsPage() {
@@ -46,6 +47,11 @@ export function SettingsPage() {
             </ul>
           )}
         </Show>
+      </section>
+      <section class="block">
+        <h2>Windows</h2>
+        <Switch name="Start with Windows" about="In the tray, with no window." on={settings.startup} set={(on) => change((s) => (s.startup = on))} />
+        <Switch name="Sleep while the game is closed" about="Gives the overlays' memory back until the game is there again." on={settings.sleep} set={(on) => change((s) => (s.sleep = on))} />
       </section>
       <section class="block">
         <h2>Keys over the game</h2>

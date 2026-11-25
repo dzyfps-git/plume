@@ -1,6 +1,6 @@
 // Speaks the engine's protocol with a made-up fight. For looking at the pages and for `npm run bench`.
 import { createInterface } from "node:readline";
-import { demoFight, demoSaved, demoSkills } from "../src/live/demo.ts";
+import { demoFight, demoNear, demoSaved, demoSkills } from "../src/live/demo.ts";
 
 const say = (message) => console.log(JSON.stringify(message));
 let begun = Date.now() - 60_000;
@@ -13,6 +13,16 @@ function fight() {
   say({ t: "fight", ...now() });
 }
 let timer = setInterval(fight, 250);
+setInterval(() => say({ t: "near", ...demoNear(Date.now() - begun, Date.now()) }), 250);
+// Your casts, a monster's blows, and a kill now and then.
+[[0, "Heart Gore", 12_000], [2, "Ambush", 18_000], [4, "Whirling Edge", 8_000]].forEach(([skill, name, every]) =>
+  setInterval(() => say({ t: "happened", what: "cast", at: Date.now(), skill, name, job: "", amount: 0 }), every),
+);
+setInterval(() => say({ t: "happened", what: "blow", at: Date.now(), skill: 101, name: "Thunder Stomp", job: "", amount: 0 }), 16_000);
+setInterval(() => {
+  say({ t: "happened", what: "kill", at: Date.now(), skill: 0, name: "Rival", job: "", amount: 0 });
+  say({ t: "happened", what: "points", at: Date.now(), skill: 0, name: "", job: "", amount: 180 });
+}, 25_000);
 setInterval(() => {
   const row = now().rows.find((r) => r.id === watched);
   if (row) say({ t: "skills", id: row.id, skills: demoSkills(row.damage) });

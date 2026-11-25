@@ -48,6 +48,37 @@ pub fn export(folder: &Path, name: &str, bytes: &[u8]) -> Result<PathBuf, String
     Err("too many files of this name".into())
 }
 
+const SOUNDS: [&str; 5] = ["wav", "mp3", "ogg", "m4a", "flac"];
+/// A warning is short. A longer file is a mistake.
+const SOUND_BYTES: u64 = 8 << 20;
+
+/// The sound files you put into your folder.
+pub fn sounds(folder: &Path) -> Vec<String> {
+    let files = fs::read_dir(folder).into_iter().flatten().flatten();
+    let mut names: Vec<String> = files.filter_map(|e| e.file_name().into_string().ok()).filter(|n| is_sound(n)).collect();
+    names.sort_by_key(|n| n.to_lowercase());
+    names.truncate(200);
+    names
+}
+
+fn is_sound(name: &str) -> bool {
+    let kind = name.rsplit_once('.').map_or(String::new(), |(_, k)| k.to_ascii_lowercase());
+    SOUNDS.contains(&kind.as_str()) && !name.contains(['/', '\\', ':'])
+}
+
+/// One of them. A name that walks to another folder is refused.
+pub fn sound(folder: &Path, name: &str) -> Result<Vec<u8>, String> {
+    if !is_sound(name) {
+        return Err("not a sound file".into());
+    }
+    let path = folder.join(name);
+    let say = |e: std::io::Error| format!("{name}: {e}");
+    if fs::metadata(&path).map_err(say)?.len() > SOUND_BYTES {
+        return Err(format!("{name} is too long"));
+    }
+    fs::read(&path).map_err(say)
+}
+
 /// Finished fights, one file each.
 pub struct Fights {
     folder: PathBuf,
@@ -253,6 +284,22 @@ mod tests {
         assert_eq!(fs::read(first).unwrap(), b"1");
         assert!(export(&here, "a.exe", b"").is_err() && export(&here, "a", b"").is_err());
         fs::remove_dir_all(here).unwrap();
+    }
+
+    #[test]
+    fn only_sounds_of_their_own_folder_are_read() {
+        let here = folder("sounds");
+        fs::create_dir_all(&here).unwrap();
+        for name in ["b.wav", "A.MP3", "c.txt"] {
+            fs::write(here.join(name), "x").unwrap();
+        }
+        assert_eq!(sounds(&here), ["A.MP3", "b.wav"]);
+        assert_eq!(sound(&here, "b.wav").unwrap(), b"x");
+        for bad in ["c.txt", "../b.wav", "..\\b.wav", "C:b.wav", "none.wav", ""] {
+            assert!(sound(&here, bad).is_err(), "{bad}");
+        }
+        fs::remove_dir_all(&here).unwrap();
+        assert!(sounds(&here).is_empty());
     }
 
     #[test]

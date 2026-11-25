@@ -8,6 +8,7 @@ export const boss: Feature = {
   icon: "",
   overlay: {
     view: BossOverlay,
+    group: "Fight",
     about: "The boss's health, how long until it falls, and its stagger gauge.",
     width: 420,
     place: { on: false, x: 0.5, y: 0.1, scale: 1 },

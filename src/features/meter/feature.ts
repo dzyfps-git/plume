@@ -11,6 +11,7 @@ export const meter: Feature = {
   page: MeterPage,
   overlay: {
     view: MeterOverlay,
+    group: "Fight",
     about: "Everyone's damage, with the target and the clock in its header.",
     width: 300,
     place: { on: true, x: 1, y: 0.62, scale: 1 },

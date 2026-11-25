@@ -1,0 +1,7 @@
+.flight { display: grid; gap: 5px; padding: 6px 10px 8px; }
+.flight-line { display: flex; align-items: baseline; justify-content: space-between; }
+.flight-line span { color: var(--text-muted); font-size: 12px; }
+.flight-line b { font-size: 16px; font-weight: 600; line-height: 1; }
+.flight-bar { height: 6px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.flight-bar i { display: block; height: 100%; background: linear-gradient(90deg, #3a7fb8, #6cc4f5); transform: translateX(calc((var(--length) - 1) * 100%)); }
+.flight-bar[data-low] i { background: var(--fresh); }

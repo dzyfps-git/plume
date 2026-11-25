@@ -1,22 +1,26 @@
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { editOverlays } from "../api";
+import { editOverlays, type Editing } from "../api";
 import { FEATURES } from "../features";
-import { demoFight } from "../live/demo";
-import { fight, live, showFight } from "../live/store";
+import { overlayName } from "../features/types";
+import { demoFight, demoNear } from "../live/demo";
+import { fight, near, sampleNear, showFight } from "../live/store";
 import { NO_FIGHT } from "../live/types";
 import { change, settings } from "../store";
-import { place } from "../store/settings";
+import { place, rule } from "../store/settings";
 import { Frame } from "./Frame";
+import { allowed } from "./rules";
 
 const ALL = FEATURES.filter((f) => f.overlay);
 
 /** Every overlay, on one clear page over the game. */
-export function Overlay(props: { editing: () => boolean }) {
+export function Overlay(props: { editing: () => Editing }) {
+  const moving = () => props.editing() === "move";
   let root!: HTMLDivElement;
   const at = (id: string) => place(settings.places[id], FEATURES.find((f) => f.id === id)!.overlay!.place);
   const shown = () =>
-    ALL.filter((f) => at(f.id).on && (props.editing() || !settings.overlay.hideEmpty || !f.overlay!.empty?.()));
+    ALL.filter((f) => at(f.id).on && (moving() || (allowed(rule(settings.rules[f.id]), near) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
   const hidden = () => ALL.filter((f) => !at(f.id).on);
+  const turn = (id: string, on: boolean) => change((s) => (s.places = { ...s.places, [id]: { ...at(id), on } }), true);
   const boxes = () =>
     [...root.querySelectorAll<HTMLElement>("[data-frame]")].map((el) => {
       const { x, y, width, height } = el.getBoundingClientRect();
@@ -28,43 +32,60 @@ export function Overlay(props: { editing: () => boolean }) {
   // With no fight going on there is a made-up one to place overlays by.
   const [sample, setSample] = createSignal(false);
   createEffect(() => {
-    if (props.editing() && !fight.rows.length) setSample(true);
-    if (!props.editing() && sample()) {
+    if (moving() && !fight.rows.length) setSample(true);
+    if (!moving() && sample()) {
       setSample(false);
       showFight(structuredClone(NO_FIGHT));
     }
   });
   createEffect(() => {
-    if (!sample()) return;
+    if (!moving()) return;
     const begun = performance.now() - 30_000;
-    const step = () => showFight(demoFight(performance.now() - begun));
+    const step = () => {
+      const ms = performance.now() - begun;
+      if (sample()) showFight(demoFight(ms));
+      sampleNear(demoNear(ms, Date.now()));
+    };
     step();
     const timer = setInterval(step, settings.updateMs);
-    onCleanup(() => clearInterval(timer));
+    onCleanup(() => {
+      clearInterval(timer);
+      sampleNear();
+    });
   });
 
-  const done = () => void editOverlays(false);
+  const done = () => void editOverlays("");
   const keys = (e: KeyboardEvent) => e.key === "Escape" && props.editing() && done();
   addEventListener("keydown", keys);
   onCleanup(() => removeEventListener("keydown", keys));
 
   return (
     <div ref={root} class="screen" data-editing={props.editing() || undefined}>
-      <For each={shown()}>{(f) => <Frame feature={f} editing={props.editing()} others={boxes} />}</For>
-      <Show when={props.editing()}>
+      <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} others={boxes} />}</For>
+      <Show when={props.editing() === "quick"}>
+        <div class="edit-bar quick-bar ui-bar" role="toolbar" aria-label="Overlays">
+          <For each={ALL}>
+            {(f) => (
+              <button class="ui-chip" aria-pressed={at(f.id).on} onClick={() => turn(f.id, !at(f.id).on)}>
+                <span class="ui-icon" aria-hidden="true">{f.icon}</span>
+                {overlayName(f)}
+              </button>
+            )}
+          </For>
+          <button class="ui-button" onClick={() => void editOverlays("move")}>Move them</button>
+          <button class="ui-button" data-main aria-keyshortcuts="Escape" onClick={done}>Done</button>
+        </div>
+      </Show>
+      <Show when={moving()}>
         <div class="edit-bar ui-bar">
           <small>
-            Drag to move. Scroll to scale. Alt drags freely.
-            <Show when={sample() && live()}> Sample fight shown.</Show>
+            Drag to move. Scroll to scale. Alt drags freely. What they show is a sample.
           </small>
           <For each={hidden()}>
             {(f) => (
-              <button
-                class="ui-button"
-                onClick={() => change((s) => (s.places = { ...s.places, [f.id]: { ...at(f.id), on: true } }), true)}
-              >
+              <button class="ui-button" onClick={() => turn(f.id, true)}>
                 <span class="ui-icon" aria-hidden="true">{""}</span>
-                {f.name}
+                {overlayName(f)}
               </button>
             )}
           </For>
