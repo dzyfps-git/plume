@@ -1,0 +1,63 @@
+/* Over the game every moving thing steps at the frame rate that was chosen: --bar-time and --bar-ease. */
+.glass {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
+  background: color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100%), transparent);
+  color: var(--text);
+}
+
+.meter { --row: 26px; }
+.meter-head { display: flex; align-items: baseline; gap: var(--space-2); padding: 7px 10px 6px; }
+.meter-head strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.meter-head span { color: var(--text-muted); font-size: 12px; }
+.meter-head b { font-size: 16px; font-weight: 600; line-height: 1; }
+.meter-rows { position: relative; height: calc(var(--count) * var(--row)); margin: 0 4px 4px; }
+.meter-row {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--row) - 2px);
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: calc(var(--radius) - 1px);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  isolation: isolate;
+  transform: translateY(calc(var(--spot) * var(--row)));
+  transition: transform var(--bar-time) var(--bar-ease);
+}
+.meter-bar {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-right: 2px solid color-mix(in srgb, var(--class) 70%, white);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--class) 38%, transparent), color-mix(in srgb, var(--class) 78%, transparent));
+  transform: translateX(calc((var(--length) - 1) * 100%));
+  transition: transform var(--bar-time) var(--bar-ease);
+}
+.meter-row > :not(.meter-bar) { text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
+.meter-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.meter-row small { color: color-mix(in srgb, var(--text) 82%, transparent); font-size: 11px; }
+.meter-row b { min-width: 44px; font-weight: 600; text-align: right; }
+.meter-share { min-width: 38px; text-align: right; }
+.meter-row .meter-deaths { color: var(--danger-ink); }
+.meter-row[data-you] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--class) 75%, white); }
+.class-mark { flex: none; width: 14px; height: 14px; fill: none; stroke: currentcolor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.meter-row .class-mark { filter: drop-shadow(0 1px 1px rgb(0 0 0 / 70%)); }
+
+/* A thin line under each name. */
+.meter[data-style="line"] .meter-row { background: none; }
+.meter[data-style="line"] .meter-bar { inset: auto 0 1px; height: 3px; border: 0; border-radius: 2px; background: var(--class); }
+.meter[data-style="line"] .class-mark { color: color-mix(in srgb, var(--class) 70%, white); }
+
+/* A compact table with no bars. */
+.meter[data-style="table"] { --row: 22px; }
+.meter[data-style="table"] .meter-row { border-radius: 0; background: none; }
+.meter[data-style="table"] .meter-bar { width: 3px; border: 0; border-radius: 2px; background: var(--class); transform: none; inset: 4px auto 4px 0; }
+.meter[data-style="table"] .meter-row[data-you] { background: color-mix(in srgb, var(--class) 18%, transparent); box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-row, .meter-bar { transition: none; }
+}
