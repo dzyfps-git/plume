@@ -23,6 +23,8 @@ export function Overlay(props: { editing: () => boolean }) {
       return { x, y, width, height };
     });
 
+  for (const f of FEATURES) f.overlay?.beside?.();
+
   // With no fight going on there is a made-up one to place overlays by.
   const [sample, setSample] = createSignal(false);
   createEffect(() => {

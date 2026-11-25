@@ -4,8 +4,8 @@ import { pace, path } from "./logic";
 
 const [WIDTH, HEIGHT] = [600, 120];
 
-/** Your damage a second over a fight, with your best drawn behind it. */
-export function Chart(props: { curve: readonly number[]; best?: readonly number[] }) {
+/** Your damage a second over a fight, with your best or another drawn behind it. */
+export function Chart(props: { curve: readonly number[]; best?: readonly number[]; other?: string }) {
   const mine = createMemo(() => pace(props.curve));
   const best = createMemo(() => pace(props.best ?? []));
   const most = createMemo(() => Math.max(1, ...mine(), ...best()) * 1.08);
@@ -23,7 +23,7 @@ export function Chart(props: { curve: readonly number[]; best?: readonly number[
           <span>0:00</span>
           <span>highest {short(Math.max(...mine()))} a second</span>
           <Show when={best().length}>
-            <span class="chart-key">dashed line: your best</span>
+            <span class="chart-key">dashed line: {props.other ?? "your best"}</span>
           </Show>
           <span>{clock((count() - 1) * 1000)}</span>
         </figcaption>

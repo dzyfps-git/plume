@@ -2,7 +2,8 @@ import { For } from "solid-js";
 import { editOverlays } from "../api";
 import { FEATURES } from "../features";
 import { change, settings } from "../store";
-import { FPS, place, STYLES } from "../store/settings";
+import { VIEW_NAMES } from "../features/meter/logic";
+import { FPS, place, STYLES, VIEWS, type View } from "../store/settings";
 import { Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
 
@@ -73,6 +74,14 @@ export function OverlaysPage() {
         </Line>
         <Line name="Rows" about="Yours always shows.">
           <Slide name="Rows" least={1} most={24} step={1} value={settings.meter.rows} text={String(settings.meter.rows)} set={(v) => change((s) => (s.meter.rows = v))} />
+        </Line>
+        <Line name="Edge that stays put" about="As rows come and go.">
+          <Choices name="Edge that stays put" all={[["top", "Top"], ["bottom", "Bottom"]] as const} value={settings.meter.edge} set={(v) => change((s) => (s.meter.edge = v))} />
+        </Line>
+        <Line name="Shows" about={settings.hotkeys.view ? `${settings.hotkeys.view} goes to the next.` : undefined}>
+          <select class="ui-select" aria-label="What the meter shows" value={settings.meter.view} onChange={(e) => change((s) => (s.meter.view = e.currentTarget.value as View))}>
+            <For each={VIEWS}>{(view) => <option value={view}>{VIEW_NAMES[view]}</option>}</For>
+          </select>
         </Line>
         <Switch name="Share of the damage" on={settings.meter.share} set={(on) => change((s) => (s.meter.share = on))} />
         <Switch name="Total damage" on={settings.meter.total} set={(on) => change((s) => (s.meter.total = on))} />

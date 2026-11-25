@@ -1,6 +1,6 @@
 // Speaks the engine's protocol with a made-up fight. For looking at the pages and for `npm run bench`.
 import { createInterface } from "node:readline";
-import { demoFight, demoSkills } from "../src/live/demo.ts";
+import { demoFight, demoSaved, demoSkills } from "../src/live/demo.ts";
 
 const say = (message) => console.log(JSON.stringify(message));
 let begun = Date.now() - 60_000;
@@ -18,20 +18,17 @@ setInterval(() => {
   if (row) say({ t: "skills", id: row.id, skills: demoSkills(row.damage) });
 }, 500);
 
-/** A few finished fights, the last a minute ago. */
-[["Stormbound Warden", 172_000, true, false], ["Stormbound Warden", 141_000, false, false], ["Training dummy", 60_000, false, true], ["Training dummy", 60_000, false, true]].forEach(
-  ([target, ms, killed, dummy], i) => {
-    const { rows } = demoFight(ms);
-    const mine = dummy ? rows.filter((r) => r.you) : rows;
-    const total = mine.reduce((sum, r) => sum + r.damage, 0);
-    const curve = Array.from({ length: ms / 1000 }, (_, s) => demoFight((s + 1) * 1000).rows.find((r) => r.you).damage);
-    say({
-      t: "saved", id: `demo_${i}`, target, code: dummy ? -2 : -1, start: Date.now() - (i + 1) * 1_000_000 - ms, ms, total,
-      maxHp: 43_000_000, killed, dummy, dungeon: 0, curve,
-      rows: mine.map((r) => ({ ...r, skills: demoSkills(r.damage) })),
-    });
-  },
-);
+/** A few finished fights: three tries at a boss in one dungeon run, and training. */
+const ago = (minutes) => Date.now() - minutes * 60_000;
+const run = ago(60);
+[
+  ["demo_5", { ms: 60_000, dummy: true, seed: 5, skill: 0.8, start: ago(110) }],
+  ["demo_4", { ms: 60_000, dummy: true, seed: 9, start: ago(105) }],
+  ["demo_3", { ms: 121_000, seed: 3, skill: 0.7, start: ago(50), run }],
+  ["demo_2", { ms: 141_000, seed: 4, skill: 0.8, start: ago(40), run }],
+  ["demo_1", { ms: 172_000, seed: 6, skill: 0.95, killed: true, start: ago(30), run }],
+].forEach(([id, options]) => say({ t: "saved", ...demoSaved(id, options) }));
+say({ t: "reads", hits: 5_120, taken: 210, health: 900, buffs: 340, stats: 61, targetHealth: true, stagger: true, you: true, zone: true, skills: 44, unnamed: 0 });
 
 createInterface({ input: process.stdin })
   .on("line", (line) => {

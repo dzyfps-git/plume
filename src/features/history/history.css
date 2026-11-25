@@ -1,5 +1,5 @@
 .history { display: flex; flex-direction: column; height: 100%; padding-bottom: 0; overflow: hidden; }
-.history .ui-input { width: 180px; }
+.history .page-head .ui-input { width: 160px; }
 .history-panes { display: grid; flex: 1; grid-template-columns: 250px minmax(0, 1fr); gap: var(--space-4); min-height: 0; }
 .history-list, .history-detail { padding-bottom: var(--space-4); overflow: auto; }
 .history-item { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--space-2); padding: 6px var(--space-2); }

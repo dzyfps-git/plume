@@ -18,7 +18,7 @@ const LONGEST_WAIT: Duration = Duration::from_secs(30);
 const STEADY: Duration = Duration::from_secs(60);
 /// Whole fights of this session, kept in memory only.
 const SESSION: usize = 200;
-const COMMANDS: [&str; 5] = ["mode", "rate", "limit", "watch", "reset"];
+const COMMANDS: [&str; 6] = ["mode", "rate", "limit", "watch", "credit", "reset"];
 
 type Tell = dyn Fn(&str, &Value) + Send + Sync;
 
@@ -30,6 +30,7 @@ struct Inner {
     input: Option<ChildStdin>,
     status: Value,
     state: Value,
+    reads: Value,
     fight: Value,
     session: Vec<Value>,
 }
@@ -53,6 +54,7 @@ impl Engine {
                 input: None,
                 status: json!({ "status": "off" }),
                 state: Value::Null,
+                reads: Value::Null,
                 fight: Value::Null,
                 session: Vec::new(),
             }),
@@ -69,7 +71,7 @@ impl Engine {
 
     pub fn now(&self) -> Value {
         let i = self.lock();
-        json!({ "engine": i.status, "state": i.state, "fight": i.fight })
+        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight })
     }
 
     pub fn start(self: &Arc<Self>) {
@@ -137,6 +139,7 @@ impl Engine {
             i.status = value.clone();
             if status != "running" {
                 i.state = Value::Null;
+                i.reads = Value::Null;
             }
         }
         (self.tell)("engine", &value);
@@ -233,6 +236,7 @@ impl Engine {
         self.say("running", "");
         match message["t"].as_str() {
             Some("state") => self.lock().state = message.clone(),
+            Some("reads") => self.lock().reads = message.clone(),
             Some("fight") => self.lock().fight = message.clone(),
             Some("saved") => {
                 {
@@ -258,10 +262,12 @@ impl Engine {
     }
 }
 
-/// The shape of a saved fight, with the rows this session still knows.
+/// The shape of a saved fight, with what this session still knows of everyone.
 fn with_yours(fight: Value) -> Value {
     let mut whole = only_yours(&fight);
-    whole["rows"] = fight["rows"].clone();
+    for key in ["rows", "deaths", "stagger", "buffs", "credits"] {
+        whole[key] = fight[key].clone();
+    }
     whole
 }
 
@@ -270,7 +276,7 @@ mod tests {
     use super::*;
 
     fn engine(folder: &std::path::Path) -> Arc<Engine> {
-        Engine::new(Vec::new(), Fights(folder.to_path_buf()), Box::new(|_, _| ()))
+        Engine::new(Vec::new(), Fights::new(folder.to_path_buf()), Box::new(|_, _| ()))
     }
 
     #[test]
@@ -306,7 +312,7 @@ mod tests {
         let tell = move |name: &str, value: &Value| {
             let _ = send.send((name.to_string(), value["status"].as_str().unwrap_or_default().to_string()));
         };
-        let e = Engine::new(vec!["C:\\no\\such.exe".into()], Fights(std::env::temp_dir()), Box::new(tell));
+        let e = Engine::new(vec!["C:\\no\\such.exe".into()], Fights::new(std::env::temp_dir()), Box::new(tell));
         e.start();
         e.want(true);
         let wait = Duration::from_secs(5);

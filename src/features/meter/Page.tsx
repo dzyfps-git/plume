@@ -2,10 +2,10 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "so
 import { engineSend } from "../../api";
 import { fight, skills } from "../../live/store";
 import { change, settings } from "../../store";
-import { MODES, type Mode } from "../../store/settings";
+import { MODES, VIEWS, type Mode, type View } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, short } from "../../ui/format";
-import { label, length, partyDps } from "./logic";
+import { label, partyDps, ranked, VIEW_NAMES } from "./logic";
 import { Skills } from "./Skills";
 import { Waiting } from "../../ui/Waiting";
 import "./meter.css";
@@ -22,6 +22,7 @@ const MODE_NAMES: Record<Mode, string> = {
 export function MeterPage() {
   const [picked, setPicked] = createSignal<number>();
   const row = createMemo(() => fight.rows.find((r) => r.id === picked()) ?? fight.rows.find((r) => r.you) ?? fight.rows[0]);
+  const list = createMemo(() => ranked(fight, settings.meter.view));
   // The engine works out the skills of one player, and only while they are looked at.
   const watched = createMemo(() => row()?.id);
   createEffect(() => void engineSend({ cmd: "watch", id: watched() ?? null }).catch(console.error));
@@ -38,6 +39,14 @@ export function MeterPage() {
           onChange={(e) => change((s) => (s.mode = e.currentTarget.value as Mode))}
         >
           <For each={MODES}>{(mode) => <option value={mode}>{MODE_NAMES[mode]}</option>}</For>
+        </select>
+        <select
+          class="ui-select"
+          aria-label="What the meter shows"
+          value={settings.meter.view}
+          onChange={(e) => change((s) => (s.meter.view = e.currentTarget.value as View))}
+        >
+          <For each={VIEWS}>{(view) => <option value={view}>{VIEW_NAMES[view]}</option>}</For>
         </select>
         <button class="ui-button" onClick={() => void engineSend({ cmd: "reset" })}>
           <span class="ui-icon" aria-hidden="true">{""}</span>
@@ -64,24 +73,27 @@ export function MeterPage() {
           </div>
         </div>
         <div class="board">
-          <For each={fight.rows}>
-            {(r, i) => (
+          <For each={list()}>
+            {({ row: r, total, rate, share }, i) => (
               <button
                 class="board-row"
                 aria-pressed={r.id === row()?.id}
                 onClick={() => setPicked(r.id)}
-                style={{ "--class": classOf(r.job).color, "--length": length(r, fight.rows) }}
+                style={{ "--class": classOf(r.job).color, "--length": total / Math.max(1, list()[0].total) }}
               >
                 <i class="meter-bar" />
                 <ClassMark job={r.job} />
                 <span class="meter-name">{label(r, settings.meter.hideNames, i() + 1)}</span>
-                <small class="ui-num">{short(r.damage)}</small>
-                <small class="ui-num">{r.share.toFixed(1)}%</small>
-                <b class="ui-num">{short(r.dps)}</b>
+                <small class="ui-num">{short(total)}</small>
+                <small class="ui-num">{share.toFixed(1)}%</small>
+                <b class="ui-num">{settings.meter.view === "hits" ? rate.toFixed(1) : short(rate)}</b>
               </button>
             )}
           </For>
         </div>
+        <Show when={settings.meter.view === "rdps"}>
+          <p class="ui-muted ui-small">What buffs add is measured from this fight, so it takes a while and stays an estimate. One target at a time.</p>
+        </Show>
         <Show when={row()}>
           {(r) => (
             <section class="block">

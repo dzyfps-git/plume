@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MARGIN, snap, toPixels, toShare } from "./layout.ts";
+import { hold, MARGIN, snap, toPixels, toShare } from "./layout.ts";
 
 const own = { width: 300, height: 200 };
 const screen = { width: 1920, height: 1080 };
@@ -28,4 +28,12 @@ test("edges, the middle and other overlays pull, and the rest lies on the grid",
 
 test("nothing leaves the screen", () => {
   assert.deepEqual(snap({ x: -900, y: 9000 }, own, screen, []), { x: MARGIN, y: 868 });
+});
+
+test("a held edge stays put while the height changes", () => {
+  const at = toShare({ x: 100, y: 400 }, own, screen);
+  const grown = { width: 300, height: 320 };
+  assert.deepEqual(hold(at, grown, screen, "top", 200), { x: 100, y: 400 });
+  assert.deepEqual(hold(at, grown, screen, "bottom", 200), { x: 100, y: 280 });
+  assert.deepEqual(hold({ x: 0, y: 1 }, grown, screen, "top", 200), { x: MARGIN, y: 1080 - MARGIN - 320 });
 });

@@ -11,3 +11,8 @@
 .boss-stagger i { background: var(--accent); }
 .boss-bar span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
 @media (prefers-reduced-motion: reduce) { .boss-bar i, .boss-stagger i { transition: none; } }
+.boss-bar em { position: absolute; top: 0; bottom: 0; width: 1px; background: rgb(255 255 255 / 45%); }
+.boss-bar .boss-due { width: 3px; margin-left: -1px; background: var(--success-ink); box-shadow: 0 0 6px var(--success-ink); }
+.boss-bar .boss-due[data-behind] { background: var(--fresh); box-shadow: 0 0 6px var(--fresh); }
+.boss-enrage { display: flex; justify-content: space-between; color: var(--success-ink); font-size: 12px; }
+.boss-enrage[data-behind] { color: var(--fresh); }

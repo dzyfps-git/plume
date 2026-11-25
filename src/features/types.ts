@@ -20,4 +20,8 @@ export interface Overlay {
   place: Place;
   /** Nothing to show right now, so it hides unless it is being placed. */
   empty?: () => boolean;
+  /** The edge that stays where it is as the height changes. Without one, it grows both ways. */
+  edge?: () => "top" | "bottom";
+  /** Runs once beside the overlays, shown or not. */
+  beside?: () => void;
 }

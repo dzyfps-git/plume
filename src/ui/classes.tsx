@@ -1,4 +1,5 @@
 import type { Job } from "../live/types";
+import { settings } from "../store";
 
 /** Each class's name, colour and mark. The marks are drawn for this app. */
 export const CLASSES: Record<Exclude<Job, "">, { name: string; color: string; mark: string }> = {
@@ -15,7 +16,17 @@ export const CLASSES: Record<Exclude<Job, "">, { name: string; color: string; ma
 
 const NONE = { name: "Unknown class", color: "#8d8b97", mark: "M12 12m-5 0a5 5 0 1 0 10 0 5 5 0 1 0-10 0" };
 
-export const classOf = (job: Job) => CLASSES[job as keyof typeof CLASSES] ?? NONE;
+/** Apart in lightness as well as hue, after Okabe and Ito, for eyes that mix up red and green. */
+const SAFE: Record<keyof typeof CLASSES, string> = {
+  gladiator: "#d55e00", templar: "#2f7bd9", ranger: "#009e73", assassin: "#cc79a7", sorcerer: "#f0e442",
+  cleric: "#d9d9d9", spiritmaster: "#56b4e9", chanter: "#e69f00", fighter: "#7a5c3a",
+};
+
+export function classOf(job: Job) {
+  const found = CLASSES[job as keyof typeof CLASSES];
+  if (!found) return NONE;
+  return settings.safeColors ? { ...found, color: SAFE[job as keyof typeof CLASSES] } : found;
+}
 
 export function ClassMark(props: { job: Job }) {
   return (

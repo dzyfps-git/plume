@@ -2,7 +2,7 @@ import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import type { Feature } from "../features/types";
 import { change, settings } from "../store";
 import { place } from "../store/settings";
-import { snap, toPixels, toShare, type Spot } from "./layout";
+import { hold, snap, toPixels, toShare, type Spot } from "./layout";
 
 interface Props {
   feature: Feature;
@@ -21,9 +21,15 @@ export function Frame(props: Props) {
 
   const at = () => place(settings.places[props.feature.id], overlay.place);
   const scaled = () => ({ width: size().width * at().scale, height: size().height * at().scale });
-  const spot = () => held() ?? toPixels(at(), scaled(), screen());
+  const spot = () => {
+    const height = at().height;
+    if (held()) return held()!;
+    // While it is placed, it is as high as it is.
+    if (!overlay.edge || !height || props.editing) return toPixels(at(), scaled(), screen());
+    return hold(at(), scaled(), screen(), overlay.edge(), height * at().scale);
+  };
   const put = (edit: Partial<ReturnType<typeof at>>) => {
-    const next = { ...at(), ...edit };
+    const next = { ...at(), ...edit, height: size().height };
     change((s) => (s.places = { ...s.places, [props.feature.id]: next }), true);
   };
   const putAt = (to: Spot) => put(toShare(to, scaled(), screen()));

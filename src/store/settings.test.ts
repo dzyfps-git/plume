@@ -29,3 +29,9 @@ test("bars move in as many steps as the frame rate gives", () => {
   assert.equal(barEase(30, 50), "steps(2, jump-end)");
   assert.equal(barEase(0, 250), "linear");
 });
+
+test("a boss's plan keeps only what can be", () => {
+  const { bosses } = read({ bosses: { 7: { enrage: -3, marks: [50, 50, 80, 0, "x"], avoid: [5], timers: [{ skill: 1, at: [4, -1] }, { skill: 2, at: [] }, 9] }, 8: 3 } });
+  assert.deepEqual(bosses["7"], { enrage: 0, marks: [80, 50], avoid: [5], timers: [{ skill: 1, name: "", at: [4] }] });
+  assert.deepEqual(bosses["8"], { enrage: 0, marks: [], avoid: [], timers: [] });
+});

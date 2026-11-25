@@ -2,14 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoFight, demoSkills } from "../../live/demo.ts";
 import type { Row } from "../../live/types.ts";
-import { label, length, lines, partyDps, shown } from "./logic.ts";
+import { VIEWS } from "../../store/settings.ts";
+import { label, length, lines, partyDps, ranked, shown } from "./logic.ts";
 
 const row = (id: number, damage: number, you = false) => ({ id, name: you ? "Me" : `P${id}`, damage, you }) as Row;
 const rows = [row(1, 100), row(2, 50), row(3, 25), row(4, 10, true)];
 
 test("your row never falls off", () => {
-  assert.deepEqual(shown(rows, 2).map(({ row, rank }) => [row.id, rank]), [[1, 1], [4, 4]]);
-  assert.deepEqual(shown(rows, 4).map(({ rank }) => rank), [1, 2, 3, 4]);
+  const list = rows.map((row) => ({ row }));
+  assert.deepEqual(shown(list, 2).map(({ row, rank }) => [row.id, rank]), [[1, 1], [4, 4]]);
+  assert.deepEqual(shown(list, 4).map(({ rank }) => rank), [1, 2, 3, 4]);
   assert.deepEqual(shown([], 3), []);
 });
 
@@ -41,4 +43,22 @@ test("the made-up fight adds up", () => {
     assert.ok(f.rows.every((r, i) => i === 0 || f.rows[i - 1].damage >= r.damage));
     assert.ok(f.target.hp >= 0);
   }
+});
+
+test("each view ranks by its own number, and counting buffs keeps the total", () => {
+  const f = demoFight(60_000);
+  for (const view of VIEWS) {
+    const list = ranked(f, view);
+    assert.ok(list.every((r, i) => i === 0 || list[i - 1].total >= r.total), view);
+    assert.ok(Math.abs(list.reduce((sum, r) => sum + r.share, 0) - 100) < 1e-6, view);
+  }
+  const total = (view: "damage" | "rdps") => ranked(f, view).reduce((sum, r) => sum + r.total, 0);
+  assert.equal(total("damage"), total("rdps"));
+  assert.notDeepEqual(ranked(f, "damage").map((r) => r.total), ranked(f, "rdps").map((r) => r.total));
+  assert.deepEqual(ranked(f, "healing").map((r) => r.row.job), ["cleric", "chanter"]);
+  assert.deepEqual(ranked({ rows: [], ms: 0 }, "taken"), []);
+});
+
+test("an estimate of everyone else is never a name", () => {
+  assert.equal(label({ name: "Others", you: false, others: true }, false, 2), "Everyone else, about");
 });

@@ -22,6 +22,13 @@ export const toPixels = (at: Spot, own: Box, screen: Box): Spot => ({
   y: Math.round(MARGIN + at.y * free(screen.height, own.height)),
 });
 
+/** The same place, for an overlay whose height is no longer `height`, with one edge held. */
+export function hold(at: Spot, own: Box, screen: Box, edge: "top" | "bottom", height: number): Spot {
+  const put = toPixels(at, { width: own.width, height }, screen);
+  const y = edge === "top" ? put.y : put.y + height - own.height;
+  return { x: put.x, y: Math.max(MARGIN, Math.min(y, screen.height - MARGIN - own.height)) };
+}
+
 export const toShare = (at: Spot, own: Box, screen: Box): Spot => {
   const share = (v: number, space: number) => (space > 0 ? Math.min(1, Math.max(0, (v - MARGIN) / space)) : 0);
   return { x: share(at.x, free(screen.width, own.width)), y: share(at.y, free(screen.height, own.height)) };

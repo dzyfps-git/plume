@@ -38,3 +38,10 @@ html, body, #root { height: 100%; overflow: hidden; user-select: none; }
 .slide > span { min-width: 56px; text-align: right; }
 .key { min-width: 150px; }
 .key[aria-pressed="true"] { border-color: var(--accent); }
+.lights { display: grid; gap: var(--space-2); margin: 0; padding: var(--space-2); list-style: none; text-align: left; }
+.lights li { display: grid; grid-template-columns: 7px 150px minmax(0, 1fr); align-items: baseline; gap: var(--space-3); color: var(--text); }
+.lights li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+.lights li[data-light="good"]::before { background: var(--success-ink); box-shadow: 0 0 8px var(--success-ink); }
+.lights li[data-light="bad"]::before { background: var(--danger-ink); }
+.lights li[data-light="bad"] small { color: var(--danger-ink); }
+.lights small { color: var(--text-muted); font-size: 12px; }

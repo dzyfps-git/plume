@@ -1,0 +1,4 @@
+.boss-entry { width: 150px; }
+.trend { display: flex; align-items: flex-end; gap: 3px; height: 44px; margin-bottom: var(--space-2) !important; }
+.trend i { width: 10px; height: calc(4px + var(--part) * 36px); border-radius: 3px; background: var(--danger-ink); }
+.trend span { margin-left: var(--space-2); font-size: 12px; }

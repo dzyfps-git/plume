@@ -18,6 +18,7 @@ function wear(overlay: boolean) {
   root.dataset.theme = overlay ? "dark" : theme;
   if (settings.accent) root.dataset.accent = settings.accent;
   else delete root.dataset.accent;
+  if (!overlay) root.style.setProperty("zoom", String(settings.text));
   root.style.setProperty("--bar-time", `${settings.updateMs}ms`);
   root.style.setProperty("--bar-ease", barEase(settings.fps, settings.updateMs));
   root.style.setProperty("--tint", String(settings.overlay.opacity));

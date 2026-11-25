@@ -1,8 +1,9 @@
-import { createResource, createSignal, For } from "solid-js";
+import { createResource, createSignal, For, Show } from "solid-js";
 import { appVersion, openEngineFolder } from "../api";
-import { engine, state } from "../live/store";
+import { health } from "../live/health";
+import { engine, reads, state } from "../live/store";
 import { change, settings, taken } from "../store";
-import { ACCENTS, ACTIONS, type Action } from "../store/settings";
+import { ACCENTS, ACTIONS, TEXTS, type Action } from "../store/settings";
 import { Choices, Line } from "../ui/Line";
 import { Switch } from "../ui/Switch";
 import { hotkey } from "./keys";
@@ -12,6 +13,7 @@ const ACTION_NAMES: Record<Action, string> = {
   overlay: "Show or hide overlays",
   edit: "Move overlays",
   reset: "Start the fight again",
+  view: "Next meter view",
 };
 
 export function SettingsPage() {
@@ -37,6 +39,13 @@ export function SettingsPage() {
         <Line name="Engine" about={engineText()} bad={["missing", "failed"].includes(engine().status)}>
           <button class="ui-button" onClick={() => void openEngineFolder()}>Open its folder</button>
         </Line>
+        <Show when={reads()}>
+          {(r) => (
+            <ul class="lights" aria-label="What the engine reads">
+              <For each={health(r())}>{(h) => <li data-light={h.light}>{h.name}<small>{h.about}</small></li>}</For>
+            </ul>
+          )}
+        </Show>
       </section>
       <section class="block">
         <h2>Keys over the game</h2>
@@ -69,6 +78,20 @@ export function SettingsPage() {
             set={(v) => change((s) => (s.accent = v))}
           />
         </Line>
+        <Line name="Text size">
+          <Choices
+            name="Text size"
+            all={TEXTS.map((t) => [t as number, `${Math.round(t * 100)}%`] as const)}
+            value={settings.text}
+            set={(v) => change((s) => (s.text = v))}
+          />
+        </Line>
+        <Switch
+          name="Colour-blind class colours"
+          about="Classes stay apart for eyes that mix up red and green. Each class also has its own mark."
+          on={settings.safeColors}
+          set={(on) => change((s) => (s.safeColors = on))}
+        />
       </section>
       <section class="block">
         <h2>About</h2>

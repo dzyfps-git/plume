@@ -1,4 +1,5 @@
 import { fight } from "../../live/store";
+import { settings } from "../../store";
 import type { Feature } from "../types";
 import { MeterOverlay } from "./Overlay";
 import { MeterPage } from "./Page";
@@ -14,5 +15,6 @@ export const meter: Feature = {
     width: 300,
     place: { on: true, x: 1, y: 0.62, scale: 1 },
     empty: () => fight.rows.length === 0,
+    edge: () => settings.meter.edge,
   },
 };

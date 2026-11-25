@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { runOver } from "./logic";
 import { engineSend } from "../../api";
 import { fight, live, skills } from "../../live/store";
 import { settings } from "../../store";
@@ -36,6 +37,15 @@ export function TrainingPage() {
   const you = () => fight.rows.find((r) => r.you) ?? fight.rows[0];
   const watched = createMemo(() => you()?.id);
   createEffect(() => send({ cmd: "watch", id: watched() ?? null }));
+  // A run ends when its time is up, or by itself when you stop hitting.
+  const [hitAt, setHitAt] = createSignal(0);
+  const [now, setNow] = createSignal(Date.now());
+  const timer = setInterval(() => setNow(Date.now()), 500);
+  onCleanup(() => clearInterval(timer));
+  createEffect(() => {
+    if (you()?.damage) setHitAt(Date.now());
+  });
+  const over = () => fight.timeup || (!!you()?.damage && runOver(hitAt(), now()));
   const length = () => seconds() * 1000;
   const left = () => Math.max(0, length() - fight.ms);
   const runs = createMemo(() => fights().filter((f) => f.dummy && f.you));
@@ -60,7 +70,7 @@ export function TrainingPage() {
       <Show when={fight.rows.length && live()} fallback={<Waiting idle="Hit a training dummy. The clock starts with your first hit." />}>
         <div class="stats">
           <div class="stat" data-hero>
-            <small>{fight.timeup ? "Result, a second" : "Damage a second"}</small>
+            <small>{over() ? "Result, a second" : "Damage a second"}</small>
             <b class="ui-num">{short(you()?.dps ?? 0)}</b>
           </div>
           <div class="stat">
@@ -68,12 +78,12 @@ export function TrainingPage() {
             <b class="ui-num">{short(you()?.damage ?? 0)}</b>
           </div>
           <div class="stat">
-            <small>{fight.timeup ? "Time is up" : seconds() ? "Time left" : "Time"}</small>
-            <b class="ui-num">{clock(seconds() ? left() : fight.ms)}</b>
+            <small>{fight.timeup ? "Time is up" : over() ? "Ended at" : seconds() ? "Time left" : "Time"}</small>
+            <b class="ui-num">{clock(seconds() && (fight.timeup || !over()) ? left() : fight.ms)}</b>
           </div>
         </div>
         <Show when={seconds()}>
-          <div class="ui-meter run-left" data-state={fight.timeup ? "done" : undefined}>
+          <div class="ui-meter run-left" data-state={over() ? "done" : undefined}>
             <i style={{ "--value": fight.timeup ? 1 : Math.min(1, fight.ms / length()) }} />
           </div>
         </Show>
@@ -87,6 +97,7 @@ export function TrainingPage() {
       <Show when={runs().length}>
         <section class="block">
           <h2>Runs before</h2>
+          <p class="ui-muted ui-small">Open one in History to compare two runs: what was luck, what was a real gain.</p>
           <For each={runs().slice(0, 20)}>
             {(f) => (
               <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) auto auto 90px" }}>

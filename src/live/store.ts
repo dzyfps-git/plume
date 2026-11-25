@@ -1,14 +1,15 @@
 import { createSignal } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import { on, type Start } from "../api";
-import { NO_FIGHT, type Fight, type Skill, type State, type Status } from "./types";
+import { NO_FIGHT, type Fight, type Reads, type Skill, type State, type Status } from "./types";
 
 const [engine, setEngine] = createSignal<{ status: Status; message?: string }>({ status: "off" });
 const [state, setState] = createSignal<State | null>(null);
+const [reads, setReads] = createSignal<Reads | null>(null);
 const [fight, setFight] = createStore<Fight>(structuredClone(NO_FIGHT));
 const [skills, setSkills] = createSignal<{ id: number; skills: Skill[] }>({ id: 0, skills: [] });
 
-export { engine, state, fight, skills };
+export { engine, state, reads, fight, skills };
 
 /** True when the game is connected. */
 export const live = () => engine().status === "running" && !!state()?.live;
@@ -19,14 +20,18 @@ export const showFight = (next: Fight) => setFight(reconcile(next, { key: "id" }
 export async function follow(start: Start) {
   setEngine(start.engine);
   setState(start.state);
+  setReads(start.reads);
   if (start.fight) showFight(start.fight);
   await on("engine", (value) => {
     setEngine(value);
-    if (value.status !== "running") setState(null);
+    if (value.status === "running") return;
+    setState(null);
+    setReads(null);
   });
   await on("live", (message) => {
     if (message.t === "fight") showFight(message);
     else if (message.t === "state") setState(message);
     else if (message.t === "skills") setSkills(message);
+    else if (message.t === "reads") setReads(message);
   });
 }

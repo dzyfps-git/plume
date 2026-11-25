@@ -1,20 +1,15 @@
-import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
-import { deleteFight, fight as loadFight } from "../../api";
-import type { FightRow, Saved } from "../../live/types";
-import { NAME } from "../../app/brand";
-import { settings } from "../../store";
-import { ClassMark, classOf } from "../../ui/classes";
-import { clock, day, full, percent, short, time } from "../../ui/format";
-import { label, length } from "../meter/logic";
-import { Skills } from "../meter/Skills";
-import { Chart } from "./Chart";
-import { bestOf, bests, byDay, filtered, type Filter } from "./logic";
-import { fights, followFights, forgetFight } from "./store";
-import "../meter/meter.css";
-import "../meter/page.css";
+import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
+import { exportFile } from "../../api";
+import type { Saved } from "../../live/types";
+import { clock, day, short, time } from "../../ui/format";
+import { Report } from "../report/Report";
+import { left } from "../report/logic";
+import { bytes, csv } from "../report/share";
+import { alike, bestOf, bests, byDay, filtered, runs, session, tries, type Filter, type Run } from "./logic";
+import { fights, followFights } from "./store";
 import "./history.css";
 
-const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"]];
+const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"], ["runs", "Dungeon runs"], ["session", "Last session"]];
 
 export function HistoryPage() {
   followFights();
@@ -22,7 +17,11 @@ export function HistoryPage() {
   const [search, setSearch] = createSignal("");
   const [picked, setPicked] = createSignal<string>();
   const best = createMemo(() => bests(fights()));
-  const list = createMemo(() => filtered(fights(), filter(), search()));
+  const list = createMemo(() => filtered(filter() === "session" ? session(fights()) : fights(), filter(), search()));
+  const show = (id: string) => {
+    setFilter("all");
+    setPicked(id);
+  };
   const open = createMemo(() => list().find((f) => f.id === picked()) ?? list()[0]);
 
   return (
@@ -37,16 +36,31 @@ export function HistoryPage() {
           </For>
         </div>
         <input class="ui-input" placeholder="Search targets" aria-label="Search targets" onInput={(e) => setSearch(e.currentTarget.value)} />
+        <button
+          class="ui-icon-button"
+          aria-label="Save this list as CSV, your numbers only"
+          onClick={() => void exportFile("fights.csv", bytes(`\ufeff${csv(list())}`)).catch(console.error)}
+        >
+          {"\ue74e"}
+        </button>
       </header>
       <Show
         when={list().length}
         fallback={
           <div class="ui-empty">
             <span class="ui-icon" aria-hidden="true">{""}</span>
-            <p>{fights().length ? "No fight matches." : "Your boss and dummy fights are kept here. Only your own numbers are written down."}</p>
+            <p>{fights().length ? "No fight matches." : "Your boss and dummy fights are kept here. Only your own part of them is written down."}</p>
           </div>
         }
       >
+        <Switch>
+          <Match when={filter() === "runs"}>
+            <div class="history-detail"><For each={runs(list())}>{(run) => <RunCard run={run} open={show} />}</For></div>
+          </Match>
+          <Match when={filter() === "session"}>
+            <div class="history-detail"><Session fights={list()} /></div>
+          </Match>
+          <Match when={true}>
         <div class="history-panes">
           <div class="history-list">
             <For each={byDay(list(), day)}>
@@ -64,7 +78,7 @@ export function HistoryPage() {
                         </span>
                         <b class="ui-num">{short(f.you?.dps ?? 0)}</b>
                         <small class="ui-muted ui-num">
-                          {time(f.start)}, {clock(f.ms)}{f.dummy ? "" : f.killed ? ", killed" : ", not killed"}
+                          {time(f.start)}, {clock(f.ms)}{f.dummy ? "" : f.killed ? ", killed" : left(f) !== undefined ? `, ${(left(f)! * 100).toFixed(0)}% left` : ", not killed"}
                         </small>
                       </button>
                     )}
@@ -73,87 +87,91 @@ export function HistoryPage() {
               )}
             </For>
           </div>
-          <Show when={open()}>{(f) => <Detail fight={f()} best={bestOf(best(), f())} />}</Show>
+          <Show when={open()}>{(f) => <Report fight={f()} best={bestOf(best(), f())} others={alike(fights(), f())} />}</Show>
         </div>
+          </Match>
+        </Switch>
       </Show>
     </div>
   );
 }
 
-function Detail(props: { fight: Saved; best?: Saved }) {
-  const [whole] = createResource(() => props.fight.id, loadFight);
-  const [behind] = createResource(
-    () => (props.best && props.best.id !== props.fight.id ? props.best.id : undefined),
-    loadFight,
-  );
-  const [picked, setPicked] = createSignal<number>();
-  createEffect(() => {
-    props.fight.id;
-    setPicked(undefined);
-  });
-  const rows = (): FightRow[] => whole()?.rows ?? (whole()?.you ? [whole()!.you!] : []);
-  const row = () => rows().find((r) => r.id === picked()) ?? rows().find((r) => r.you) ?? rows()[0];
-
+function Session(props: { fights: Saved[] }) {
+  const list = createMemo(() => tries(props.fights));
+  const all = () => props.fights.reduce((n, f) => n + f.ms, 0);
   return (
-    <section class="history-detail">
-      <header class="page-head">
-        <h2>{props.fight.target}</h2>
-        <button
-          class="ui-icon-button"
-          aria-label="Delete this fight"
-          onClick={() => void deleteFight(props.fight.id).then(() => forgetFight(props.fight.id)).catch(console.error)}
-        >
-          {""}
-        </button>
-      </header>
+    <>
       <div class="stats">
         <div class="stat" data-hero>
-          <small>You, a second</small>
-          <b class="ui-num">{short(props.fight.you?.dps ?? 0)}</b>
+          <small>Time fought</small>
+          <b class="ui-num">{clock(all())}</b>
+        </div>
+        <div class="stat">
+          <small>Fights</small>
+          <b class="ui-num">{props.fights.length}</b>
+        </div>
+        <div class="stat">
+          <small>Killed</small>
+          <b class="ui-num">{props.fights.filter((f) => f.killed).length}</b>
+        </div>
+        <div class="stat">
+          <small>Your deaths</small>
+          <b class="ui-num">{props.fights.reduce((n, f) => n + (f.you?.deaths ?? 0), 0)}</b>
+        </div>
+      </div>
+      <section class="block">
+        <For each={list()}>
+          {(t) => (
+            <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 100px 130px 90px 80px" }}>
+              <span>{t.target}</span>
+              <span class="ui-muted ui-num">{t.tries} {t.tries === 1 ? "try" : "tries"}</span>
+              <span class="ui-muted ui-num">{t.kills ? `${t.kills} killed` : t.closest !== undefined ? `${(t.closest * 100).toFixed(1)}% left` : ""}</span>
+              <span class="ui-muted ui-num">{clock(t.ms)}</span>
+              <span class="ui-share" style={{ "--share": t.best / Math.max(1, ...list().map((x) => x.best)) }}>{short(t.best)}</span>
+            </div>
+          )}
+        </For>
+      </section>
+    </>
+  );
+}
+
+function RunCard(props: { run: Run; open: (id: string) => void }) {
+  return (
+    <section class="block">
+      <h2>{day(props.run.run)}, {time(props.run.run)}</h2>
+      <div class="stats">
+        <div class="stat" data-hero>
+          <small>First pull to last</small>
+          <b class="ui-num">{clock(props.run.ms)}</b>
+        </div>
+        <div class="stat">
+          <small>Fighting bosses</small>
+          <b class="ui-num">{clock(props.run.fought)}</b>
         </div>
         <div class="stat">
           <small>Your damage</small>
-          <b class="ui-num" data-tip={full(props.fight.you?.damage ?? 0)}>{short(props.fight.you?.damage ?? 0)}</b>
+          <b class="ui-num">{short(props.run.damage)}</b>
         </div>
         <div class="stat">
-          <small>Your share of {props.fight.players}</small>
-          <b class="ui-num">{percent(props.fight.you?.damage ?? 0, props.fight.total)}</b>
+          <small>You, a second in fights</small>
+          <b class="ui-num">{short(props.run.damage / Math.max(1, props.run.fought / 1000))}</b>
         </div>
         <div class="stat">
-          <small>Time</small>
-          <b class="ui-num">{clock(props.fight.ms)}</b>
+          <small>Your deaths</small>
+          <b class="ui-num">{props.run.deaths}</b>
         </div>
       </div>
-      <Show when={whole()}>
-        {(w) => (
-          <>
-            <Chart curve={w().curve ?? []} best={behind()?.id === props.best?.id ? behind()?.curve : undefined} />
-            <Show when={w().rows}>
-              <div class="board">
-                <For each={rows()}>
-                  {(r, i) => (
-                    <button
-                      class="board-row"
-                      aria-pressed={r.id === row()?.id}
-                      onClick={() => setPicked(r.id)}
-                      style={{ "--class": classOf(r.job).color, "--length": length(r, rows()) }}
-                    >
-                      <i class="meter-bar" />
-                      <ClassMark job={r.job} />
-                      <span class="meter-name">{label(r, settings.meter.hideNames, i() + 1)}</span>
-                      <small class="ui-num">{short(r.damage)}</small>
-                      <small class="ui-num">{r.share.toFixed(1)}%</small>
-                      <b class="ui-num">{short(r.dps)}</b>
-                    </button>
-                  )}
-                </For>
-              </div>
-              <p class="ui-muted ui-small">Other players are gone when {NAME} closes.</p>
-            </Show>
-            <Show when={row()}>{(r) => <Skills skills={r().skills ?? []} job={r().job} />}</Show>
-          </>
+      <For each={props.run.fights}>
+        {(f) => (
+          <button class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 100px 90px 90px" }} onClick={() => props.open(f.id)}>
+            <span>{f.target}</span>
+            <span class="ui-muted">{f.killed ? "killed" : "not killed"}</span>
+            <span class="ui-muted ui-num">{clock(f.ms)}</span>
+            <span class="ui-share" style={{ "--share": (f.you?.dps ?? 0) / Math.max(1, ...props.run.fights.map((x) => x.you?.dps ?? 0)) }}>{short(f.you?.dps ?? 0)}</span>
+          </button>
         )}
-      </Show>
+      </For>
     </section>
   );
 }

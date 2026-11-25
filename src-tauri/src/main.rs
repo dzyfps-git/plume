@@ -15,6 +15,9 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WindowEvent};
 use windowing::Overlay;
 
+/// What the meter shows, in the order its key goes through. The same as in `src/store/settings.ts`.
+const VIEWS: [&str; 5] = ["damage", "rdps", "healing", "taken", "hits"];
+
 struct Saved {
     path: PathBuf,
     settings: Mutex<Value>,
@@ -49,9 +52,11 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
     if before["mode"] != settings["mode"] {
         let _ = engine.send(json!({ "cmd": "mode", "mode": settings["mode"].as_str().unwrap_or("bossTargets") }));
     }
+    // Weighing buffs costs time, so only while it is what the meter shows.
+    let _ = engine.send(json!({ "cmd": "credit", "on": settings["meter"]["view"] == "rdps" }));
     engine.want(settings["live"].as_bool().unwrap_or(false));
     let key = |action: &str| settings["hotkeys"][action].as_str().unwrap_or_default().to_string();
-    hotkeys::set(["overlay", "edit", "reset"].map(|a| (a.to_string(), key(a))).to_vec())
+    hotkeys::set(["overlay", "edit", "reset", "view"].map(|a| (a.to_string(), key(a))).to_vec())
 }
 
 #[tauri::command]
@@ -74,6 +79,20 @@ fn delete_fight(engine: State<Arc<Engine>>, id: String) -> Result<(), String> {
     engine.forget(&id)
 }
 
+/// Your part of a fight alone, as it is on the disk.
+#[tauri::command(async)]
+fn kept_fight(engine: State<Arc<Engine>>, id: String) -> Option<Value> {
+    engine.fights.load(&id)
+}
+
+/// Writes a file you asked for into Downloads, and shows it.
+#[tauri::command(async)]
+fn export(app: AppHandle, name: String, bytes: Vec<u8>) -> Result<(), String> {
+    let folder = app.path().download_dir().map_err(|e| e.to_string())?;
+    let path = storage::export(&folder, &name, &bytes)?;
+    std::process::Command::new("explorer").arg("/select,").arg(path).spawn().map(drop).map_err(|e| e.to_string())
+}
+
 #[tauri::command(async)]
 fn edit_overlays(app: AppHandle, on: bool) {
     windowing::edit(&app, on);
@@ -93,16 +112,20 @@ fn engine_folder(app: &AppHandle) -> Result<PathBuf, String> {
 /// A key pressed over the game. Never on the main thread: a window cannot be built from inside its loop.
 fn pressed(app: &AppHandle, action: &str) {
     let overlay = app.state::<Overlay>();
-    match action {
-        "overlay" => {
-            let saved = app.state::<Saved>();
-            let mut settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
-            let on = !overlay.on.load(SeqCst);
-            settings["overlay"]["on"] = on.into();
-            if let Err(e) = save_settings(app.clone(), saved, settings) {
-                eprintln!("{e}");
-            }
+    let set = |edit: &dyn Fn(&mut Value)| {
+        let saved = app.state::<Saved>();
+        let mut settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        edit(&mut settings);
+        if let Err(e) = save_settings(app.clone(), saved, settings) {
+            eprintln!("{e}");
         }
+    };
+    match action {
+        "overlay" => set(&|s| s["overlay"]["on"] = (!overlay.on.load(SeqCst)).into()),
+        "view" => set(&|s| {
+            let at = VIEWS.iter().position(|v| s["meter"]["view"] == *v).unwrap_or(0);
+            s["meter"]["view"] = VIEWS[(at + 1) % VIEWS.len()].into();
+        }),
         "edit" => windowing::edit(app, !overlay.editing.load(SeqCst)),
         "reset" => {
             let _ = app.state::<Arc<Engine>>().send(json!({ "cmd": "reset" }));
@@ -148,7 +171,9 @@ fn main() {
             engine_send,
             fights,
             fight,
+            kept_fight,
             delete_fight,
+            export,
             edit_overlays,
             open_engine_folder
         ])
@@ -170,7 +195,7 @@ fn main() {
             let tell = handle.clone();
             let engine = Engine::new(
                 places,
-                storage::Fights(folder.join("fights")),
+                storage::Fights::new(folder.join("fights")),
                 Box::new(move |event, value| {
                     let _ = tell.emit(event, value);
                 }),
