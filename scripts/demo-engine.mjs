@@ -9,6 +9,13 @@ let watched;
 say({ t: "state", protocol: 1, version: "demo", live: true, late: false, devices: 0 });
 
 say({ t: "entries", ...demoEntries() });
+// Your pets as you log in, and a walk through Safe Haven in Altgard.
+say({ t: "pets", what: "all", levels: [[1066, 1], [1118, 2]], souls: [[1066, 12]] });
+let step = 0;
+setInterval(() => {
+  step = (step + 1) % 40;
+  say({ t: "place", map: 1110, known: true, x: -863 + step * 6, y: -1265 + step * 2, z: 341, at: Date.now() });
+}, 1500);
 
 const now = () => demoFight(Date.now() - begun);
 function fight() {

@@ -69,3 +69,17 @@ test("a resource without a name that is not shown is not kept", () => {
   const { resources } = read({ resources: [{ id: 4, name: "Keys" }, { id: 5 }, { id: 6, show: true }, { id: 0, name: "x" }, { id: 7, kind: "nightmare" }, { id: 8, kind: "?" }, 3] });
   assert.deepEqual(resources, [{ id: 4, name: "Keys", kind: "", show: false }, { id: 6, name: "", kind: "", show: true }, { id: 7, name: "", kind: "nightmare", show: false }]);
 });
+
+test("the map and pets keep only what fits", () => {
+  const s = read({
+    world: { map: 1110, layers: ["trace", "nonsense"], tracked: ["1110/trace", "1110/trace", 5], found: { "1110/trace": [12, 12, -1, "x"], "1110/cube": [] }, routes: [{ name: "Up", map: 0 }, { key: "r", name: "Run", map: 1110, points: [3, 2 ** 29] }], across: 9 },
+    pets: { goal: 7, levels: { 1066: 3.4, 1004: 9, 9: 0, bad: "x" }, souls: { 1066: 24 }, told: 5 },
+  });
+  assert.deepEqual(s.world.layers, ["trace"]);
+  assert.deepEqual(s.world.tracked, ["1110/trace"]);
+  assert.deepEqual(s.world.found, { "1110/trace": [12] });
+  assert.deepEqual(s.world.routes, [{ key: "r", name: "Run", map: 1110, points: [3] }]);
+  assert.equal(s.world.across, 100);
+  assert.deepEqual(s.pets, { goal: 3, levels: { 1066: 3, 1004: 3 }, souls: { 1066: 24 }, told: 5 });
+  assert.deepEqual(read(null).world.layers, DEFAULTS.world.layers);
+});

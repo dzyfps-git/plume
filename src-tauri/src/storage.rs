@@ -105,6 +105,26 @@ pub fn picture(folder: &Path, name: &str) -> Result<Vec<u8>, String> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") { Ok(bytes) } else { Err(format!("{name} is not a PNG")) }
 }
 
+/// The maps are the largest: a picture of 2048 points and its marks.
+const WORLD_BYTES: u64 = 16 << 20;
+
+/// A file of the world folder, `name.json` or `name.webp`. The name is letters, digits and `_` alone.
+pub fn world(folder: &Path, file: &str) -> Result<Vec<u8>, String> {
+    let (name, kind) = file.rsplit_once('.').unwrap_or((file, ""));
+    let plain = !name.is_empty() && name.len() <= 80 && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_');
+    if !plain || !["json", "webp"].contains(&kind) {
+        return Err("not a file of the world".into());
+    }
+    let path = folder.join(file);
+    let say = |e: std::io::Error| format!("{file}: {e}");
+    if fs::metadata(&path).map_err(say)?.len() > WORLD_BYTES {
+        return Err(format!("{file} is too large"));
+    }
+    let bytes = fs::read(&path).map_err(say)?;
+    let webp = bytes.len() > 12 && bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP";
+    if kind == "json" || webp { Ok(bytes) } else { Err(format!("{file} is not a WebP")) }
+}
+
 /// Finished fights, one file each.
 pub struct Fights {
     folder: PathBuf,
@@ -370,6 +390,22 @@ mod tests {
         }
         fs::remove_dir_all(&here).unwrap();
         assert!(pictures(&here).is_null());
+    }
+
+    #[test]
+    fn only_world_files_of_their_own_folder_are_read() {
+        let here = folder("world");
+        fs::create_dir_all(&here).unwrap();
+        let webp = b"RIFF   WEBPrest";
+        fs::write(here.join("map_20.webp"), webp).unwrap();
+        fs::write(here.join("map_20.json"), "{}").unwrap();
+        fs::write(here.join("fake.webp"), "<svg/>").unwrap();
+        assert_eq!(world(&here, "map_20.webp").unwrap(), webp);
+        assert_eq!(world(&here, "map_20.json").unwrap(), b"{}");
+        for bad in ["fake.webp", "none.json", "", "map_20", "../map_20.json", "map_20.png", "a b.json", "C:x.json", ".json"] {
+            assert!(world(&here, bad).is_err(), "{bad}");
+        }
+        fs::remove_dir_all(&here).unwrap();
     }
 
     #[test]

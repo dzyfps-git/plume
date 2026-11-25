@@ -260,6 +260,13 @@ fn picture(app: AppHandle, name: String) -> Result<tauri::ipc::Response, String>
     storage::picture(&pictures_folder(&app)?, &name).map(tauri::ipc::Response::new)
 }
 
+/// Maps, pets and drops, made by the engine's `tools/world.py`.
+#[tauri::command(async)]
+fn world_file(app: AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
+    let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("world");
+    storage::world(&folder, &name).map(tauri::ipc::Response::new)
+}
+
 #[tauri::command(async)]
 fn open_pictures_folder(app: AppHandle) -> Result<(), String> {
     show_folder(pictures_folder(&app)?)
@@ -372,7 +379,8 @@ fn main() {
             open_sounds_folder,
             pictures,
             picture,
-            open_pictures_folder
+            open_pictures_folder,
+            world_file
         ])
         .setup(|app| {
             let handle = app.handle().clone();

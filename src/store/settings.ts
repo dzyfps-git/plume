@@ -43,6 +43,10 @@ export const JOBS: readonly Job[] = ["gladiator", "templar", "ranger", "assassin
 /** Odyle Energy a run takes: once, or claimed twice. */
 export const ODYLE_RUN = [40, 80] as const;
 export const TEXTS = [1, 1.15, 1.3] as const;
+/** What a map can show, in the order of its list. The engine's `tools/world.py` names them. */
+export const LAYERS = ["trace", "cube", "gather", "monster", "boss", "npc", "teleport", "village", "sealed", "dungeon", "portal", "rift", "stronghold", "monolith", "quest"] as const;
+/** Levels a pet can reach. */
+export const GOALS = [1, 2, 3] as const;
 
 export type Mode = (typeof MODES)[number];
 export type View = (typeof VIEWS)[number];
@@ -53,6 +57,7 @@ export type AlertId = (typeof ALERTS)[number];
 export type Action = (typeof ACTIONS)[number];
 export type Button = (typeof BUTTONS)[number];
 export type Tone = (typeof TONES)[number];
+export type Layer = (typeof LAYERS)[number];
 
 /** Where an overlay sits: 0 is the left or top edge of the screen, 1 the right or bottom. */
 export interface Place {
@@ -160,6 +165,44 @@ export interface BossPlan {
   timers: Timer[];
   mechanics: Mechanic[];
   notes: string;
+}
+
+/** Your own way over a map: spots in order, packed as `pack` in `features/map/logic.ts` does. */
+export interface Route {
+  key: string;
+  name: string;
+  map: number;
+  points: number[];
+}
+
+/** The map, and what you follow on it. */
+export interface World {
+  /** The map the page shows. 0 is where you are. */
+  map: number;
+  layers: Layer[];
+  /** The map keeps you in the middle. */
+  follow: boolean;
+  /** What you found is not drawn. */
+  hideFound: boolean;
+  /** Things you follow, as "map/thing". */
+  tracked: string[];
+  /** Spots ticked as found, packed, by "map/thing". One set for all your characters. */
+  found: Record<string, number[]>;
+  routes: Route[];
+  /** How many metres the Tracker Map is across. */
+  across: number;
+}
+
+/** Your pets, by the game's number for each. */
+export interface PetsKept {
+  /** The level every pet should reach. */
+  goal: (typeof GOALS)[number];
+  /** 0 to 3. Missing is 0. */
+  levels: Record<string, number>;
+  /** Towards the next level. */
+  souls: Record<string, number>;
+  /** When the game last said all of them. 0 is never: what is here was typed in. */
+  told: number;
 }
 
 export interface Meter {
@@ -278,6 +321,8 @@ export interface Settings {
   against: Record<(typeof AGAINST)[number], boolean>;
   second: Second;
   alerts: Record<AlertId, Alert>;
+  world: World;
+  pets: PetsKept;
   /** Starts with Windows. */
   startup: boolean;
   /** Closes the overlay window while the game is closed. */
@@ -345,6 +390,8 @@ export const DEFAULTS: Settings = {
     best: { on: true, banner: true, sound: "rise", say: false, value: 0, volume: 1 },
     record: { on: true, banner: true, sound: "chime", say: false, value: 0, volume: 0.6 },
   },
+  world: { map: 0, layers: ["trace", "cube", "gather", "boss", "teleport", "village", "sealed", "rift", "stronghold"], follow: true, hideFound: false, tracked: [], found: {}, routes: [], across: 600 },
+  pets: { goal: 3, levels: {}, souls: {}, told: 0 },
   startup: false,
   sleep: true,
 };
@@ -384,6 +431,45 @@ export const rule = (v: unknown): Rule => {
   const r = object(v);
   return { when: one(r.when as When, WHEN, "always"), job: one(r.job as Job, JOBS, "") };
 };
+
+/** Keys of "map/thing", and what each holds. */
+const keyed = <T>(v: unknown, most: number, value: (v: unknown) => T | undefined): Record<string, T> =>
+  Object.fromEntries(Object.entries(object(v)).slice(0, most).flatMap(([k, x]) => {
+    const kept = k.length <= 160 ? value(x) : undefined;
+    return kept === undefined ? [] : [[k, kept]];
+  }));
+/** By pet: whole numbers above 0. */
+const byPet = (v: unknown, most: number) => keyed(v, 2000, (n) => (typeof n === "number" && n >= 1 ? Math.min(most, Math.round(n)) : undefined));
+
+function world(v: unknown): World {
+  const w = object(v);
+  const d = DEFAULTS.world;
+  return {
+    map: Math.round(number(w.map, 0, 2 ** 31, d.map)),
+    layers: some(w.layers, LAYERS, d.layers),
+    follow: flag(w.follow, d.follow),
+    hideFound: flag(w.hideFound, d.hideFound),
+    tracked: [...new Set((Array.isArray(w.tracked) ? w.tracked : []).filter((k): k is string => typeof k === "string" && k.length <= 160))].slice(0, 500),
+    found: keyed(w.found, 3000, (n) => {
+      const all = [...new Set(numbers(n, 0, 2 ** 28, 6000).map(Math.round))];
+      return all.length ? all : undefined;
+    }),
+    routes: list(w.routes, 100).map((r, at) => ({
+      key: text(r.key, 40) || `route-${at}`, name: text(r.name, 60), map: Math.round(number(r.map, 0, 2 ** 31, 0)), points: numbers(r.points, 0, 2 ** 28, 500).map(Math.round),
+    })).filter((r) => r.map > 0),
+    across: Math.round(number(w.across, 100, 3000, d.across)),
+  };
+}
+
+function pets(v: unknown): PetsKept {
+  const p = object(v);
+  return {
+    goal: one(p.goal as PetsKept["goal"], GOALS, DEFAULTS.pets.goal),
+    levels: byPet(p.levels, 3),
+    souls: byPet(p.souls, 100_000),
+    told: number(p.told, 0, 2 ** 53, 0),
+  };
+}
 
 const aura = (v: Record<string, unknown>, at: number): AuraRule => ({
   key: text(v.key, 40) || `aura-${at}`,
@@ -568,6 +654,8 @@ export function read(value: unknown): Settings {
         return [id, { on: flag(a.on, f.on), banner: flag(a.banner, f.banner), value: number(a.value, 0, 100, f.value), volume: number(a.volume, 0, 1, f.volume), ...signal(a, f) }];
       }),
     ) as Settings["alerts"],
+    world: world(s.world),
+    pets: pets(s.pets),
     startup: flag(s.startup, d.startup),
     sleep: flag(s.sleep, d.sleep),
   };

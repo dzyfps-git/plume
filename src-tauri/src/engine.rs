@@ -34,6 +34,8 @@ struct Inner {
     fight: Value,
     near: Value,
     entries: Value,
+    /// Where you are. Yours alone, and not kept.
+    place: Value,
     session: Vec<Value>,
 }
 
@@ -60,6 +62,7 @@ impl Engine {
                 fight: Value::Null,
                 near: Value::Null,
                 entries: Value::Null,
+                place: Value::Null,
                 session: Vec::new(),
             }),
             change: Condvar::new(),
@@ -75,7 +78,7 @@ impl Engine {
 
     pub fn now(&self) -> Value {
         let i = self.lock();
-        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight, "near": i.near, "entries": i.entries })
+        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight, "near": i.near, "entries": i.entries, "place": i.place })
     }
 
     /// The game is connected and talking.
@@ -151,6 +154,7 @@ impl Engine {
                 i.reads = Value::Null;
                 i.near = Value::Null;
                 i.entries = Value::Null;
+                i.place = Value::Null;
             }
         }
         (self.tell)("engine", &value);
@@ -251,6 +255,7 @@ impl Engine {
             Some("fight") => self.lock().fight = message.clone(),
             Some("near") => self.lock().near = message.clone(),
             Some("entries") => self.lock().entries = message.clone(),
+            Some("place") => self.lock().place = message.clone(),
             Some("saved") => {
                 {
                     let mut i = self.lock();
@@ -324,9 +329,10 @@ mod tests {
         let e = engine(&std::env::temp_dir());
         e.hear(json!({ "t": "state", "live": true }));
         e.hear(json!({ "t": "near", "party": [{ "name": "Stranger" }] }));
-        assert!(e.live() && e.now()["near"]["party"][0]["name"] == "Stranger");
+        e.hear(json!({ "t": "place", "map": 20, "x": 1 }));
+        assert!(e.live() && e.now()["near"]["party"][0]["name"] == "Stranger" && e.now()["place"]["map"] == 20);
         e.say("failed", "");
-        assert!(!e.live() && e.now()["near"].is_null());
+        assert!(!e.live() && e.now()["near"].is_null() && e.now()["place"].is_null());
     }
 
     #[test]

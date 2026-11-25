@@ -1,8 +1,8 @@
 # Plume
 
 A companion app for AION 2 on Windows: a damage meter, boss health and timers, party and target frames, buffs and
-debuffs, auras you build, alerts, fight reports, dungeon runs and timed training runs, as overlays over the game, on a second
-screen, and as pages of its own. It sets you against your own best. The name is a placeholder.
+debuffs, auras you build, alerts, fight reports, dungeon runs and timed training runs, a map with a tracker, and your pets,
+as overlays over the game, on a second screen, and as pages of its own. It sets you against your own best. The name is a placeholder.
 
 Not made, approved or supported by NC. Made for private use.
 
@@ -17,6 +17,9 @@ Not made, approved or supported by NC. Made for private use.
   with everyone else as one sum. The card at the end of a fight shows others' numbers for some seconds.
 - What is near you (health, effects, the player you fight) and others' Combat Power are never written down at all.
 - Your own PvP counts are kept on this PC, for six hours after the last one.
+- Your own place is shown on the map and never written down. Nobody else's place is read. What you tick as found, track
+  or draw as a route, and your pets, are kept in your settings.
+- Hidden Cubes are shown as the spots where they can be. Which one is up now is not shown: the game does not say.
 - It writes to the registry only when you turn on "Start with Windows": one line in your own `Run` key.
 - The one exception is a recording of the session for a bug report, off until you turn it on: up to 256 MB of what the
   engine reads, with what other players did in it. It stays on this PC.
@@ -82,6 +85,12 @@ fastest of the same boss with about the same health. Both are in `src/features/b
 in them.
 
 Your own sounds for alerts go into the `sounds` folder, which the Alerts page opens.
+
+The maps, pets and drops are read from the `world` folder in the app's data: `index.json`, `map_<number>.json` and
+`.webp`, `pets.json` and `.webp`, `drops.json`. The engine's `tools/world.py` makes them from public data, with the
+game's own drop chances. They are not in this repository. `src/features/map/logic.ts` says what each holds. A place on
+a map is in metres, as the game says it, and the picture spans the map's `bounds`. Your place between two the game said
+is a guess, drawn as a dashed ring, for three seconds at most.
 
 ## Rights
 

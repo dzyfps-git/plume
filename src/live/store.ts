@@ -2,7 +2,7 @@ import { batch, createSignal } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import { on, type Start } from "../api";
 import { settings } from "../store";
-import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type Near, type Reads, type Skill, type State, type Status } from "./types";
+import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type Near, type Pets, type Position, type Reads, type Skill, type State, type Status } from "./types";
 import { limit, worth } from "./worth";
 
 const [engine, setEngine] = createSignal<{ status: Status; message?: string }>({ status: "off" });
@@ -12,6 +12,8 @@ const [fight, setFight] = createStore<Fight>(structuredClone(NO_FIGHT));
 const [skills, setSkills] = createSignal<{ id: number; skills: Skill[] }>({ id: 0, skills: [] });
 const [near, setNear] = createStore<Near>(structuredClone(NO_NEAR));
 const [entries, setEntries] = createSignal<Entries>(NO_ENTRIES);
+const [place, setPlace] = createSignal<Position | null>(null);
+const petListeners = new Set<(p: Pets) => void>();
 const listeners = new Set<(h: Happened) => void>();
 
 /** True when the game is connected. */
@@ -58,11 +60,13 @@ export function sample(made?: { near: Near; fight?: Fight }) {
   });
 }
 
-export { engine, state, reads, fight, skills, near, entries, sampling, over };
+export { engine, state, reads, fight, skills, near, entries, place, sampling, over };
 
 export const tell = (h: Happened) => listeners.forEach((hear) => hear(h));
 /** Calls `hear` with everything that happens, for as long as the window is open. */
 export const onHappened = (hear: (h: Happened) => void) => void listeners.add(hear);
+/** Calls `hear` with what the game says of your pets. */
+export const onPets = (hear: (p: Pets) => void) => void petListeners.add(hear);
 
 export async function follow(start: Start) {
   setEngine(start.engine);
@@ -71,6 +75,7 @@ export async function follow(start: Start) {
   if (start.fight) hearFight(start.fight);
   if (start.near) hearNear(start.near);
   if (start.entries) setEntries(start.entries);
+  setPlace(start.place ?? null);
   await on("engine", (value) => {
     setEngine(value);
     if (value.status === "running") return;
@@ -78,6 +83,7 @@ export async function follow(start: Start) {
     setReads(null);
     hearNear(NO_NEAR);
     setEntries(NO_ENTRIES);
+    setPlace(null);
   });
   await on("live", (message) => {
     if (message.t === "fight") hearFight(message);
@@ -87,6 +93,8 @@ export async function follow(start: Start) {
     else if (message.t === "near") hearNear(message);
     else if (message.t === "entries") setEntries(message);
     else if (message.t === "happened") tell(message);
+    else if (message.t === "place") setPlace(message);
+    else if (message.t === "pets") petListeners.forEach((hear) => hear(message));
   });
   await on("cleared", clearFight);
 }

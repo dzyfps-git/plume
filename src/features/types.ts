@@ -15,7 +15,7 @@ export interface Feature {
   more?: () => Feature[];
 }
 
-export const GROUPS = ["Fight", "Health", "Effects", "Other"] as const;
+export const GROUPS = ["Fight", "Health", "Effects", "World", "Other"] as const;
 
 export interface Overlay {
   view: Component;

@@ -311,6 +311,27 @@ export interface Happened {
   amount: number;
 }
 
+/** Where you are, in metres, as the game last said it. Yours alone, and not kept. */
+export interface Position {
+  /** The game's number for the map. */
+  map: number;
+  /** Not said on this map yet: only the map is known. */
+  known: boolean;
+  x: number;
+  y: number;
+  z: number;
+  /** When the game said it, by this PC's clock. */
+  at: number;
+}
+
+/** Your pets, as the game says them: all at login, then souls gained and levels reached. */
+export interface Pets {
+  what: "all" | "souls" | "level";
+  levels: [pet: number, level: number][];
+  /** Towards the next level with `all`, gained with `souls`. */
+  souls: [pet: number, souls: number][];
+}
+
 export const NO_NEAR: Near = {
   you: null, party: [], target: null, foe: null, fighting: false, dungeon: 0, run: 0, flight: null, ping: -1, jitter: -1, odyle: [-1, -1],
 };
@@ -326,6 +347,8 @@ export type Message =
   | { t: "skills"; id: number; skills: Skill[] }
   | ({ t: "near" } & Near)
   | ({ t: "entries" } & Entries)
+  | ({ t: "place" } & Position)
+  | ({ t: "pets" } & Pets)
   | ({ t: "happened" } & Happened);
 
 export const NO_FIGHT: Fight = {

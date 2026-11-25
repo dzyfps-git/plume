@@ -2,7 +2,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { Entries, Fight, Message, Near, Reads, Saved, State, Status } from "../live/types";
+import type { Entries, Fight, Message, Near, Position, Reads, Saved, State, Status } from "../live/types";
 
 export { getVersion as appVersion } from "@tauri-apps/api/app";
 
@@ -20,6 +20,7 @@ export interface Start {
   fight: Fight | null;
   near: Near | null;
   entries: Entries | null;
+  place: Position | null;
 }
 
 export const startState = () => invoke<Start>("start_state");
@@ -53,6 +54,8 @@ export const openSoundsFolder = () => invoke<void>("open_sounds_folder");
 export const pictures = () => invoke<unknown>("pictures");
 export const picture = (name: string) => invoke<ArrayBuffer>("picture", { name });
 export const openPicturesFolder = () => invoke<void>("open_pictures_folder");
+/** A file the engine's `tools/world.py` made: `map_1110.json`, `map_1110.webp`, `pets.json` and so on. */
+export const worldFile = (name: string) => invoke<ArrayBuffer>("world_file", { name });
 
 interface Events {
   live: Message;
