@@ -144,6 +144,7 @@ const FootItem = (props: { of: Foot }) => (
     <Show when={props.of.thing}>{(thing) => <Thing of={thing()} />}</Show>
     <Show when={!props.of.icon && !props.of.thing}><small>{props.of.name}</small></Show>
     <b>{props.of.value}</b>
+    <Show when={props.of.bonus}><span class="bonus">{props.of.bonus}</span></Show>
     <Show when={props.of.more}><small>{props.of.more}</small></Show>
   </span>
 );

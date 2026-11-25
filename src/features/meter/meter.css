@@ -67,6 +67,7 @@
 .meter-foot { --icon: 17px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 10px; padding: 5px 10px 6px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
 .foot-item { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; line-height: 1.2; white-space: nowrap; }
 .foot-item b { font-weight: 650; }
+.foot-item .bonus { font-size: 10.5px; font-weight: 600; }
 .foot-item small { color: color-mix(in srgb, var(--text) 74%, transparent); font-size: 10.5px; }
 
 /* No panel: each piece floats, a line of light under each name. */

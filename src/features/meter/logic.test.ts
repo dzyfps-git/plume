@@ -90,9 +90,9 @@ test("the footer says what you chose and what is known", () => {
   const entries = { ...NO_ENTRIES, counts: [[1, 5, 1], [4, 2, 0]] as [number, number, number][], kinah: 182_300 };
   const chosen = [{ id: 1, name: "", kind: "", show: true }, { id: 4, name: "Mine", kind: "", show: true }] as Resource[];
   const said = (which: Footer[], n: typeof near, e: typeof NO_ENTRIES) =>
-    footer(which, n, { total: 1_500 }, e, strip(e, n.odyle, chosen), 80).map((f) => [f.name, f.icon ?? f.thing ?? "", f.value, f.more].join(" "));
+    footer(which, n, { total: 1_500 }, e, strip(e, n.odyle, chosen), 80).map((f) => [f.name, f.icon ?? f.thing ?? "", f.value, f.bonus ?? "", f.more].join(" ").trim());
   assert.deepEqual(said(["ping", "total", "flight", "odyle", "entries", "kina", "points"], near, entries), [
-    "Ping ping 40 ms", "Total  1.50K ", "Odyle Energy odyle 1,455 18 runs", "Shugo Festival keys shugo 5 +1", "Mine  2 ", "Kina today kina 182K ",
+    "Ping ping 40  ms", "Total  1.50K", "Odyle Energy odyle 120 +1,335 18 runs", "Shugo Festival keys shugo 5 +1", "Mine  2", "Kina today kina 182K",
   ]);
   assert.deepEqual(said(["ping", "entries", "kina"], { ...near, ping: -1 }, NO_ENTRIES), []);
 });

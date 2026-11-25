@@ -1,6 +1,6 @@
 .left-strip { --icon: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-3); padding: 6px 10px; font-size: 12px; }
 .left-strip b { font-size: 14px; font-weight: 600; }
-.left-strip small { margin-left: 3px; color: var(--fresh); font-size: 11px; }
+.left-strip .bonus { margin-left: 3px; font-size: 11px; font-weight: 600; }
 .left-strip em { margin-left: 5px; font-style: normal; font-weight: 600; }
 .left-strip .left-reset { margin-left: auto; color: var(--text-muted); font-size: 11px; }
 .left-row { --columns: 230px minmax(0, 1fr) 70px 70px auto; }

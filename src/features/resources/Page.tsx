@@ -24,7 +24,7 @@ export function ResourcesPage() {
   const stats = () =>
     [
       ["Odyle Energy", near.odyle[0] < 0 ? "" : full(near.odyle[0]), "odyle"],
-      ["Odyle charged", near.odyle[1] <= 0 ? "" : full(near.odyle[1]), "odyle"],
+      ["Odyle charged", near.odyle[1] <= 0 ? "" : `+${full(near.odyle[1])}`, "odyle"],
       ["Runs left", near.odyle[0] < 0 ? "" : String(runsLeft(near.odyle, settings.odyleRun))],
       ["Daily Duties", entries().duty[0] < 0 ? "" : `${entries().duty[0]} of ${entries().duty[1]}`],
       ["Abyss Points this week", entries().points[0] < 0 ? "" : `${full(entries().points[0])} of ${full(entries().points[1])}`, "points"],
@@ -39,7 +39,7 @@ export function ResourcesPage() {
       </header>
       <Show when={some()} fallback={<Waiting idle="The game says what is left as you log in or change character." />}>
         <div class="stats">
-          <For each={stats()}>{([name, value, thing]) => <div class="stat"><small><Show when={thing}>{(t) => <Thing of={t()} />}</Show> {name}</small><b class="ui-num">{value}</b></div>}</For>
+          <For each={stats()}>{([name, value, thing]) => <div class="stat"><small><Show when={thing}>{(t) => <Thing of={t()} />}</Show> {name}</small><b class="ui-num" classList={{ bonus: value.startsWith("+") }}>{value}</b></div>}</For>
         </div>
         <section class="block">
           <Line name="Odyle Energy a run takes" about="80 is claiming twice in one run, with a membership: half the runs.">
@@ -61,7 +61,7 @@ export function ResourcesPage() {
                 </span>
                 <input class="ui-input" aria-label={`Name of ${id}`} placeholder={nameOf(id, settings.resources) || "No name"} value={known(id).name} maxlength={40} onChange={(e) => set(id, { name: e.currentTarget.value.trim() })} />
                 <span class="ui-num">{full(first)}</span>
-                <span class="ui-muted ui-num">{second > 0 ? `+${full(second)}` : ""}</span>
+                <span class="bonus ui-num">{second > 0 ? `+${full(second)}` : ""}</span>
                 <button class="ui-chip" aria-pressed={known(id).show} aria-label={`Show ${nameOf(id, settings.resources) || id}`} onClick={() => set(id, { show: !known(id).show })}>Show</button>
               </div>
             )}

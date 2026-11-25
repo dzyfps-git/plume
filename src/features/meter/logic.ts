@@ -121,6 +121,8 @@ export interface Foot {
   icon?: "ping" | "flight";
   thing?: Kind | "odyle" | "kina" | "points";
   value: string;
+  /** On top of it. */
+  bonus?: string;
   more: string;
 }
 
@@ -139,9 +141,9 @@ export function footer(
     flight: () => (near.flight ? [{ name: "Flight", icon: "flight", value: String(Math.round(near.flight.now)), more: "s" }] : []),
     odyle: () => {
       const [daily, charged] = near.odyle;
-      return daily >= 0 ? [{ name: "Odyle Energy", thing: "odyle", value: full(daily + Math.max(0, charged)), more: counted(runsLeft(near.odyle, perRun), "run") }] : [];
+      return daily >= 0 ? [{ name: "Odyle Energy", thing: "odyle", value: full(daily), bonus: charged > 0 ? `+${full(charged)}` : "", more: counted(runsLeft(near.odyle, perRun), "run") }] : [];
     },
-    entries: () => tickets.filter((t) => t.key !== "odyle").map((t) => ({ name: t.name, ...(t.kind && { thing: t.kind }), value: t.value, more: t.more })),
+    entries: () => tickets.filter((t) => t.key !== "odyle").map((t) => ({ name: t.name, ...(t.kind && { thing: t.kind }), value: t.value, bonus: t.more, more: "" })),
     kina: () => (entries.kinah >= 0 ? [{ name: "Kina today", thing: "kina", value: short(entries.kinah), more: "" }] : []),
     points: () => (entries.points[0] >= 0 ? [{ name: "Abyss Points this week", thing: "points", value: short(entries.points[0]), more: "" }] : []),
   };
