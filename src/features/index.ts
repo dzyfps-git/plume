@@ -9,6 +9,7 @@ import { finish } from "./finish/feature";
 import { flight } from "./flight/feature";
 import { foe, force, party, target, you } from "./frames/feature";
 import { history } from "./history/feature";
+import { loot } from "./loot/feature";
 import { map, tracker } from "./map/feature";
 import { meter } from "./meter/feature";
 import { pets } from "./pets/feature";
@@ -23,7 +24,7 @@ import type { Feature } from "./types";
 
 /** Pages stand in the menu in this order. */
 export const FEATURES: Feature[] = [
-  meter, boss, finish, splits, timers, training, history, bosses, resources, characters, time, map, pets, auras, alerts,
+  meter, boss, finish, splits, timers, training, history, bosses, resources, characters, time, loot, map, pets, auras, alerts,
   you, target, foe, party, force,
   buffs, debuffs, partyDebuffs, control, ready, actions,
   flight, ping, pvp, tracker,

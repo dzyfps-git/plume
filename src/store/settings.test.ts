@@ -93,3 +93,7 @@ test("events and the clock keep only what fits", () => {
   const s = read({ events: { off: ["shugo", 3], before: 99 }, clock: { start: 5.4, stopped: -1, end: "x" } });
   assert.deepEqual([s.events, s.clock], [{ off: ["shugo"], before: 30 }, { start: 5, stopped: 0, end: 0 }]);
 });
+
+test("loot rules are item numbers, each once", () => {
+  assert.deepEqual(read({ loot: { rules: [5, 5, -1, "x", 7.2], least: 9 } }).loot, { rules: [5, 7], least: 5 });
+});

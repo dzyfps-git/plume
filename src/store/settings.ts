@@ -39,7 +39,7 @@ export const KINDS = ["shugo", "invasion", "nightmare", "ascension", "transcende
 export const AURA_KINDS = ["on", "missing", "target", "untarget", "ready", "low", "party"] as const;
 export const LOOKS = ["icon", "bar", "text"] as const;
 /** What each is stands in `src/features/alerts/logic.ts`. */
-export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best", "record", "event", "full"] as const;
+export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best", "record", "event", "full", "loot"] as const;
 export const JOBS: readonly Job[] = ["gladiator", "templar", "ranger", "assassin", "sorcerer", "cleric", "spiritmaster", "chanter", "fighter", ""];
 /** Odyle Energy a run takes: once, or claimed twice. */
 export const ODYLE_RUN = [40, 80] as const;
@@ -330,6 +330,8 @@ export interface Settings {
   events: { off: string[]; before: number };
   /** The stopwatch and the countdown. */
   clock: Clock;
+  /** Items you chose, that stand out and sound as they come; and the least grade the loot feed shows, by its place in `items.json`. */
+  loot: { rules: number[]; least: number };
   /** Starts with Windows. */
   startup: boolean;
   /** Closes the overlay window while the game is closed. */
@@ -398,12 +400,14 @@ export const DEFAULTS: Settings = {
     record: { on: true, banner: true, sound: "chime", say: false, value: 0, volume: 0.6 },
     event: { on: false, banner: true, sound: "chime", say: false, value: 0, volume: 0.8 },
     full: { on: false, banner: true, sound: "drop", say: false, value: 0, volume: 0.6 },
+    loot: { on: true, banner: false, sound: "chime", say: false, value: 0, volume: 0.8 },
   },
   world: { map: 0, layers: ["trace", "cube", "gather", "boss", "teleport", "village", "sealed", "rift", "stronghold"], follow: true, hideFound: false, tracked: [], found: {}, routes: [], across: 600 },
   pets: { goal: 3, levels: {}, souls: {}, told: 0 },
   calls: { on: true, mode: "say", voice: true, off: [] },
   events: { off: [], before: 5 },
   clock: { start: 0, stopped: 0, end: 0 },
+  loot: { rules: [], least: 0 },
   startup: false,
   sleep: true,
 };
@@ -685,6 +689,7 @@ export function read(value: unknown): Settings {
     pets: pets(s.pets),
     calls: calls(s.calls),
     events: { off: keys(object(s.events).off), before: Math.round(number(object(s.events).before, 0, 30, d.events.before)) },
+    loot: { rules: [...new Set(numbers(object(s.loot).rules, 1, 2 ** 32, 500).map(Math.round))], least: Math.round(number(object(s.loot).least, 0, 5, d.loot.least)) },
     clock: { start: time(object(s.clock).start), stopped: time(object(s.clock).stopped), end: time(object(s.clock).end) },
     startup: flag(s.startup, d.startup),
     sleep: flag(s.sleep, d.sleep),

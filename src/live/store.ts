@@ -2,7 +2,7 @@ import { batch, createSignal } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import { on, type Start } from "../api";
 import { settings } from "../store";
-import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type Near, type Pets, type Position, type Reads, type Skill, type State, type Status } from "./types";
+import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type LootEvent, type RollEvent, type Near, type Pets, type Position, type Reads, type Skill, type State, type Status } from "./types";
 import { limit, worth } from "./worth";
 
 const [engine, setEngine] = createSignal<{ status: Status; message?: string }>({ status: "off" });
@@ -69,6 +69,9 @@ export const tell = (h: Happened) => listeners.forEach((hear) => hear(h));
 export const onHappened = (hear: (h: Happened) => void) => void listeners.add(hear);
 /** Calls `hear` with what the game says of your pets. */
 export const onPets = (hear: (p: Pets) => void) => void petListeners.add(hear);
+const lootListeners = new Set<(m: { t: "loot"; events: LootEvent[] } | { t: "rolls"; events: RollEvent[] }) => void>();
+/** Calls `hear` with loot and Dice Rolls as they come. */
+export const onLoot = (hear: (m: { t: "loot"; events: LootEvent[] } | { t: "rolls"; events: RollEvent[] }) => void) => void lootListeners.add(hear);
 
 export async function follow(start: Start) {
   setEngine(start.engine);
@@ -97,6 +100,7 @@ export async function follow(start: Start) {
     else if (message.t === "happened") tell(message);
     else if (message.t === "place") setPlace(message);
     else if (message.t === "pets") petListeners.forEach((hear) => hear(message));
+    else if (message.t === "loot" || message.t === "rolls") lootListeners.forEach((hear) => hear(message));
     else if (message.t === "cooldowns") setCooldowns((all) => new Map([...all, ...message.list.map(([skill, ms]) => [skill, { end: message.at + ms, at: message.at }] as const)]));
   });
   await on("cleared", clearFight);

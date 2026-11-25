@@ -102,6 +102,10 @@ and the entries you named on the Resources page, carried on from when it was las
 whole steps. The Time page has the events on the server's clock (UTC+9), as guides give them, a stopwatch, a countdown and
 odds of a try; the Time bar overlay shows them over the game.
 
+The Loot page keeps what you gain, gather, see drop for you and kill, by day from one daily reset to the next, on this
+PC; your drop rates over the days kept; Dice Rolls; and a diary of the days. The Loot overlay shows items as you gain them.
+Item names and grades come from `items.json` in the `world` folder, which the engine's `tools/items.py` makes.
+
 Timers and mechanics you set for a boss are keyed by the skill the boss used. Since the engine names each boss skill by
 its own number, plans saved before then under a family number (such as 1600000) no longer match and need setting again.
 

@@ -15,6 +15,7 @@ export const ALERT_NAMES: Record<AlertId, { name: string; about: string; value?:
   best: { name: "A new best", about: "Your damage a second was higher than in any fight of that target before." },
   record: { name: "A record hit", about: "Bigger than any you made with that skill before. Dummies do not count." },
   event: { name: "An event begins", about: "Those chosen on the Time page, the minutes before it set there." },
+  loot: { name: "An item you chose", about: "As you gain one of the items chosen on the Loot page." },
   full: { name: "Odyle Energy is nearly full", about: "Of the character you play: within half an hour, and once each time." },
 };
 

@@ -332,6 +332,39 @@ export interface Pets {
   souls: [pet: number, souls: number][];
 }
 
+/** Where loot came, as the game last said it. */
+export interface LootPlace {
+  map: number;
+  dungeon: number;
+  content: number;
+  contentState: number;
+}
+
+/** Loot as the engine's core reads it: see the engine's `docs/protocol.md`. */
+export type LootEvent = { at: number; atPlace: LootPlace } & (
+  | { kind: "items"; items: { item: number; total: number; change: "new" | "changed" | "removed"; gained: number | null }[] }
+  | { kind: "gather"; gather: { type: "started" | "refused"; node: number } | { type: "done"; node: number; status: number; item: number; count: number; bonus: number; extraItem: number; extraCount: number } }
+  | { kind: "drops"; drops: { source: number; mob: number | null; item: number; count: number; owner: "you" | "party" | "other" }[] }
+  | { kind: "kill"; entity: number; mob: number; byYou: boolean; byParty: boolean }
+  | { kind: "cards"; cards: unknown[] }
+);
+
+export interface RollPlayer {
+  serverId: number;
+  name: string;
+}
+
+/** Dice Roll loot, one thing the game said of a roll. */
+export interface RollEvent {
+  at: number;
+  roll:
+    | { type: "open"; rollId: string; itemId: number; count: number; endsAt: number }
+    | { type: "mine"; rollId: string; roll: number }
+    | { type: "roll"; itemId: number; player: RollPlayer; roll: number }
+    | { type: "pass"; rollId: string; itemId: number; player: RollPlayer }
+    | { type: "won"; rollId: string; itemId: number; player: RollPlayer };
+}
+
 export const NO_NEAR: Near = {
   you: null, party: [], target: null, foe: null, fighting: false, dungeon: 0, run: 0, flight: null, ping: -1, jitter: -1, odyle: [-1, -1],
 };
@@ -350,6 +383,8 @@ export type Message =
   | ({ t: "place" } & Position)
   | ({ t: "pets" } & Pets)
   | { t: "cooldowns"; /** Skill and ms left, when the game said it. */ list: [skill: number, ms: number][]; at: number }
+  | { t: "loot"; events: LootEvent[] }
+  | { t: "rolls"; events: RollEvent[] }
   | ({ t: "happened" } & Happened);
 
 export const NO_FIGHT: Fight = {
