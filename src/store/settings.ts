@@ -1,6 +1,7 @@
 // What you chose, with its defaults. Anything missing or wrong in the file falls back by itself.
 
 import type { Job } from "../live/types.ts";
+import type { Clock } from "../features/time/logic.ts";
 
 export const VERSION = 1;
 export const MODES = ["bossTargets", "lastHitByMe", "mostRecent", "mostDamage", "allTargets"] as const;
@@ -8,7 +9,7 @@ export const FPS = [30, 60, 120, 144, 0] as const;
 export const STYLES = ["bar", "line", "cards", "gauge", "table"] as const;
 export const ACCENTS = ["", "ocean", "forest", "ember", "rose", "mono"] as const;
 /** What a key over the game can do. `pressed` in `src-tauri/src/main.rs` does it. */
-export const ACTIONS = ["overlay", "edit", "reset", "view", "quick", "compact", "lock", "peek", "discreet", "history", "details", "settings", "buffs", "actions", "second"] as const;
+export const ACTIONS = ["overlay", "edit", "reset", "view", "quick", "compact", "lock", "peek", "discreet", "history", "details", "settings", "buffs", "actions", "second", "stopwatch"] as const;
 /** What the meter shows, in the order its key goes through. The same as in `src-tauri/src/main.rs`. */
 export const VIEWS = ["damage", "rdps", "ndps", "healing", "taken", "hits"] as const;
 export const WHEN = ["always", "fight", "boss", "dungeon", "pvp", "calm"] as const;
@@ -38,7 +39,7 @@ export const KINDS = ["shugo", "invasion", "nightmare", "ascension", "transcende
 export const AURA_KINDS = ["on", "missing", "target", "untarget", "ready", "low", "party"] as const;
 export const LOOKS = ["icon", "bar", "text"] as const;
 /** What each is stands in `src/features/alerts/logic.ts`. */
-export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best", "record"] as const;
+export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best", "record", "event", "full"] as const;
 export const JOBS: readonly Job[] = ["gladiator", "templar", "ranger", "assassin", "sorcerer", "cleric", "spiritmaster", "chanter", "fighter", ""];
 /** Odyle Energy a run takes: once, or claimed twice. */
 export const ODYLE_RUN = [40, 80] as const;
@@ -325,6 +326,10 @@ export interface Settings {
   pets: PetsKept;
   /** Boss calls of `calls.json`: what is said, aloud too, and bosses or calls turned off by key. */
   calls: { on: boolean; mode: "say" | "line"; voice: boolean; off: string[] };
+  /** Events turned off, and the minutes before one that the alert comes. */
+  events: { off: string[]; before: number };
+  /** The stopwatch and the countdown. */
+  clock: Clock;
   /** Starts with Windows. */
   startup: boolean;
   /** Closes the overlay window while the game is closed. */
@@ -346,7 +351,7 @@ export const DEFAULTS: Settings = {
   hotkeys: {
     overlay: "Ctrl+Alt+F9", edit: "Ctrl+Alt+F10", reset: "Ctrl+Alt+F11", view: "Ctrl+Alt+F12", quick: "Ctrl+Alt+F8",
     // Empty, so that none takes a key you use.
-    compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "", second: "",
+    compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "", second: "", stopwatch: "",
   },
   overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true },
   meter: {
@@ -391,10 +396,14 @@ export const DEFAULTS: Settings = {
     slain: { on: false, banner: false, sound: "fall", say: false, value: 0, volume: 1 },
     best: { on: true, banner: true, sound: "rise", say: false, value: 0, volume: 1 },
     record: { on: true, banner: true, sound: "chime", say: false, value: 0, volume: 0.6 },
+    event: { on: false, banner: true, sound: "chime", say: false, value: 0, volume: 0.8 },
+    full: { on: false, banner: true, sound: "drop", say: false, value: 0, volume: 0.6 },
   },
   world: { map: 0, layers: ["trace", "cube", "gather", "boss", "teleport", "village", "sealed", "rift", "stronghold"], follow: true, hideFound: false, tracked: [], found: {}, routes: [], across: 600 },
   pets: { goal: 3, levels: {}, souls: {}, told: 0 },
   calls: { on: true, mode: "say", voice: true, off: [] },
+  events: { off: [], before: 5 },
+  clock: { start: 0, stopped: 0, end: 0 },
   startup: false,
   sleep: true,
 };
@@ -474,6 +483,10 @@ function pets(v: unknown): PetsKept {
   };
 }
 
+/** Short names, each once. */
+const keys = (v: unknown) => [...new Set((Array.isArray(v) ? v : []).filter((k): k is string => typeof k === "string" && k.length <= 120))].slice(0, 1000);
+const time = (v: unknown) => Math.round(number(v, 0, 2 ** 53, 0));
+
 function calls(v: unknown): Settings["calls"] {
   const c = object(v);
   const d = DEFAULTS.calls;
@@ -481,7 +494,7 @@ function calls(v: unknown): Settings["calls"] {
     on: flag(c.on, d.on),
     mode: one(c.mode as Settings["calls"]["mode"], ["say", "line"], d.mode),
     voice: flag(c.voice, d.voice),
-    off: [...new Set((Array.isArray(c.off) ? c.off : []).filter((k): k is string => typeof k === "string" && k.length <= 120))].slice(0, 1000),
+    off: keys(c.off),
   };
 }
 
@@ -671,6 +684,8 @@ export function read(value: unknown): Settings {
     world: world(s.world),
     pets: pets(s.pets),
     calls: calls(s.calls),
+    events: { off: keys(object(s.events).off), before: Math.round(number(object(s.events).before, 0, 30, d.events.before)) },
+    clock: { start: time(object(s.clock).start), stopped: time(object(s.clock).stopped), end: time(object(s.clock).end) },
     startup: flag(s.startup, d.startup),
     sleep: flag(s.sleep, d.sleep),
   };

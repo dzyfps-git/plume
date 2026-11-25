@@ -97,6 +97,11 @@ Boss calls and dungeon names come from the same folder: `calls.json` and `dungeo
 and says the boss's own line or what to do, as `src/features/calls/logic.ts` describes. Nothing is predicted. The
 action bars count down with the cooldowns the game sends, and with what was learned only until it does.
 
+The Characters page keeps each character you play, by name, on this PC: Odyle Energy, Kinah today, Abyss Points, duties
+and the entries you named on the Resources page, carried on from when it was last seen by what comes back by itself, in
+whole steps. The Time page has the events on the server's clock (UTC+9), as guides give them, a stopwatch, a countdown and
+odds of a try; the Time bar overlay shows them over the game.
+
 Timers and mechanics you set for a boss are keyed by the skill the boss used. Since the engine names each boss skill by
 its own number, plans saved before then under a family number (such as 1600000) no longer match and need setting again.
 

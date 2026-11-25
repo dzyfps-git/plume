@@ -290,6 +290,23 @@ fn engine_folder(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("engine"))
 }
 
+/// Stops a running stopwatch, goes on with a stopped one, or starts one: as `toggle` in `src/features/time/logic.ts`.
+fn stopwatch(clock: &mut Value) {
+    let now = std::time::UNIX_EPOCH.elapsed().map_or(0, |d| d.as_millis() as u64);
+    let at = |key: &str| clock[key].as_u64().unwrap_or(0);
+    let (start, stopped) = (at("start"), at("stopped"));
+    let (start, stopped) = match (start, stopped) {
+        (0, _) => (now, 0),
+        (_, 0) => (start, now),
+        _ => (start + now.saturating_sub(stopped), 0),
+    };
+    if !clock.is_object() {
+        *clock = json!({ "end": 0 });
+    }
+    clock["start"] = start.into();
+    clock["stopped"] = stopped.into();
+}
+
 fn turn(value: &mut Value, unset: bool) {
     *value = (!value.as_bool().unwrap_or(unset)).into();
 }
@@ -321,6 +338,7 @@ fn pressed(app: &AppHandle, action: &str) {
         // Both are off until you turn them on.
         "buffs" | "actions" => set(&|s| turn(&mut s["places"][action]["on"], false)),
         "second" => second_screen(app.clone()),
+        "stopwatch" => set(&|s| stopwatch(&mut s["clock"])),
         "history" | "details" | "settings" => open_page(app.clone(), action.into()),
         _ => {}
     }

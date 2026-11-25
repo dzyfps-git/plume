@@ -1,5 +1,6 @@
 import { createEffect, createRoot, createSignal, untrack } from "solid-js";
 import { entries, near, sampling } from "../../live/store";
+import { followCharacters } from "../characters/watch";
 import { note, type Seen } from "./logic";
 
 /** How each entry grew, on this PC. Yours alone, and nothing but numbers. */
@@ -19,6 +20,7 @@ addEventListener("storage", (e) => e.key === KEY && setSeen(kept()));
 
 /** Watches what comes back, so that the next is known. */
 export function followGrowth() {
+  followCharacters();
   createRoot(() => {
     let before: Record<string, number> = {};
     createEffect(() => {

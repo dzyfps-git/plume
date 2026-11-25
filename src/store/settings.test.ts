@@ -88,3 +88,8 @@ test("boss calls keep a known mode and only names turned off", () => {
   const s = read({ calls: { on: false, mode: "loud", voice: 1, off: ["thamon", "thamon", 4] } });
   assert.deepEqual(s.calls, { on: false, mode: "say", voice: true, off: ["thamon"] });
 });
+
+test("events and the clock keep only what fits", () => {
+  const s = read({ events: { off: ["shugo", 3], before: 99 }, clock: { start: 5.4, stopped: -1, end: "x" } });
+  assert.deepEqual([s.events, s.clock], [{ off: ["shugo"], before: 30 }, { start: 5, stopped: 0, end: 0 }]);
+});

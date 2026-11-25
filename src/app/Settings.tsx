@@ -29,6 +29,7 @@ const ACTION_NAMES: Record<Action, string> = {
   buffs: "Buffs on or off",
   actions: "Action bars on or off",
   second: "Second screen",
+  stopwatch: "Stopwatch: start, stop, go on",
 };
 
 /** What came with this version, newest first. */

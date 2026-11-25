@@ -12,6 +12,9 @@ import { short } from "../../ui/format";
 import { count, NONE } from "../pvp/logic";
 import { speak } from "../timers/voice";
 import { callFile } from "../map/data";
+import { upcoming } from "../time/logic";
+import { fullIn } from "../characters/logic";
+import { seen as grown } from "../resources/watch";
 import { heard, onBoss as onBossAuras, words as callWords, type CallFile, type GameCall } from "../calls/logic";
 import { ahead, look, notes, onBlow, onEffects, raised, safe, streakText, type Call, type Look, type Raised } from "./logic";
 import { signal } from "./signal";
@@ -114,6 +117,26 @@ export function followAlerts() {
         for (const c of heard(file, h.what === "begin" ? "cast" : "use", h.skill, settings.calls.off)) gameCall(c, c.lead ? Date.now() + c.lead : 0);
       }
     });
+
+    // Events about to begin, and Odyle Energy about to be full. Each once.
+    const told = new Set<string>();
+    let filling = false;
+    setInterval(() => {
+      const now = Date.now();
+      const before = settings.events.before * 60_000;
+      for (const n of upcoming(now, settings.events.off)) {
+        const key = `${n.event.id} ${n.start}`;
+        const due = before ? !n.open && n.start - now <= before : n.open && now - n.start < 60_000;
+        if (due && !told.has(key)) {
+          told.add(key);
+          alert({ id: "event", text: before ? `${n.event.name} in ${Math.max(1, Math.round((n.start - now) / 60_000))} min` : `${n.event.name} opens` });
+        }
+      }
+      const odyle = near.you ? near.odyle[0] : -1;
+      const soon = odyle >= 0 && fullIn(odyle, settings.odyle.member, grown().odyle, now) <= 30 * 60_000;
+      if (soon && !filling && !sampling()) alert({ id: "full", text: "Odyle Energy nearly full" });
+      filling = soon;
+    }, 15_000);
 
     onKept((kept, all) => {
       const more = gain(kept, all);
