@@ -18,7 +18,9 @@
 .by-skill { display: grid; overflow-x: auto; }
 .players.by-skill { margin-bottom: var(--space-2); }
 .players.by-skill > div { grid-template-columns: minmax(150px, 1fr) repeat(6, 74px); }
-.board .mvp { margin-left: 6px; }
+.board .mvp { display: inline-flex; flex: none; align-items: center; gap: 3px; }
+.board .mvp b { min-width: 0; background: linear-gradient(90deg, #fff2c4, #ffc14d 50%, #ff8ab5); background-clip: text; color: transparent; font-size: 12px; font-weight: 800; }
+.board .board-title { min-width: 0; color: color-mix(in srgb, var(--class) 50%, var(--text)); font-size: 11px; text-align: left; }
 .by-skill > div { display: grid; grid-template-columns: minmax(170px, 1fr) repeat(var(--columns), 58px); gap: var(--space-1); align-items: center; min-height: var(--row-height); padding: 0 var(--space-2); border-radius: var(--radius); }
 .by-skill > div:not(:first-child):hover { background: var(--surface-hover); }
 .by-skill > div > :not(:first-child) { text-align: center; }

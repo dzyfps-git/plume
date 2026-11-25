@@ -7,6 +7,7 @@ export const resources: Feature = {
   id: "resources",
   name: "Resources",
   icon: "",
+  color: "#5fdc95",
   page: ResourcesPage,
   overlay: {
     view: ResourcesOverlay, group: "Other", about: "Odyle Energy, and the tickets and entries chosen on the Resources page.", width: 300,

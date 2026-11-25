@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoFight, demoSkills } from "../../live/demo.ts";
-import type { Row } from "../../live/types.ts";
-import { VIEWS } from "../../store/settings.ts";
-import { against, footer, label, length, lines, partyDps, power, ranked, shown, signed } from "./logic.ts";
+import { NO_ENTRIES, type Row } from "../../live/types.ts";
+import { VIEWS, type Footer, type Resource } from "../../store/settings.ts";
+import { strip } from "../resources/logic.ts";
+import { against, BEST, footer, gain, label, length, lines, partyDps, power, ranked, shown, signed, withBest } from "./logic.ts";
 
 const row = (id: number, damage: number, you = false) => ({ id, name: you ? "Me" : `P${id}`, damage, you }) as Row;
 const rows = [row(1, 100), row(2, 50), row(3, 25), row(4, 10, true)];
@@ -50,6 +51,13 @@ test("a fight is held against your kept ones of the same target", () => {
   assert.equal(signed(-0.123), "-12%");
 });
 
+test("a kept fight is a new best when none before it was better", () => {
+  const kept = (id: string, dps: number, more: object = {}) => ({ id, ms: 60_000, code: 5, target: "Boss", you: { dps, damage: dps * 60, job: "assassin" }, ...more }) as never;
+  const all = [kept("a", 100), kept("b", 120), kept("c", 900, { ms: 5_000 }), kept("d", 900, { you: { dps: 900, damage: 1, job: "cleric" } })];
+  assert.equal(signed(gain(kept("new", 132), [...all, kept("new", 132)])!), "+10%");
+  assert.deepEqual([gain(kept("new", 110), all), gain(kept("new", 110), []), gain(kept("new", 110, { you: null }), all)], [undefined, undefined, undefined]);
+});
+
 test("the made-up fight adds up", () => {
   for (const ms of [0, 250, 61_000, 179_999]) {
     const f = demoFight(ms);
@@ -78,7 +86,24 @@ test("an estimate of everyone else is never a name", () => {
 });
 
 test("the footer says what you chose and what is known", () => {
-  const near = { ping: 40, odyle: [120, 0] as [number, number], flight: null };
-  assert.deepEqual(footer(["ping", "total", "flight", "odyle"], near, { total: 1_500 }), ["40 ms", "1.50K total", "Odyle 120, 3 runs"]);
-  assert.deepEqual(footer(["ping"], { ...near, ping: -1 }, { total: 0 }), []);
+  const near = { ping: 40, odyle: [120, 1_335] as [number, number], flight: null };
+  const entries = { ...NO_ENTRIES, counts: [[1, 5, 1], [4, 2, 0]] as [number, number, number][], kinah: 182_300 };
+  const chosen = [{ id: 1, name: "", kind: "", show: true }, { id: 4, name: "Mine", kind: "", show: true }] as Resource[];
+  const said = (which: Footer[], n: typeof near, e: typeof NO_ENTRIES) =>
+    footer(which, n, { total: 1_500 }, e, strip(e, n.odyle, chosen), 80).map((f) => [f.name, f.icon ?? f.thing ?? "", f.value, f.more].join(" "));
+  assert.deepEqual(said(["ping", "total", "flight", "odyle", "entries", "kina", "points"], near, entries), [
+    "Ping ping 40 ms", "Total  1.50K ", "Odyle Energy odyle 1,455 18 runs", "Shugo Festival keys shugo 5 +1", "Mine  2 ", "Kina today kina 182K ",
+  ]);
+  assert.deepEqual(said(["ping", "entries", "kina"], { ...near, ping: -1 }, NO_ENTRIES), []);
+});
+
+test("your best stands among the rows without taking a place", () => {
+  const f = demoFight(60_000);
+  const list = ranked(f, "damage");
+  assert.deepEqual(withBest(list, undefined, f.ms, ""), list);
+  const best = (list[0].total + list[1].total) / 2 / 60;
+  const all = shown(withBest(list, best, f.ms, "assassin"), 8);
+  assert.deepEqual(all.slice(0, 3).map((r) => [r.row.id === BEST, r.rank]), [[false, 1], [true, 0], [false, 2]]);
+  assert.equal(withBest(list, 1, f.ms, "").at(-1)!.row.id, BEST);
+  assert.equal(shown(withBest(list, 1e9, f.ms, ""), 2).filter((r) => r.row.you).length, 1);
 });

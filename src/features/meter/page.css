@@ -5,7 +5,7 @@
   font: inherit; text-align: left; isolation: isolate;
 }
 .board-row small { min-width: 64px; color: var(--text); font-size: 12px; text-align: right; }
-.board-row .meter-power { min-width: 0; color: var(--text-muted); font-size: 11px; }
+.board-row .meter-power { min-width: 0; color: color-mix(in srgb, var(--text) 82%, transparent); font-size: 11px; }
 .board-row b { min-width: 64px; font-weight: 600; text-align: right; }
 .board-row .meter-bar { background: linear-gradient(90deg, color-mix(in srgb, var(--class) 20%, transparent), color-mix(in srgb, var(--class) 48%, transparent)); }
 .board-row:hover { background: var(--surface-selected); }

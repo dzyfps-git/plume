@@ -1,4 +1,5 @@
 import { near } from "../../live/store";
+import { PingBars } from "../../ui/icons";
 import type { Feature } from "../types";
 import "../meter/meter.css";
 import "../flight/flight.css";
@@ -9,7 +10,7 @@ function PingOverlay() {
   return (
     <section class="flight glass" aria-label="Ping">
       <div class="flight-line">
-        <span>{near.jitter >= 0 ? `Ping, moves by ${near.jitter}` : "Ping"}</span>
+        <span><PingBars ping={Math.max(0, near.ping)} /> {near.jitter >= 0 ? `Ping, moves by ${near.jitter}` : "Ping"}</span>
         <b class="ui-num" style={{ color: bad() ? "var(--fresh)" : undefined }}>{near.ping >= 0 ? `${near.ping} ms` : "-"}</b>
       </div>
     </section>

@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { entries, near } from "../../live/store";
 import { settings } from "../../store";
+import { Thing, type ThingName } from "../../ui/icons";
 import { counted, resets, strip, wait } from "./logic";
 import "../meter/meter.css";
 import "./resources.css";
@@ -21,7 +22,7 @@ export function ResourcesOverlay() {
   return (
     <section class="left-strip glass ui-num" aria-label="Resources">
       <For each={list()} fallback={<span>Resources</span>}>
-        {(l) => <span>{l.name} <b>{l.value}</b><Show when={l.more}><small>{l.more}</small></Show><Show when={l.runs !== undefined}><em>{counted(l.runs!, "run")}</em></Show></span>}
+        {(l) => <span aria-label={l.name}><Show when={l.kind} fallback={l.name}>{(kind) => <Thing of={kind() as ThingName} />}</Show> <b>{l.value}</b><Show when={l.more}><small>{l.more}</small></Show><Show when={l.runs !== undefined}><em>{counted(l.runs!, "run")}</em></Show></span>}
       </For>
       <span class="left-reset">resets in {wait(resets(now()).daily)}</span>
     </section>

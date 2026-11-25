@@ -1,7 +1,9 @@
 import type { Job } from "../live/types";
 import { settings } from "../store";
+import { GameIcon } from "./Pic";
+import "./icons.css";
 
-/** Each class's name, colour and mark. The marks are drawn for this app. */
+/** Each class's name, colour and mark. The marks are drawn for this app, and stand in for the game's emblems. */
 export const CLASSES: Record<Exclude<Job, "">, { name: string; color: string; mark: string }> = {
   gladiator: { name: "Gladiator", color: "#e0564f", mark: "M5 19 17 7M14 4l6 6M4 16l4 4" },
   templar: { name: "Templar", color: "#4f8dee", mark: "M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" },
@@ -30,8 +32,10 @@ export function classOf(job: Job) {
 
 export function ClassMark(props: { job: Job }) {
   return (
-    <svg class="class-mark" viewBox="0 0 24 24" role="img" aria-label={classOf(props.job).name}>
-      <path d={classOf(props.job).mark} />
-    </svg>
+    <span class="class-mark" role="img" aria-label={classOf(props.job).name} style={{ "--class-color": classOf(props.job).color }}>
+      <GameIcon name={`class_icon_${props.job === "spiritmaster" ? "elementalist" : props.job || "none"}`}>
+        <svg viewBox="0 0 24 24"><path d={classOf(props.job).mark} /></svg>
+      </GameIcon>
+    </span>
   );
 }

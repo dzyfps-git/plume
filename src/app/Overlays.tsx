@@ -10,8 +10,8 @@ import { CLASSES } from "../ui/classes";
 import { Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
 
-const FOOTER_NAMES: Record<Footer, string> = { ping: "Ping", total: "Total", flight: "Flight", odyle: "Odyle Energy", entries: "Tickets" };
-const STYLE_NAMES = { bar: "Full bars", line: "Thin lines", table: "Table" } as const;
+const FOOTER_NAMES: Record<Footer, string> = { ping: "Ping", total: "Total", flight: "Flight", odyle: "Odyle Energy", entries: "Tickets", kina: "Kina today", points: "Abyss Points" };
+const STYLE_NAMES = { bar: "Full bars", line: "Lines of light", cards: "Cards", table: "Table" } as const;
 
 export function OverlaysPage() {
   return (
@@ -98,7 +98,9 @@ export function OverlaysPage() {
         </Line>
         <Switch name="Share of the damage" on={settings.meter.share} set={(on) => change((s) => (s.meter.share = on))} />
         <Switch name="Total damage" on={settings.meter.total} set={(on) => change((s) => (s.meter.total = on))} />
-        <Switch name="You at the top" about="Your class and Combat Power, which pull it is, and how it goes against your best." on={settings.meter.head} set={(on) => change((s) => (s.meter.head = on))} />
+        <Switch name="Boss health" about="Above the rows, with its stagger gauge and how long until it falls." on={settings.meter.boss} set={(on) => change((s) => (s.meter.boss = on))} />
+        <Switch name="Your best as a row" about="Where your best fight of this target would be by now." on={settings.meter.ghost} set={(on) => change((s) => (s.meter.ghost = on))} />
+        <Switch name="Your pull" about="Which try it is, and how it goes against your best." on={settings.meter.head} set={(on) => change((s) => (s.meter.head = on))} />
         <Switch name="Combat Power" about="Small, beside each name. Other players' is never written down." on={settings.meter.power} set={(on) => change((s) => (s.meter.power = on))} />
         <Switch name="Class marks" on={settings.meter.icons} set={(on) => change((s) => (s.meter.icons = on))} />
         <Switch name="Hide other players' names" about="In every overlay." on={settings.meter.hideNames} set={(on) => change((s) => (s.meter.hideNames = on))} />

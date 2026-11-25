@@ -6,6 +6,7 @@ import { settings } from "../../store";
 import { plan } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, percent, short } from "../../ui/format";
+import { Drawn } from "../../ui/icons";
 import { Choices } from "../../ui/Line";
 import { Pic } from "../../ui/Pic";
 import { key } from "../bosses/logic";
@@ -15,7 +16,7 @@ import { forgetFight } from "../history/store";
 import { label, length } from "../meter/logic";
 import { Skills } from "../meter/Skills";
 import { figures, luck, skillGains, statChanges, type Figure } from "./compare";
-import { buffsBySkill, mvp, opening, overheal, partyCurve, pings, players, rates, unclean, type Mvp } from "./deep";
+import { buffsBySkill, mvp, opening, overheal, partyCurve, pings, players, rates, titles, unclean, type Mvp } from "./deep";
 import { Lanes, type Lane } from "./Lanes";
 import { activeDps, casts, chains, findings, gaps, nameOf, opener, parts, procs, resultText, rhythm, starts, untouchable, waited, wipeLine } from "./logic";
 import { bytes, fileName, picture } from "./share";
@@ -182,6 +183,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
   const why = createMemo(() => unclean(props.fight));
   const trip = createMemo(() => pings(props.fight));
   const top = createMemo(() => mvp(props.fight));
+  const named = createMemo(() => titles(props.fight));
   const credited = () => (you()?.damage ?? 0) - (you()?.got ?? 0) + (you()?.given ?? 0);
   return (
     <>
@@ -257,10 +259,11 @@ function Overview(props: { fight: Saved; best?: Saved }) {
                 <i class="meter-bar" />
                 <ClassMark job={r.job} />
                 <span class="meter-name">
-                  {label(r, settings.meter.hideNames, i() + 1)}
+                  <span>{label(r, settings.meter.hideNames, i() + 1)}</span>
                   <Show when={top()?.id === r.id}>
-                    <span class="ui-tag mvp" style={{ "--tag": "var(--accent)" }} data-tip={mvpWords(top()!)}>MVP</span>
+                    <span class="mvp" data-tip={mvpWords(top()!)}><Drawn name="crown" /><b>MVP</b></span>
                   </Show>
+                  <Show when={named().get(r.id)}>{(t) => <small class="board-title">{t()}</small>}</Show>
                 </span>
                 <small class="ui-num">{short(r.damage)}</small>
                 <small class="ui-num">{r.share.toFixed(1)}%</small>

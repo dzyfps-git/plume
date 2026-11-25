@@ -6,6 +6,7 @@ export const timers: Feature = {
   id: "timers",
   name: "Boss timers",
   icon: "\ue823",
+  color: "#ffbe55",
   overlay: {
     view: TimersOverlay,
     group: "Fight",

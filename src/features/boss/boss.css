@@ -1,18 +1,28 @@
-.boss { display: grid; gap: 5px; padding: 8px 10px 9px; }
-.boss-line { display: flex; align-items: baseline; gap: var(--space-3); }
-.boss-line strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.boss-line span { color: var(--text-muted); font-size: 12px; }
-.boss-line b { font-size: 16px; font-weight: 600; line-height: 1; }
-.boss-bar, .boss-stagger { position: relative; overflow: hidden; border-radius: 6px; background: color-mix(in srgb, var(--text) 9%, transparent); isolation: isolate; }
-.boss-bar { height: 18px; }
-.boss-stagger { height: 4px; border-radius: 2px; }
-.boss-bar i, .boss-stagger i { position: absolute; inset: 0; z-index: -1; transform: translateX(calc((var(--length) - 1) * 100%)); transition: transform var(--bar-time) var(--bar-ease); }
-.boss-bar i { border-right: 2px solid #ffb4a6; background: linear-gradient(90deg, #8d1f2b, #e0564f); }
-.boss-stagger i { background: var(--accent); }
-.boss-bar span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
-@media (prefers-reduced-motion: reduce) { .boss-bar i, .boss-stagger i { transition: none; } }
-.boss-bar em { position: absolute; top: 0; bottom: 0; width: 1px; background: rgb(255 255 255 / 45%); }
-.boss-bar .boss-due { width: 3px; margin-left: -1px; background: var(--success-ink); box-shadow: 0 0 6px var(--success-ink); }
+/* Whole points of the screen, so that what stands under it stays sharp. */
+.boss { display: grid; gap: round(4px, var(--px, 1px)); }
+.boss-alone { padding: 10px 14px 11px; }
+.boss-alone .boss { --thick: 9px; gap: 6px; }
+.boss-alone strong { font-size: 15px; }
+.boss-alone .boss-line { height: auto; }
+.boss-line { display: flex; align-items: baseline; gap: 8px; height: round(19px, var(--px, 1px)); }
+.boss-line strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.boss-line b { font-size: 17px; font-weight: 700; line-height: 1; letter-spacing: -.02em; background: linear-gradient(90deg, #ffb0d9, #c9b2ff); background-clip: text; color: transparent; text-shadow: none; }
+.boss-line b small { font-size: 11px; }
+.boss-bar { position: relative; height: round(var(--thick, 6px), var(--px, 1px)); border-radius: 99px; background: color-mix(in srgb, var(--text) 10%, transparent); box-shadow: 0 0 10px rgb(214 92 224 / 28%); }
+.boss-bar div, .boss-stagger { overflow: hidden; border-radius: inherit; }
+.boss-bar div { position: absolute; inset: 0; }
+.boss-bar i, .boss-stagger i { position: absolute; inset: 0; transform: translateX(calc((var(--length) - 1) * 100%)); transition: transform var(--bar-time) var(--bar-ease); }
+/* What it just lost stays a moment, pale, and follows. */
+.boss-bar .boss-lost { border-radius: inherit; background: rgb(255 226 242 / 55%); transition-duration: calc(var(--bar-time) * 5); transition-timing-function: var(--lost-ease, linear); }
+.boss-bar .boss-hp { border-right: 2px solid #fff; border-radius: 0 99px 99px 0; background: linear-gradient(90deg, #7d5cff, #d65ce0 55%, #ff7ab8); }
+.boss-bar em { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgb(14 13 20 / 80%); }
+.boss-bar .boss-due { top: -2px; bottom: -2px; width: 3px; border-radius: 2px; background: var(--success-ink); box-shadow: 0 0 6px var(--success-ink); }
 .boss-bar .boss-due[data-behind] { background: var(--fresh); box-shadow: 0 0 6px var(--fresh); }
-.boss-enrage { display: flex; justify-content: space-between; color: var(--success-ink); font-size: 12px; }
+.boss-stagger { position: relative; height: round(up, 2.5px, var(--px, 1px)); mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 2px), transparent calc(10% - 2px) 10%); background: color-mix(in srgb, var(--text) 12%, transparent); }
+.boss-stagger i { background: linear-gradient(90deg, #ffcf6e, #ff9e57); }
+.boss-sub { display: flex; align-items: baseline; gap: 10px; height: round(16px, var(--px, 1px)); color: color-mix(in srgb, var(--text) 78%, transparent); font-size: 11px; line-height: 1.2; white-space: nowrap; }
+.boss-sub > span:nth-last-child(2):not(:first-child) { margin-left: auto; }
+.boss-sub > b { color: var(--text); font-size: 13px; font-weight: 650; }
+.boss-enrage { display: flex; justify-content: space-between; color: var(--success-ink); font-size: 11px; }
 .boss-enrage[data-behind] { color: var(--fresh); }
+@media (prefers-reduced-motion: reduce) { .boss-bar i, .boss-stagger i { transition: none; } }

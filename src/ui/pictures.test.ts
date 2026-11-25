@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { dataUrl, pictureName, readPictures } from "./pictures.ts";
+import { halves, pictureName, readPictures } from "./pictures.ts";
 
 const all = readPictures({ skills: { 1335: "ICON_A" }, effects: { 133500001: "ICON_B", 5: "../x", 6: 7 } });
 
@@ -18,7 +18,7 @@ test("a list that is missing or wrong has no pictures", () => {
   assert.equal(pictureName(all, { effect: 6 }), undefined);
 });
 
-test("bytes become an address of their own", () => {
-  assert.equal(dataUrl(new Uint8Array([1, 2, 3])), "data:image/png;base64,AQID");
-  assert.equal(dataUrl(new Uint8Array()), undefined);
+test("a picture is made smaller by half at most at a time", () => {
+  assert.deepEqual([halves(232, 22), halves(96, 96), halves(54, 14), halves(20, 40)], [[116, 58, 29, 22], [96], [27, 14], [40]]);
+  for (let to = 1; to < 60; to++) halves(245, to).reduce((from, step) => (assert.ok(step >= from / 2), step), 245);
 });

@@ -1,7 +1,7 @@
 html, body, #root { height: 100%; background: transparent; overflow: hidden; user-select: none; }
 .screen { position: fixed; inset: 0; }
 .screen[data-editing] { background: rgb(0 0 0 / 30%); }
-.frame { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.frame { position: absolute; top: 0; left: 0; }
 .frame[data-editing] { border-radius: var(--radius-large); outline: 1px dashed var(--accent); cursor: move; touch-action: none; }
 .frame[data-editing]:focus-visible { outline: 2px solid var(--accent); }
 .frame-bar {

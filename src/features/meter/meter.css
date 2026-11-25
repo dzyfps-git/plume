@@ -1,36 +1,39 @@
 /* Over the game every moving thing steps at the frame rate that was chosen: --bar-time and --bar-ease. */
 .glass {
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-large);
-  background: color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 11%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-raised, var(--surface-base)) calc(var(--tint) * 100% + 4%), transparent), color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100%), transparent));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
   color: var(--text);
 }
 
-.meter { --row: 26px; }
-.meter-head { display: flex; align-items: baseline; gap: var(--space-2); padding: 7px 10px 6px; }
-.meter-head strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.meter-head span { color: var(--text-muted); font-size: 12px; }
-.meter-head b { font-size: 16px; font-weight: 600; line-height: 1; }
-.meter-power { margin-left: 6px; color: var(--text-muted); font-size: 10px; font-weight: 500; }
-.meter-you { display: flex; align-items: baseline; gap: 6px; padding: 7px 10px 0; font-size: 12px; }
-.meter-you .class-mark { align-self: center; color: color-mix(in srgb, var(--class) 70%, white); }
-.meter-you b { overflow: hidden; color: color-mix(in srgb, var(--class) 60%, white); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.meter-you small { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
-.meter-you span { margin-left: auto; color: var(--text-muted); font-size: 11px; white-space: nowrap; }
-.meter-you em { margin-left: 8px; font-style: normal; font-weight: 600; }
-.meter-rows { position: relative; height: calc(var(--count) * var(--row)); margin: 0 4px 4px; }
+/* A row is a whole number of the screen's points at every size, so that what glides stays sharp: --px is one of them. */
+.meter { --row: round(25px, var(--px, 1px)); --mark: 20px; --icon: 14px; color: var(--text); }
+.meter-head { display: flex; align-items: baseline; gap: var(--space-2); height: round(31px, var(--px, 1px)); padding: 7px 10px 6px; }
+.meter-head strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.meter-head span { color: color-mix(in srgb, var(--text) 78%, transparent); font-size: 12px; }
+.meter-head b { font-size: 16px; font-weight: 700; line-height: 1; }
+.meter-boss { padding: round(8px, var(--px, 1px)) 10px round(7px, var(--px, 1px)); }
+.meter-pull { color: color-mix(in srgb, var(--text) 72%, transparent); font-size: 10.5px; white-space: nowrap; }
+.meter-pull em { margin-left: 5px; font-style: normal; font-weight: 650; }
+.meter-power { display: inline-flex; flex: none; align-items: center; gap: 3px; color: color-mix(in srgb, var(--text) 84%, transparent); font-size: 10.5px; font-weight: 500; }
+.meter-rows { position: relative; height: calc(var(--count) * var(--row)); margin: 0 5px 5px; }
+.meter-row, .meter-hero {
+  --bright: color-mix(in oklab, var(--class) 80%, white);
+  --deep: color-mix(in oklab, var(--class) 74%, #160b33);
+}
 .meter-row {
   position: absolute;
   inset: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;
-  height: calc(var(--row) - 2px);
-  padding: 0 8px;
+  height: calc(var(--row) - round(3px, var(--px, 1px)));
+  padding: 0 8px 0 5px;
   overflow: hidden;
-  border-radius: calc(var(--radius) - 1px);
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
   isolation: isolate;
   transform: translateY(calc(var(--spot) * var(--row)));
   transition: transform var(--bar-time) var(--bar-ease);
@@ -39,31 +42,67 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  border-right: 2px solid color-mix(in srgb, var(--class) 70%, white);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--class) 38%, transparent), color-mix(in srgb, var(--class) 78%, transparent));
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--deep, var(--class)), color-mix(in oklab, var(--class) 92%, transparent));
   transform: translateX(calc((var(--length) - 1) * 100%));
   transition: transform var(--bar-time) var(--bar-ease);
 }
-.meter-row > :not(.meter-bar) { text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
-.meter-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.meter-row small { color: color-mix(in srgb, var(--text) 82%, transparent); font-size: 11px; }
-.meter-row b { min-width: 44px; font-weight: 600; text-align: right; }
-.meter-share { min-width: 38px; text-align: right; }
+.meter-shine { position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 45%) 50%, transparent 65%); transform: translateX(-100%); pointer-events: none; }
+.meter-row > :is(span, small, b) { text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
+.meter-rank { flex: none; width: 10px; color: rgb(255 255 255 / 70%); font-size: 12px; font-style: italic; font-weight: 800; text-align: center; }
+.meter-rank[data-rank="1"] { color: #ffd66b; }
+.meter-rank[data-rank="2"] { color: #dfe6f3; }
+.meter-rank[data-rank="3"] { color: #f2aa75; }
+.meter-name { display: flex; flex: 1; align-items: center; gap: 5px; min-width: 0; font-weight: 650; }
+.meter-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meter-row small { color: color-mix(in srgb, var(--text) 86%, transparent); font-size: 10.5px; }
+.meter-row b { min-width: 42px; font-size: 13.5px; font-weight: 700; text-align: right; }
+.meter-share { min-width: 34px; text-align: right; }
 .meter-row .meter-deaths { color: var(--danger-ink); }
-.meter-row[data-you] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--class) 75%, white); }
-.class-mark { flex: none; width: 14px; height: 14px; fill: none; stroke: currentcolor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.meter-row .class-mark { filter: drop-shadow(0 1px 1px rgb(0 0 0 / 70%)); }
-.meter-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-3); padding: 1px 10px 6px; color: var(--text-muted); font-size: 11px; }
+.meter-row[data-you] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bright) 80%, white); }
+.meter-row[data-ghost] { background: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--class) 45%, transparent); }
+.meter-row[data-ghost] .meter-bar { opacity: .3; }
+.meter-row[data-ghost] .meter-name { color: color-mix(in srgb, var(--class) 45%, white); font-weight: 500; }
+.meter-row[data-ghost] .class-mark { opacity: .55; }
+.meter-foot { --icon: 17px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 10px; padding: 5px 10px 6px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+.foot-item { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; line-height: 1.2; white-space: nowrap; }
+.foot-item b { font-weight: 650; }
+.foot-item small { color: color-mix(in srgb, var(--text) 74%, transparent); font-size: 10.5px; }
 
-/* A thin line under each name. */
-.meter[data-style="line"] .meter-row { background: none; }
-.meter[data-style="line"] .meter-bar { inset: auto 0 1px; height: 3px; border: 0; border-radius: 2px; background: var(--class); }
-.meter[data-style="line"] .class-mark { color: color-mix(in srgb, var(--class) 70%, white); }
+/* No panel: each piece floats, a line of light under each name. */
+.meter[data-style="line"] { display: grid; gap: round(4px, var(--px, 1px)); --row: round(27px, var(--px, 1px)); }
+.meter[data-style="line"] :is(.meter-boss, .meter-head, .meter-foot), .meter[data-style="line"] .meter-row {
+  border: 0; border-radius: 9px; background: linear-gradient(90deg, color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% + 20%), transparent), color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% - 10%), transparent));
+}
+.meter[data-style="line"] .meter-rows { margin: 0; }
+.meter[data-style="line"] .meter-row { padding-bottom: 2px; box-shadow: none; }
+.meter[data-style="line"] .meter-row::after { content: ""; position: absolute; inset: auto 0 0; z-index: -2; height: 2px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.meter[data-style="line"] .meter-bar { inset: auto 0 0; height: 2px; border-radius: 0 2px 2px 0; background: linear-gradient(90deg, var(--deep), var(--bright)); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--class) 75%, transparent); }
+.meter[data-style="line"] .meter-row[data-you] .meter-name > span { color: var(--bright); }
+
+/* Your card first and large, the others under it. */
+.meter[data-style="cards"] { display: grid; gap: round(5px, var(--px, 1px)); --mark: 18px; --row: round(23px, var(--px, 1px)); }
+.meter[data-style="cards"] :is(.meter-boss, .meter-head, .meter-foot, .meter-hero), .meter[data-style="cards"] .meter-rows {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% + 8%), transparent);
+}
+.meter[data-style="cards"] .meter-rows { --rim: round(3px, var(--px, 1px)); box-sizing: content-box; margin: 0; padding: var(--rim) 0; }
+.meter[data-style="cards"] .meter-row { inset: var(--rim) 4px auto; border-radius: 6px; background: none; box-shadow: none; }
+.meter[data-style="cards"] .meter-row .meter-bar { inset: auto 58px calc(50% - 2px) auto; width: 44px; height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--deep), var(--bright)); transform: scaleX(var(--length)); transform-origin: left; }
+.meter[data-style="cards"] .meter-row::after { content: ""; position: absolute; inset: auto 58px calc(50% - 2px) auto; z-index: -2; width: 44px; height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.meter[data-style="cards"] .meter-row .meter-share { display: none; }
+.meter[data-style="cards"] .meter-row > b { min-width: 96px; }
+.meter[data-style="cards"] .meter-foot { border-top-color: color-mix(in srgb, var(--text) 10%, transparent); }
+.meter-hero { --mark: 32px; display: flex; align-items: center; gap: 9px; height: round(48px, var(--px, 1px)); padding: 0 11px 0 8px; overflow: hidden; }
+.meter[data-style="cards"] .meter-hero { border-color: color-mix(in srgb, var(--class) 50%, transparent); background: radial-gradient(90% 170% at 0 0, color-mix(in srgb, var(--deep) 88%, transparent), transparent 72%), color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% + 8%), transparent); }
+.meter-hero .meter-name { display: grid; gap: 1px; font-size: 14px; }
+.hero-rate { display: grid; justify-items: end; gap: 1px; }
+.hero-rate b { font-size: 21px; font-weight: 750; line-height: 1.05; letter-spacing: -.03em; }
+.hero-rate small { color: color-mix(in srgb, var(--text) 74%, transparent); font-size: 10.5px; }
 
 /* A compact table with no bars. */
-.meter[data-style="table"] { --row: 22px; }
+.meter[data-style="table"] { --row: round(20px, var(--px, 1px)); --mark: 16px; }
 .meter[data-style="table"] .meter-row { border-radius: 0; background: none; }
-.meter[data-style="table"] .meter-bar { width: 3px; border: 0; border-radius: 2px; background: var(--class); transform: none; inset: 4px auto 4px 0; }
+.meter[data-style="table"] .meter-bar { width: 3px; border-radius: 2px; background: var(--class); transform: none; inset: 3px auto 3px 0; }
 .meter[data-style="table"] .meter-row[data-you] { background: color-mix(in srgb, var(--class) 18%, transparent); box-shadow: none; }
 
 @media (prefers-reduced-motion: reduce) {

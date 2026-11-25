@@ -5,17 +5,19 @@ import type { Job } from "../live/types.ts";
 export const VERSION = 1;
 export const MODES = ["bossTargets", "lastHitByMe", "mostRecent", "mostDamage", "allTargets"] as const;
 export const FPS = [30, 60, 120, 144, 0] as const;
-export const STYLES = ["bar", "line", "table"] as const;
+export const STYLES = ["bar", "line", "cards", "table"] as const;
 export const ACCENTS = ["", "ocean", "forest", "ember", "rose", "mono"] as const;
 export const ACTIONS = ["overlay", "edit", "reset", "view", "quick"] as const;
 /** What the meter shows, in the order its key goes through. The same as in `src-tauri/src/main.rs`. */
 export const VIEWS = ["damage", "rdps", "ndps", "healing", "taken", "hits"] as const;
 export const WHEN = ["always", "fight", "boss", "dungeon", "pvp", "calm"] as const;
-export const FOOTER = ["ping", "total", "flight", "odyle", "entries"] as const;
+export const FOOTER = ["ping", "total", "flight", "odyle", "entries", "kina", "points"] as const;
+/** What a ticket or an entry can be. Each has an icon in `src/ui/icons.tsx`. */
+export const KINDS = ["shugo", "invasion", "nightmare", "ascension", "transcendence", "conquest", "exploration", "fissure", "subjugation", "forge", "rift"] as const;
 export const AURA_KINDS = ["on", "missing", "target", "untarget", "ready", "low", "party"] as const;
 export const LOOKS = ["icon", "bar", "text"] as const;
 /** What each is stands in `src/features/alerts/logic.ts`. */
-export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain"] as const;
+export const ALERTS = ["low", "ally", "died", "fight", "held", "enrage", "kill", "slain", "best"] as const;
 const JOBS: readonly Job[] = ["gladiator", "templar", "ranger", "assassin", "sorcerer", "cleric", "spiritmaster", "chanter", "fighter", ""];
 /** Odyle Energy a run takes: once, or claimed twice. */
 export const ODYLE_RUN = [40, 80] as const;
@@ -25,6 +27,7 @@ export type Mode = (typeof MODES)[number];
 export type View = (typeof VIEWS)[number];
 export type When = (typeof WHEN)[number];
 export type Footer = (typeof FOOTER)[number];
+export type Kind = (typeof KINDS)[number];
 export type AlertId = (typeof ALERTS)[number];
 export type Action = (typeof ACTIONS)[number];
 
@@ -65,6 +68,8 @@ export interface Resource {
   id: number;
   /** What you call it. */
   name: string;
+  /** What it is, when you said so. */
+  kind: Kind | "";
   show: boolean;
 }
 
@@ -137,7 +142,7 @@ export interface Settings {
   bosses: Record<string, BossPlan>;
   hotkeys: Record<Action, string>;
   overlay: { on: boolean; onlyInGame: boolean; opacity: number; hideEmpty: boolean };
-  meter: { style: (typeof STYLES)[number]; rows: number; share: boolean; total: boolean; icons: boolean; power: boolean; head: boolean; hideNames: boolean; view: View; edge: "top" | "bottom"; footer: Footer[] };
+  meter: { style: (typeof STYLES)[number]; rows: number; share: boolean; total: boolean; icons: boolean; power: boolean; head: boolean; boss: boolean; ghost: boolean; hideNames: boolean; view: View; edge: "top" | "bottom"; footer: Footer[] };
   places: Record<string, Place>;
   /** When each overlay may show. One that is not here always may. */
   rules: Record<string, Rule>;
@@ -171,7 +176,7 @@ export const DEFAULTS: Settings = {
   bosses: {},
   hotkeys: { overlay: "Ctrl+Alt+F9", edit: "Ctrl+Alt+F10", reset: "Ctrl+Alt+F11", view: "Ctrl+Alt+F12", quick: "Ctrl+Alt+F8" },
   overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true },
-  meter: { style: "bar", rows: 8, share: true, total: false, icons: true, power: true, head: true, hideNames: false, view: "damage", edge: "top", footer: [] },
+  meter: { style: "bar", rows: 8, share: true, total: false, icons: true, power: true, head: true, boss: true, ghost: false, hideNames: false, view: "damage", edge: "bottom", footer: ["ping", "odyle", "entries"] },
   places: {},
   rules: {},
   auras: [],
@@ -189,6 +194,7 @@ export const DEFAULTS: Settings = {
     enrage: { on: false, banner: true, sound: "alarm", say: false, value: 0 },
     kill: { on: false, banner: true, sound: "rise", say: false, value: 0 },
     slain: { on: false, banner: false, sound: "fall", say: false, value: 0 },
+    best: { on: true, banner: true, sound: "rise", say: false, value: 0 },
   },
   startup: false,
   sleep: true,
@@ -293,10 +299,12 @@ export function read(value: unknown): Settings {
       icons: flag(meter.icons, d.meter.icons),
       power: flag(meter.power, d.meter.power),
       head: flag(meter.head, d.meter.head),
+      boss: flag(meter.boss, d.meter.boss),
+      ghost: flag(meter.ghost, d.meter.ghost),
       hideNames: flag(meter.hideNames, d.meter.hideNames),
       view: one(meter.view, VIEWS, d.meter.view),
       edge: one(meter.edge, ["top", "bottom"] as const, d.meter.edge),
-      footer: FOOTER.filter((f) => Array.isArray(meter.footer) && meter.footer.includes(f)),
+      footer: Array.isArray(meter.footer) ? FOOTER.filter((f) => (meter.footer as unknown[]).includes(f)) : d.meter.footer,
     },
     // Each overlay reads its own place, with its own default.
     places: object(s.places) as Record<string, Place>,
@@ -304,8 +312,8 @@ export function read(value: unknown): Settings {
     auras: list(s.auras, 60).map(aura),
     ready: list(s.ready, 40).map(named),
     skip: numbers(s.skip, 1, 2 ** 31, 200),
-    resources: list(s.resources, 200).map((r) => ({ id: Math.round(number(r.id, 0, 2 ** 32, 0)), name: text(r.name, 40), show: flag(r.show, false) }))
-      .filter((r) => r.id > 0 && (r.name || r.show)),
+    resources: list(s.resources, 200).map((r) => ({ id: Math.round(number(r.id, 0, 2 ** 32, 0)), name: text(r.name, 40), kind: one<Resource["kind"]>(r.kind, ["", ...KINDS], ""), show: flag(r.show, false) }))
+      .filter((r) => r.id > 0 && (r.name || r.kind || r.show)),
     odyleRun: one(s.odyleRun as Settings["odyleRun"], ODYLE_RUN, d.odyleRun),
     pictures: flag(s.pictures, d.pictures),
     alerts: Object.fromEntries(

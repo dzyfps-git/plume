@@ -2,6 +2,7 @@ import { For, Show } from "solid-js";
 import type { Aura } from "../../live/types";
 import { called, hue, initials, left, remaining } from "./logic";
 import { pictureOf } from "../../ui/Pic";
+import { Sharp } from "../../ui/Sharp";
 import "../meter/meter.css";
 import "./effects.css";
 
@@ -24,7 +25,7 @@ export function Tile(props: { of: Tiled; now: number; small?: boolean }) {
       data-ending={(ms() ?? 1e9) < 4_000 || undefined}
       style={{ "--hue": hue(name()), "--gone": `${Math.round(gone() * 100)}%` }}
     >
-      <Show when={picture()} fallback={<b>{initials(name())}</b>}>{(address) => <img src={address()} alt="" decoding="async" />}</Show>
+      <Show when={picture()} fallback={<b>{initials(name())}</b>}>{(bytes) => <Sharp of={bytes()} />}</Show>
       <Show when={props.of.stacks > 1}><small>{props.of.stacks}</small></Show>
       <Show when={ms()}>{(t) => <em class="ui-num">{remaining(t())}</em>}</Show>
     </span>

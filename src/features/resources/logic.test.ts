@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NO_ENTRIES } from "../../live/types.ts";
-import { nameOf, resets, runsLeft, strip, wait, words } from "./logic.ts";
+import type { Resource } from "../../store/settings.ts";
+import { kindOf, nameOf, resets, runsLeft, strip, wait } from "./logic.ts";
 
 const entries = { ...NO_ENTRIES, counts: [[1, 5, 1], [4, 0, 5], [7, 2, 0]] as [number, number, number][] };
-const chosen = [{ id: 4, name: "Expedition", show: true }, { id: 7, name: "", show: true }, { id: 9, name: "Gone", show: true }, { id: 1, name: "", show: false }];
+const chosen = [
+  { id: 4, name: "Mine", kind: "nightmare", show: true }, { id: 7, name: "", kind: "", show: true }, { id: 9, name: "Gone", kind: "", show: true }, { id: 1, name: "", kind: "", show: false },
+] as Resource[];
 
 test("only what was chosen and is known shows", () => {
   const list = strip(entries, [0, 1455], chosen);
-  assert.deepEqual(list.map((l) => [l.name, l.value, l.more]), [["Odyle", "0", "+1,455"], ["Expedition", "0", "+5"], ["No. 7", "2", ""]]);
-  assert.deepEqual(words(list), ["Expedition 0 (+5)", "No. 7 2"]);
+  assert.deepEqual(list.map((l) => [l.name, l.value, l.more]), [["Odyle", "0", "+1,455"], ["Mine", "0", "+5"], ["No. 7", "2", ""]]);
+  assert.deepEqual(list.map((l) => l.kind), ["odyle", "nightmare", ""]);
   assert.deepEqual(strip(NO_ENTRIES, [-1, -1], chosen), []);
   assert.equal(list[0].runs, 36);
 });
@@ -21,7 +24,9 @@ test("energy is enough for so many runs", () => {
 
 test("your own name goes before the known one", () => {
   assert.equal(nameOf(1, chosen), "Shugo Festival keys");
-  assert.equal(nameOf(1, [{ id: 1, name: "Keys", show: true }]), "Keys");
+  assert.equal(nameOf(1, [{ id: 1, name: "Keys", kind: "", show: true }]), "Keys");
+  assert.equal(nameOf(4, [{ id: 4, name: "", kind: "ascension", show: true }]), "Ascension Trial");
+  assert.deepEqual([kindOf(1, []), kindOf(1, [{ id: 1, name: "", kind: "rift", show: true }]), kindOf(2, [])], ["shugo", "rift", ""]);
   assert.equal(nameOf(8, chosen), "");
 });
 

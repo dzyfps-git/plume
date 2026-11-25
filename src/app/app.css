@@ -14,6 +14,7 @@ html, body, #root { height: 100%; overflow: hidden; user-select: none; }
 .status[data-state="bad"] { color: var(--danger-ink); }
 .status[data-state="bad"]::before { background: var(--danger-ink); }
 .ui-nav-item[data-last] { margin-top: auto; }
+.ui-nav-item .ui-icon { color: color-mix(in oklab, var(--icon-color, var(--text-muted)) 78%, var(--text)); }
 .palette { margin-top: 12vh; }
 .palette::backdrop { background: rgb(0 0 0 / 28%); }
 

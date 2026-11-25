@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoSaved, demoSkills } from "../../live/demo.ts";
 import type { Entry, Saved } from "../../live/types.ts";
-import { buffsBySkill, mvp, opening, overheal, partyCurve, pings, players, rates, unclean } from "./deep.ts";
+import { buffsBySkill, mvp, opening, overheal, partyCurve, pings, players, rates, standing, titles, unclean } from "./deep.ts";
 
 const skill = demoSkills(1000)[0];
 
@@ -64,6 +64,21 @@ test("the MVP did the most for the party, not only the most damage", () => {
   assert.equal(of(row(1, { damage: 60, taken: 100 }), row(2, { damage: 45, healing: 100, heals: [{ ...skill, weighed: 100, over: 100 }] }))?.id, 1);
   assert.equal(of(row(1, { damage: 100 })), undefined);
   assert.equal(mvp(demoSaved("x", { ms: 60_000, dummy: true })), undefined);
+});
+
+test("places go by the MVP's points, and nobody has two titles", () => {
+  const f = demoSaved("x", { ms: 150_000, killed: true });
+  const all = standing(f);
+  assert.equal(all.length, f.rows!.length);
+  assert.ok(all.every((m, i) => i === 0 || all[i - 1].points >= m.points));
+  const named = titles(f);
+  assert.equal(named.get(8), "Most healing, 763K");
+  assert.equal(named.get(7)?.startsWith("Buffs gave "), true);
+  assert.ok([...named.keys()].every((id) => f.rows!.some((r) => r.id === id)));
+  assert.equal(new Set(named.values()).size, named.size);
+  assert.deepEqual([titles(demoSaved("x", { ms: 60_000, dummy: true })).size, titles({ ...f, rows: undefined }).size, standing({ ...f, rows: undefined })], [0, 0, []]);
+  // A fight from before has no long lists.
+  assert.equal(titles({ ...f, rows: f.rows!.map((r) => ({ ...r, skills: [], heals: undefined, curve: undefined, given: 0, healing: 0, stagger: 0 })) }).size, 0);
 });
 
 test("ping holds until the next is known", () => {

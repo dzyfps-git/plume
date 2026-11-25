@@ -7,6 +7,8 @@ export interface Feature {
   name: string;
   /** A Segoe Fluent Icons character. */
   icon: string;
+  /** The icon's colour in the menu. */
+  color?: string;
   page?: Component;
   overlay?: Overlay;
   /** Overlays that come and go, each with a place of its own. The same one is the same object each time. */

@@ -27,6 +27,9 @@ export function pictureName(all: Pictures, of: Pictured): string | undefined {
   return (of.effect && all.effects[of.effect]) || (skill >= 1e7 && skill < 1e8 ? all.skills[Math.floor(skill / 1e4)] : undefined) || undefined;
 }
 
-export function dataUrl(bytes: Uint8Array): string | undefined {
-  return bytes.length ? `data:image/png;base64,${btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(""))}` : undefined;
+/** The sizes to draw a picture at, one after the other, until it is as small as it should be: by half at most, or fine lines break up. */
+export function halves(from: number, to: number): number[] {
+  const steps: number[] = [];
+  for (let side = from; side > to * 2; ) steps.push((side = Math.ceil(side / 2)));
+  return [...steps, to];
 }

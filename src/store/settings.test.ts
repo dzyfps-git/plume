@@ -56,7 +56,11 @@ test("auras, rules, alerts and the rest keep only what can be", () => {
   assert.deepEqual(read(JSON.parse(JSON.stringify(s))), s);
 });
 
+test("a footer that was emptied stays empty, and one never set is the default", () => {
+  assert.deepEqual([read({ meter: { footer: [] } }).meter.footer, read({ meter: {} }).meter.footer], [[], DEFAULTS.meter.footer]);
+});
+
 test("a resource without a name that is not shown is not kept", () => {
-  const { resources } = read({ resources: [{ id: 4, name: "Keys" }, { id: 5 }, { id: 6, show: true }, { id: 0, name: "x" }, 3] });
-  assert.deepEqual(resources, [{ id: 4, name: "Keys", show: false }, { id: 6, name: "", show: true }]);
+  const { resources } = read({ resources: [{ id: 4, name: "Keys" }, { id: 5 }, { id: 6, show: true }, { id: 0, name: "x" }, { id: 7, kind: "nightmare" }, { id: 8, kind: "?" }, 3] });
+  assert.deepEqual(resources, [{ id: 4, name: "Keys", kind: "", show: false }, { id: 6, name: "", kind: "", show: true }, { id: 7, name: "", kind: "nightmare", show: false }]);
 });

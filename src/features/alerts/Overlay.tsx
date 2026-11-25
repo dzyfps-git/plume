@@ -5,6 +5,8 @@ import { plan } from "../../store/settings";
 import { ticking } from "../../ui/now";
 import { key } from "../bosses/logic";
 import { left, remaining } from "../effects/logic";
+import { onKept } from "../history/store";
+import { gain, signed } from "../meter/logic";
 import { count, NONE } from "../pvp/logic";
 import { speak } from "../timers/voice";
 import { ahead, look, notes, onBlow, onEffects, raised, safe, streakText, type Call, type Look, type Raised } from "./logic";
@@ -74,6 +76,11 @@ export function followAlerts() {
       if (h.what === "kill") alert({ id: "kill", text: streakText(tally.streak) });
       else if (h.what === "death") alert({ id: "slain", text: "Killed" });
       else if (h.what === "blow" && onBoss()) call(onBlow(set(), h, job()));
+    });
+
+    onKept((kept, all) => {
+      const more = gain(kept, all);
+      if (more) alert({ id: "best", text: `New best, ${signed(more)}` });
     });
 
     let seen = { id: 0, keys: new Set<string>(), safe: false };

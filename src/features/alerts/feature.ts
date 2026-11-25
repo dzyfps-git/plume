@@ -7,6 +7,7 @@ export const alerts: Feature = {
   id: "alerts",
   name: "Alerts",
   icon: "",
+  color: "#ffd45e",
   page: AlertsPage,
   overlay: {
     view: CalloutsOverlay, group: "Fight", name: "Callouts", about: "Alerts, your notes for a boss, and its mechanics as they come, in large letters.", width: 460,

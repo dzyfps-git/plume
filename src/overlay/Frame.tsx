@@ -15,27 +15,32 @@ interface Props {
 export function Frame(props: Props) {
   const overlay = props.feature.overlay!;
   let frame!: HTMLDivElement;
+  /** As it is on the screen. */
   const [size, setSize] = createSignal({ width: overlay.width, height: 80 });
   const [screen, setScreen] = createSignal({ width: innerWidth, height: innerHeight });
   const [held, setHeld] = createSignal<Spot>();
 
   const at = () => place(settings.places[props.feature.id], overlay.place);
-  const scaled = () => ({ width: size().width * at().scale, height: size().height * at().scale });
   const spot = () => {
     const height = at().height;
     if (held()) return held()!;
     // While it is placed, it is as high as it is.
-    if (!overlay.edge || !height || props.editing) return toPixels(at(), scaled(), screen());
-    return hold(at(), scaled(), screen(), overlay.edge(), height * at().scale);
+    if (!overlay.edge || !height || props.editing) return toPixels(at(), size(), screen());
+    return hold(at(), size(), screen(), overlay.edge(), height * at().scale);
   };
+  // On a whole point of the screen: between two, everything in it would be soft.
+  const whole = (v: number) => Math.round(v * devicePixelRatio) / devicePixelRatio;
   const put = (edit: Partial<ReturnType<typeof at>>) => {
-    const next = { ...at(), ...edit, height: size().height };
+    const next = { ...at(), ...edit, height: size().height / at().scale };
     change((s) => (s.places = { ...s.places, [props.feature.id]: next }), true);
   };
-  const putAt = (to: Spot) => put(toShare(to, scaled(), screen()));
+  const putAt = (to: Spot) => put(toShare(to, size(), screen()));
 
   onMount(() => {
-    const watch = new ResizeObserver(() => setSize({ width: frame.offsetWidth, height: frame.offsetHeight }));
+    const watch = new ResizeObserver(() => {
+      const { width, height } = frame.getBoundingClientRect();
+      setSize({ width, height });
+    });
     watch.observe(frame);
     const resized = () => setScreen({ width: innerWidth, height: innerHeight });
     addEventListener("resize", resized);
@@ -62,7 +67,7 @@ export function Frame(props: Props) {
     const move = (e: PointerEvent) => {
       const free = { x: e.clientX - from.x, y: e.clientY - from.y };
       // Alt drags without the grid.
-      setHeld(e.altKey ? free : snap(free, scaled(), screen(), others));
+      setHeld(e.altKey ? free : snap(free, size(), screen(), others));
     };
     const drop = () => {
       frame.removeEventListener("pointermove", move);
@@ -93,12 +98,14 @@ export function Frame(props: Props) {
       tabIndex={props.editing ? 0 : undefined}
       data-locked={at().locked || undefined}
       aria-label={overlayName(props.feature)}
-      style={{ width: `${overlay.width}px`, transform: `translate(${spot().x}px, ${spot().y}px) scale(${at().scale})` }}
+      style={{ transform: `translate(${whole(spot().x)}px, ${whole(spot().y)}px)` }}
       onPointerDown={grab}
       onKeyDown={walk}
       onWheel={(e) => props.editing && scale(e.deltaY < 0 ? 0.05 : -0.05)}
     >
-      <overlay.view />
+      <div class="frame-body" style={{ width: `${overlay.width}px`, zoom: at().scale, "--px": `${1 / (at().scale * devicePixelRatio)}px` }}>
+        <overlay.view />
+      </div>
       <Show when={props.editing}>
         <div class="frame-bar">
           <span>{overlayName(props.feature)}</span>

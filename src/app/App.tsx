@@ -12,13 +12,14 @@ export interface Page {
   id: string;
   name: string;
   icon: string;
+  color?: string;
   view: Component;
 }
 
 const PAGES: Page[] = [
-  ...FEATURES.flatMap(({ id, name, icon, page }) => (page ? [{ id, name, icon, view: page }] : [])),
-  { id: "overlays", name: "Overlays", icon: "", view: OverlaysPage },
-  { id: "settings", name: "Settings", icon: "", view: SettingsPage },
+  ...FEATURES.flatMap(({ id, name, icon, color, page }) => (page ? [{ id, name, icon, color, view: page }] : [])),
+  { id: "overlays", name: "Overlays", icon: "", color: "#8f9bff", view: OverlaysPage },
+  { id: "settings", name: "Settings", icon: "", color: "#a9b4c8", view: SettingsPage },
 ];
 
 export function App() {
@@ -79,7 +80,7 @@ export function App() {
               data-tip={folded() ? p.name : undefined}
               onClick={() => go(p)}
             >
-              <span class="ui-icon" aria-hidden="true">{p.icon}</span>
+              <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": p.color }}>{p.icon}</span>
               <span>{p.name}</span>
             </button>
           )}
