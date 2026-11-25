@@ -1,7 +1,7 @@
 # Plume
 
-A companion app for AION 2 on Windows: a damage meter, boss health, skill breakdown, fight history and timed training
-runs, as overlays over the game and as pages of its own. The name is a placeholder.
+A companion app for AION 2 on Windows: a damage meter, boss health, boss timers, fight reports, dungeon runs and timed
+training runs, as overlays over the game and as pages of its own. The name is a placeholder.
 
 Not made, approved or supported by NC. Made for private use.
 
@@ -12,6 +12,8 @@ Not made, approved or supported by NC. Made for private use.
 - It opens no connection. There is no account, upload, ranking or player lookup.
 - Other players' names and numbers stay in memory and are gone when it closes. Only your own part of a fight is saved,
   with everyone else as one sum.
+- A fight leaves it only when you save one: CSV, JSON or a picture, written into Downloads. CSV and JSON hold your own
+  part alone. The picture numbers other players instead of naming them.
 
 `scripts/safety.test.mjs` checks the first three over every source file, on every pull request.
 
