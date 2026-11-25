@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NO_ENTRIES } from "../../live/types.ts";
 import type { Resource } from "../../store/settings.ts";
-import { kindOf, nameOf, resets, runsLeft, strip, wait } from "./logic.ts";
+import { coming, guess, kindOf, nameOf, note, resets, runsLeft, strip, wait, type Seen } from "./logic.ts";
 
 const entries = { ...NO_ENTRIES, counts: [[1, 5, 1], [4, 0, 5], [7, 2, 0]] as [number, number, number][] };
 const chosen = [
@@ -35,4 +35,36 @@ test("resets are at 07:00 UTC, the weekly one on Wednesday", () => {
   assert.deepEqual(resets(tuesday), { daily: 3_600_000, weekly: 25 * 3_600_000 });
   assert.equal(resets(Date.UTC(2026, 10, 25, 7)).weekly, 7 * 86_400_000);
   assert.deepEqual([wait(3_600_000), wait(60_000), wait(27 * 3_600_000)], ["1 h 0 m", "1 m", "1 d 3 h"]);
+});
+
+const at = (day: number, hour: number, minute = 0) => Date.UTC(2026, 10, day, hour, minute);
+
+test("what comes back is known by the resets, or by when it last came", () => {
+  assert.equal(coming("shugo", 5, false, undefined, at(24, 6))?.in, 3_600_000);
+  assert.equal(coming("shugo", 12, false, undefined, at(24, 6)), undefined);
+  assert.equal(coming("shugo", 12, true, undefined, at(24, 6))?.in, 3_600_000);
+  assert.equal(coming("odyle", 300, false, undefined, at(24, 6)), undefined);
+  const grown: Seen = { most: 315, gains: [[40, at(24, 1)], [15, at(24, 2)], [100, at(24, 3)]] };
+  const next = coming("odyle", 315, false, grown, at(24, 6))!;
+  assert.deepEqual([next.in, Math.round(next.part * 100)], [2 * 3_600_000, 33]);
+  assert.equal(coming("rift", 1, false, undefined, 0), undefined);
+});
+
+test("an entry is guessed only when one kind fits", () => {
+  const none = new Set<never>();
+  const grew = (most: number, ...gains: [number, number][]): Seen => ({ most, gains });
+  assert.equal(guess(grew(9, [3, at(24, 7, 1)]), none), "shugo");
+  assert.equal(guess(grew(9, [2, at(24, 7, 1)]), none), "nightmare");
+  assert.equal(guess(grew(6, [1, at(24, 15, 2)]), none), "conquest");
+  assert.equal(guess(grew(6, [1, at(24, 19, 2)]), none), "transcendence");
+  assert.equal(guess(grew(3, [3, at(25, 7, 1)]), new Set(["shugo", "ascension"] as const)), "subjugation");
+  assert.deepEqual([guess(grew(3, [3, at(25, 7, 1)]), none), guess(grew(14), none), guess(undefined, none), guess(grew(5), none)], ["", "", "", ""]);
+  assert.equal(guess(grew(21), new Set(["shugo"] as const)), "conquest");
+});
+
+test("a drop is no gain", () => {
+  let s = note(undefined, undefined, 5, 1);
+  s = note(s, 5, 4, 2);
+  s = note(s, 4, 7, 3);
+  assert.deepEqual(s, { most: 7, gains: [[3, 3]] });
 });

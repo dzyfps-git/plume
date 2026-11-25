@@ -2,7 +2,7 @@ import { createEffect, createMemo, createResource, createSignal, For, Match, on,
 import { deleteFight, exportFile, fight as loadFight, keptFight } from "../../api";
 import { NAME } from "../../app/brand";
 import type { Buff, FightRow, Saved } from "../../live/types";
-import { settings } from "../../store";
+import { hideNames, settings } from "../../store";
 import { plan } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, percent, short } from "../../ui/format";
@@ -95,7 +95,7 @@ const rowsOf = (f: Saved): FightRow[] => f.rows ?? (f.you ? [f.you] : []);
 /** A player's name as the settings show it. Nobody is named in a fight from before. */
 function who(f: Saved, id: number): string {
   const at = rowsOf(f).findIndex((r) => r.id === id);
-  if (at >= 0) return label(rowsOf(f)[at], settings.meter.hideNames, at + 1);
+  if (at >= 0) return label(rowsOf(f)[at], hideNames(), at + 1);
   return id === 0 ? "Someone else" : f.target;
 }
 
@@ -201,7 +201,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
       </div>
       <Show when={props.fight.dummy && props.fight.casts?.length}>
         <p class="report-line">
-          <Show when={why().length} fallback={<><span class="ui-tag" style={{ "--tag": "var(--success-ink)" }}>Clean run</span> Nothing was off: no pause, nobody else, no buff from others.</>}>
+          <Show when={why().length} fallback={<><span class="ui-tag" style={{ "--tag": "var(--tone-ready)" }}>Clean run</span> Nothing was off: no pause, nobody else, no buff from others.</>}>
             Not a clean run: {why().join(", and ")}.
           </Show>
         </p>
@@ -259,7 +259,7 @@ function Overview(props: { fight: Saved; best?: Saved }) {
                 <i class="meter-bar" />
                 <ClassMark job={r.job} />
                 <span class="meter-name">
-                  <span>{label(r, settings.meter.hideNames, i() + 1)}</span>
+                  <span>{label(r, hideNames(), i() + 1)}</span>
                   <Show when={top()?.id === r.id}>
                     <span class="mvp" data-tip={mvpWords(top()!)}><Drawn name="crown" /><b>MVP</b></span>
                   </Show>
@@ -332,7 +332,7 @@ function Rotation(props: { fight: Saved; best?: Saved }) {
       return { name: nameOf(props.fight, skill), of: { skill }, note: `${lane.marks.length}${lost?.more ? `, ${lost.more} more fit` : ""}`, marks: lane.marks };
     });
     const extra: Lane[] = [];
-    if (holes().length) extra.push({ name: "Nothing done", color: "var(--danger-ink)", note: clock(holes().reduce((s, g) => s + g.to - g.from, 0)), marks: holes().map((g) => ({ ...g, tip: `${clock(g.from)}, ${((g.to - g.from) / 1000).toFixed(1)} s` })) });
+    if (holes().length) extra.push({ name: "Nothing done", color: "var(--tone-danger)", note: clock(holes().reduce((s, g) => s + g.to - g.from, 0)), marks: holes().map((g) => ({ ...g, tip: `${clock(g.from)}, ${((g.to - g.from) / 1000).toFixed(1)} s` })) });
     if (off().length) extra.push({ name: "Could not be hit", color: "var(--text-muted)", marks: off() });
     return [...extra, ...skills];
   });
@@ -531,7 +531,7 @@ function Taken(props: { fight: Saved }) {
             lanes={skills().slice(0, 12).map(([skill, s]) => ({
               name: nameOf(f(), skill),
               note: `${s.hits}, ${short(s.damage)}`,
-              color: avoid().includes(skill) ? "var(--danger-ink)" : "var(--accent)",
+              color: avoid().includes(skill) ? "var(--tone-danger)" : "var(--accent)",
               marks: s.times.map((t) => ({ from: t, to: t, tip: clock(t) })),
             }))}
           />
@@ -611,7 +611,7 @@ function Stagger(props: { fight: Saved }) {
         lanes={(f().stagger ?? []).map((w) => ({
           name: w.broke ? "Broken" : "Missed",
           note: clock(w.end - w.start),
-          color: w.broke ? "var(--success-ink)" : "var(--danger-ink)",
+          color: w.broke ? "var(--tone-ready)" : "var(--tone-danger)",
           marks: [{ from: w.start, to: w.end, tip: `${clock(w.start)} to ${clock(w.end)}` }],
         }))}
       />
@@ -757,7 +757,7 @@ function Play(props: { fight: Saved }) {
   };
   const rows = createMemo(() =>
     rowsOf(props.fight)
-      .map((r, i) => ({ r, name: label(r, settings.meter.hideNames, i + 1), damage: value(r.curve?.length ? r.curve : r.you ? props.fight.curve : undefined) }))
+      .map((r, i) => ({ r, name: label(r, hideNames(), i + 1), damage: value(r.curve?.length ? r.curve : r.you ? props.fight.curve : undefined) }))
       .sort((a, b) => b.damage - a.damage),
   );
   const health = () => props.fight.health?.[Math.min(props.fight.health.length - 1, Math.floor(at() / 1000))] ?? -1;

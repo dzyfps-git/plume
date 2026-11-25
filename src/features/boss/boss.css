@@ -16,13 +16,13 @@
 .boss-bar .boss-lost { border-radius: inherit; background: rgb(255 226 242 / 55%); transition-duration: calc(var(--bar-time) * 5); transition-timing-function: var(--lost-ease, linear); }
 .boss-bar .boss-hp { border-right: 2px solid #fff; border-radius: 0 99px 99px 0; background: linear-gradient(90deg, #7d5cff, #d65ce0 55%, #ff7ab8); }
 .boss-bar em { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgb(14 13 20 / 80%); }
-.boss-bar .boss-due { top: -2px; bottom: -2px; width: 3px; border-radius: 2px; background: var(--success-ink); box-shadow: 0 0 6px var(--success-ink); }
-.boss-bar .boss-due[data-behind] { background: var(--fresh); box-shadow: 0 0 6px var(--fresh); }
+.boss-bar .boss-due { top: -2px; bottom: -2px; width: 3px; border-radius: 2px; background: var(--tone-ready); box-shadow: 0 0 6px var(--tone-ready); }
+.boss-bar .boss-due[data-behind] { background: var(--tone-ending); box-shadow: 0 0 6px var(--tone-ending); }
 .boss-stagger { position: relative; height: round(up, 2.5px, var(--px, 1px)); mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 2px), transparent calc(10% - 2px) 10%); background: color-mix(in srgb, var(--text) 12%, transparent); }
 .boss-stagger i { background: linear-gradient(90deg, #ffcf6e, #ff9e57); }
 .boss-sub { display: flex; align-items: baseline; gap: 10px; height: round(16px, var(--px, 1px)); color: color-mix(in srgb, var(--text) 78%, transparent); font-size: 11px; line-height: 1.2; white-space: nowrap; }
 .boss-sub > span:nth-last-child(2):not(:first-child) { margin-left: auto; }
 .boss-sub > b { color: var(--text); font-size: 13px; font-weight: 650; }
-.boss-enrage { display: flex; justify-content: space-between; color: var(--success-ink); font-size: 11px; }
-.boss-enrage[data-behind] { color: var(--fresh); }
+.boss-enrage { display: flex; justify-content: space-between; color: var(--tone-ready); font-size: 11px; }
+.boss-enrage[data-behind] { color: var(--tone-ending); }
 @media (prefers-reduced-motion: reduce) { .boss-bar i, .boss-stagger i { transition: none; } }

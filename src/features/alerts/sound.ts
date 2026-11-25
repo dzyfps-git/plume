@@ -27,19 +27,19 @@ const load = (to: AudioContext, name: string) => {
 };
 
 /** Plays a sound by its id. One that is gone stays silent. */
-export async function play(sound: string) {
-  if (!sound) return;
+export async function play(sound: string, volume = 1) {
+  if (!sound || settings.voice.mute) return;
   context ??= new AudioContext();
   const to = context;
-  const volume = to.createGain();
-  volume.gain.value = settings.voice.volume;
-  volume.connect(to.destination);
+  const all = to.createGain();
+  all.gain.value = settings.voice.volume * volume;
+  all.connect(to.destination);
   try {
     await to.resume();
     if (sound.startsWith(FILE)) {
       const source = to.createBufferSource();
       source.buffer = await load(to, sound.slice(FILE.length));
-      source.connect(volume);
+      source.connect(all);
       source.start();
       return;
     }
@@ -52,7 +52,7 @@ export async function play(sound: string) {
       gain.gain.setValueAtTime(0, from);
       gain.gain.linearRampToValueAtTime(loud, from + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.001, from + long);
-      voice.connect(gain).connect(volume);
+      voice.connect(gain).connect(all);
       voice.start(from);
       voice.stop(from + long);
     }

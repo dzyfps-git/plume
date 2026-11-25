@@ -22,4 +22,4 @@
 .class-mark .sharp { filter: brightness(1.45); }
 .class-mark svg { width: 64%; height: 64%; fill: none; stroke: color-mix(in srgb, var(--class-color) 45%, white); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 /* What comes on top of a figure: charged energy, an entry's bonus. */
-.bonus { color: var(--ocean-start); }
+.bonus { color: var(--tone-bonus); }

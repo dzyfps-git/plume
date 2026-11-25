@@ -1,12 +1,12 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
-import { near } from "../../live/store";
+import { near, sampling } from "../../live/store";
 import { change, settings } from "../../store";
 import { AURA_KINDS, type AuraRule, type Named } from "../../store/settings";
 import { Choices, Line, Slide } from "../../ui/Line";
 import { Switch } from "../../ui/Switch";
 import { followActions, recent, skills } from "../actions/store";
 import { SignalLines } from "../alerts/SignalLines";
-import { ANY_ITEM, called, chosenName } from "../effects/logic";
+import { ANY_ITEM, buffs, called, chosenName } from "../effects/logic";
 import { CLASSES } from "../../ui/classes";
 import { blank, effectsOf, KIND_NAMES, placeOf, ruleName as name, SETS, starter, VALUE_NAMES } from "./logic";
 import "./auras.css";
@@ -15,10 +15,10 @@ const LOOK_NAMES = [["icon", "Icon"], ["bar", "Bar"], ["text", "Text"]] as const
 const newKey = (n = 0) => `${Date.now().toString(36)}${n}`;
 const id = (n: Named) => `${n.id}|${n.name}`;
 
-/** Effects to choose from: those on you and your target now, and those of your own fights. */
-function known(yours: boolean): Named[] {
-  const now = [...(near.you?.auras ?? []), ...(near.target?.auras ?? [])].filter((a) => !yours || a.yours);
-  const kept = effectsOf(recent()).filter((e) => !yours || e.yours);
+/** Effects to choose from: those on you and your target now, and those of your own fights. Or only the good ones on you. */
+export function known(yours: boolean, good = false): Named[] {
+  const now = sampling() ? [] : good ? buffs(near.you?.auras ?? []) : [...(near.you?.auras ?? []), ...(near.target?.auras ?? [])].filter((a) => !yours || a.yours);
+  const kept = effectsOf(recent()).filter((e) => (!yours || e.yours) && (!good || (e.onYou && e.yours)));
   const all = new Map<string, Named>();
   for (const e of [...now, ...kept]) if (!all.has(called(e))) all.set(called(e), { id: e.id, name: e.name });
   return [...all.values()].sort((a, b) => called(a).localeCompare(called(b)));

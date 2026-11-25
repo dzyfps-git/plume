@@ -10,12 +10,17 @@ Not made, approved or supported by NC. Made for private use.
 
 - It does not open, read or change the game, and does not look at the screen.
 - It does not press keys or click for you. Its own keys come from Windows' `RegisterHotKey`; nothing is hooked.
+- Where the pointer is, is asked of Windows (`GetCursorPos`) only while the meter has buttons or is unlocked, to know
+  when it is over them. Everywhere else, clicks go through to the game.
 - It opens no connection. There is no account, upload, ranking or player lookup.
 - Other players' names and numbers stay in memory and are gone when it closes. Only your own part of a fight is saved,
   with everyone else as one sum. The card at the end of a fight shows others' numbers for some seconds.
 - What is near you (health, effects, the player you fight) and others' Combat Power are never written down at all.
 - Your own PvP counts are kept on this PC, for six hours after the last one.
 - It writes to the registry only when you turn on "Start with Windows": one line in your own `Run` key.
+- The one exception is a recording of the session for a bug report, off until you turn it on: up to 256 MB of what the
+  engine reads, with what other players did in it. It stays on this PC.
+- A backup, made only when you ask, holds your settings and your own part of your fights.
 - A fight leaves it only when you save one: CSV, JSON or a picture, written into Downloads. CSV and JSON hold your own
   part alone. The picture numbers other players instead of naming them.
 
@@ -49,11 +54,12 @@ npm run tauri dev
 | Folder | Holds |
 |---|---|
 | `src/features` | one folder a feature: page, overlay, logic, tests. `index.ts` lists them |
-| `src/overlay` | the window over the game: places, edit mode, quick bar, when each overlay shows |
-| `src/app` | the main window: menu, palette, settings |
+| `src/overlay` | the window over the game: places, edit mode, panel, buttons that take the mouse, when each overlay shows |
+| `src/app` | the main window: menu, palette, first start, the pages of settings |
 | `src/live` | what the engine says. Features know only this |
 | `src/store` | settings and their defaults |
 | `src/api` | the only place the pages talk to Rust |
+| `src/ui` | what pages and overlays share: lines, groups, the search over settings, colours, icons |
 | `src/house` | the design system, not edited here |
 | `src-tauri/src` | windows, keys, files, starting with Windows, and keeping the engine running |
 

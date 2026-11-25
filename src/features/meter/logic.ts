@@ -1,6 +1,6 @@
-import { counted, runsLeft, type Left } from "../resources/logic.ts";
+import { capOf, counted, runsLeft, type Left } from "../resources/logic.ts";
 import type { Entries, Fight, Job, Near, Row, Saved, Skill } from "../../live/types.ts";
-import type { Footer, Kind, View } from "../../store/settings.ts";
+import type { Footer, Kind, Settings, View } from "../../store/settings.ts";
 import { full, short } from "../../ui/format.ts";
 
 export const VIEW_NAMES: Record<View, string> = {
@@ -48,7 +48,7 @@ export function ranked(fight: Pick<Fight, "rows" | "ms">, view: View): Ranked[] 
 /** The row that stands for your best fight. It is nobody's place. */
 export const BEST = -1;
 export const bestRow: Row = {
-  id: BEST, name: "", job: "", damage: 0, dps: 0, share: 0, you: false, deaths: 0, taken: 0, hps: 0, power: 0, healing: 0, hits: 0, given: 0, got: 0, others: false,
+  id: BEST, name: "", job: "", damage: 0, dps: 0, share: 0, you: false, deaths: 0, taken: 0, hps: 0, power: 0, level: 0, healing: 0, hits: 0, given: 0, got: 0, others: false,
 };
 
 /** With your best damage a second among them, as far as it would be by now. */
@@ -59,14 +59,40 @@ export function withBest(rows: readonly Ranked[], best: number | undefined, ms: 
   return rows.toSpliced(at < 0 ? rows.length : at, 0, { row: { ...bestRow, job }, total, rate: best, share: 0 });
 }
 
-/** The rows that fit, with their ranks. Yours is always one of them, in the last place if it would fall off. */
-export function shown<T extends { row: Pick<Row, "you" | "id"> }>(rows: readonly T[], most: number): (T & { rank: number })[] {
+/** The rows that fit, with their ranks. Yours is always one of them, in the last place if it would fall off, or the first if `first`. */
+export function shown<T extends { row: Pick<Row, "you" | "id"> }>(rows: readonly T[], most: number, first = false): (T & { rank: number })[] {
   let rank = 0;
   const all = rows.map((r) => ({ ...r, rank: r.row.id === BEST ? 0 : ++rank }));
   const top = all.slice(0, most);
   const you = all.find(({ row }) => row.you);
   if (you && !top.includes(you)) top[top.length - 1] = you;
-  return top;
+  return first && you ? [you, ...top.filter((r) => r !== you)] : top;
+}
+
+/** How much a second you are short of the place above yours. */
+export function gap(rows: readonly Pick<Ranked, "row" | "rate">[]): number | undefined {
+  const real = rows.filter(({ row }) => row.id !== BEST && !row.others);
+  const at = real.findIndex(({ row }) => row.you);
+  return at > 0 ? Math.max(0, real[at - 1].rate - real[at].rate) : undefined;
+}
+
+/** Seconds that count as now, and how far above their own average that has to be. */
+const NOW_MS = 5_000;
+const BURST = 1.6;
+const STEADY_MS = 12_000;
+
+/** Who does far more now than in the fight so far. Keeps what it needs from look to look. */
+export function bursts() {
+  let past: { ms: number; damage: Map<number, number> }[] = [];
+  return (fight: Pick<Fight, "ms" | "rows">): ReadonlySet<number> => {
+    if (past.length && fight.ms < past[past.length - 1].ms) past = [];
+    past.push({ ms: fight.ms, damage: new Map(fight.rows.map((r) => [r.id, r.damage])) });
+    while (past.length > 1 && past[1].ms <= fight.ms - NOW_MS) past.shift();
+    const from = past[0];
+    const span = fight.ms - from.ms;
+    if (fight.ms < STEADY_MS || span < NOW_MS * 0.6) return new Set();
+    return new Set(fight.rows.filter((r) => r.damage > 0 && !r.others && (r.damage - (from.damage.get(r.id) ?? 0)) / span > (r.damage / fight.ms) * BURST).map((r) => r.id));
+  };
 }
 
 /** How long a bar is: its share of the biggest. */
@@ -75,8 +101,8 @@ export const length = (row: Pick<Row, "damage">, rows: readonly Pick<Row, "damag
 
 export const partyDps = (fight: Pick<Fight, "total" | "ms">) => (fight.ms >= 1000 ? fight.total / (fight.ms / 1000) : fight.total);
 
-export const label = (row: Pick<Row, "name" | "you"> & { others?: boolean }, hide: boolean, rank: number) =>
-  row.others ? "Everyone else, about" : row.you ? row.name || "You" : hide || !row.name ? `Player ${rank}` : row.name;
+export const label = (row: Pick<Row, "name" | "you"> & { others?: boolean }, hide: boolean | "all", rank: number) =>
+  row.others ? "Everyone else, about" : row.you ? (hide !== "all" && row.name) || "You" : hide || !row.name ? `Player ${rank}` : row.name;
 
 /** Combat Power as the game's players say it: 112.0K. */
 export const power = (n: number) => (n >= 1_000 ? `${(n / 1_000).toFixed(1)}K` : n > 0 ? String(n) : "");
@@ -117,6 +143,7 @@ export const signed = (part: number) => `${part >= 0 ? "+" : "-"}${Math.abs(Math
 
 /** One figure of the footer, with an icon or else its name. */
 export interface Foot {
+  key: string;
   name: string;
   icon?: "ping" | "flight";
   thing?: Kind | "odyle" | "kina" | "points";
@@ -124,28 +151,54 @@ export interface Foot {
   /** On top of it. */
   bonus?: string;
   more: string;
+  /** The value as a number, when a change of it is worth a word. */
+  n?: number;
+  tone?: "ending" | "best" | "muted";
 }
 
-/** The footer you chose. What is not known is left out. */
+export type FootSet = Pick<Settings, "odyleRun" | "odyle" | "pingAs">;
+
+/** Of its cap, this much is near it. */
+const NEAR_CAP = 0.9;
+
+/** Odyle Energy in the parts you chose. */
+export function odyleFoot([daily, charged]: readonly [number, number], set: Pick<FootSet, "odyle" | "odyleRun">): Foot {
+  const { parts, member, warn } = set.odyle;
+  const has = (part: (typeof parts)[number]) => parts.includes(part);
+  const base = { key: "odyle", name: "Odyle Energy", thing: "odyle" } as const;
+  if (daily < 0) return { ...base, value: "\u2013", more: "log in once more", tone: "muted" };
+  const cap = capOf("odyle", member)!;
+  const near = warn && daily >= cap * NEAR_CAP;
+  const runs = counted(runsLeft([daily, charged], set.odyleRun), "run");
+  const more = [has("cap") ? `of ${full(cap)}` : "", has("runs") ? runs : "", near ? (daily >= cap ? "full" : "nearly full") : ""];
+  return {
+    ...base, value: has("energy") ? full(daily) : "", bonus: has("charged") && charged > 0 ? `+${full(charged)}` : "", more: more.filter(Boolean).join(", "), n: daily,
+    ...(near && { tone: "ending" as const }),
+  };
+}
+
+/** The footer you chose. What is not known is left out, but for Odyle Energy, which says how to get it. */
 export function footer(
   chosen: readonly Footer[],
   near: Pick<Near, "ping" | "odyle" | "flight">,
-  fight: Pick<Fight, "total">,
+  fight: Pick<Fight, "total" | "own">,
   entries: Pick<Entries, "kinah" | "points">,
-  tickets: readonly Left[] = [],
-  perRun = 40,
+  tickets: readonly Left[],
+  set: FootSet,
 ): Foot[] {
+  const part = (n: number) => (fight.own[0] > 0 ? `${Math.round((n / fight.own[0]) * 100)}%` : "");
+  const chip = (key: "crit" | "back", name: string, n: number): Foot[] => (fight.own[0] > 0 ? [{ key, name, value: part(n), more: "" }] : []);
+  const ping = set.pingAs === "oneway" ? Math.round(near.ping / 2) : near.ping;
   const all: Record<Footer, () => Foot[]> = {
-    ping: () => (near.ping >= 0 ? [{ name: "Ping", icon: "ping", value: String(near.ping), more: "ms" }] : []),
-    total: () => (fight.total > 0 ? [{ name: "Total", value: short(fight.total), more: "" }] : []),
-    flight: () => (near.flight ? [{ name: "Flight", icon: "flight", value: String(Math.round(near.flight.now)), more: "s" }] : []),
-    odyle: () => {
-      const [daily, charged] = near.odyle;
-      return daily >= 0 ? [{ name: "Odyle Energy", thing: "odyle", value: full(daily), bonus: charged > 0 ? `+${full(charged)}` : "", more: counted(runsLeft(near.odyle, perRun), "run") }] : [];
-    },
-    entries: () => tickets.filter((t) => t.key !== "odyle").map((t) => ({ name: t.name, ...(t.kind && { thing: t.kind }), value: t.value, bonus: t.more, more: "" })),
-    kina: () => (entries.kinah >= 0 ? [{ name: "Kina today", thing: "kina", value: short(entries.kinah), more: "" }] : []),
-    points: () => (entries.points[0] >= 0 ? [{ name: "Abyss Points this week", thing: "points", value: short(entries.points[0]), more: "" }] : []),
+    ping: () => (near.ping >= 0 ? [{ key: "ping", name: set.pingAs === "oneway" ? "Ping, one way" : "Ping", icon: "ping", value: String(ping), more: "ms" }] : []),
+    total: () => (fight.total > 0 ? [{ key: "total", name: "Total", value: short(fight.total), more: "" }] : []),
+    flight: () => (near.flight ? [{ key: "flight", name: "Flight", icon: "flight", value: String(Math.round(near.flight.now)), more: "s" }] : []),
+    odyle: () => [odyleFoot(near.odyle, set)],
+    entries: () => tickets.filter((t) => t.key !== "odyle").map((t) => ({ key: t.key, name: t.name, ...(t.kind && { thing: t.kind }), value: t.value, bonus: t.more, more: "", n: t.n })),
+    kina: () => (entries.kinah >= 0 ? [{ key: "kina", name: "Kina today", thing: "kina", value: short(entries.kinah), more: "" }] : []),
+    points: () => (entries.points[0] >= 0 ? [{ key: "points", name: "Abyss Points this week", thing: "points", value: short(entries.points[0]), more: "" }] : []),
+    crit: () => chip("crit", "Crit", fight.own[1]),
+    back: () => chip("back", "Back", fight.own[2]),
   };
   return chosen.flatMap((f) => all[f]());
 }

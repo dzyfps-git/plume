@@ -16,9 +16,9 @@
 .chart-mine { stroke: var(--accent); }
 .chart-best { stroke: var(--text-muted); stroke-dasharray: 4 4; opacity: 0.7; }
 .chart .chart-party { stroke: var(--text); stroke-width: 1; opacity: 0.55; }
-.chart-death { position: absolute; top: 0; width: 9px; height: 130px; translate: -4px 0; background: linear-gradient(90deg, transparent 4px, color-mix(in srgb, var(--danger-ink) 45%, transparent) 4px 5px, transparent 5px); }
-.chart-death::before { content: ""; position: absolute; top: -4px; left: 1px; width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--danger-ink) 55%, transparent); }
-.chart-death[data-you]::before { background: var(--danger-ink); }
+.chart-death { position: absolute; top: 0; width: 9px; height: 130px; translate: -4px 0; background: linear-gradient(90deg, transparent 4px, color-mix(in srgb, var(--tone-danger) 45%, transparent) 4px 5px, transparent 5px); }
+.chart-death::before { content: ""; position: absolute; top: -4px; left: 1px; width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--tone-danger) 55%, transparent); }
+.chart-death[data-you]::before { background: var(--tone-danger); }
 .history-table { display: grid; overflow-x: auto; }
 .history-table .ui-row-item { --columns: 124px minmax(120px, 1fr) 76px 48px 64px 110px 60px 92px 50px; }
 .history-table .ui-row-item > :nth-child(n + 4) { text-align: right; }

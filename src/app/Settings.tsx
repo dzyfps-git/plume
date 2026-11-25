@@ -1,24 +1,53 @@
 import { createResource, createSignal, For, Show } from "solid-js";
-import { appVersion, openEngineFolder, openPicturesFolder } from "../api";
+import { appVersion, backup, openEngineFolder, openPicturesFolder, openRecordingsFolder, restore } from "../api";
 import { health } from "../live/health";
-import { engine, reads, state } from "../live/store";
+import { engine, near, reads, state } from "../live/store";
 import { change, settings, taken } from "../store";
-import { ACCENTS, ACTIONS, TEXTS, type Action } from "../store/settings";
-import { Choices, Line } from "../ui/Line";
+import { ACCENTS, ACTIONS, KEEP, read, TEXTS, type Action } from "../store/settings";
+import { Group } from "../ui/Group";
+import { Choices, Colour, Line } from "../ui/Line";
 import { pictureCount, readPicturesAgain } from "../ui/Pic";
 import { Switch } from "../ui/Switch";
-import { hotkey } from "./keys";
+import { classOf } from "../ui/classes";
 import { NAME } from "./brand";
+import { hotkey } from "./keys";
+import { Shell } from "./Shell";
 
 const ACTION_NAMES: Record<Action, string> = {
   overlay: "Show or hide overlays",
   edit: "Move overlays",
   reset: "Start the fight again",
   view: "Next meter view",
-  quick: "Turn overlays on and off",
+  quick: "Panel over the game",
+  compact: "Meter as one bar",
+  lock: "Lock or unlock the meter",
+  peek: "Look closer, while held",
+  discreet: "Hide names and Combat Power",
+  history: "Open History",
+  details: "Open the last fight",
+  settings: "Open Settings",
+  buffs: "Buffs on or off",
+  actions: "Action bars on or off",
 };
 
+/** What came with this version, newest first. */
+const NEWS = [
+  "The meter is one bar out of fights, and opens with the next one.",
+  "Buttons on the meter, for while it is locked and while it is not. A panel over the game: Ctrl+Alt+F8.",
+  "Gauges as a fifth style, four themes, four fonts, outlines, and your own colour for every class and meaning.",
+  "Gap to the next place, bursts, the dead, your last casts, item level, crit and back attacks.",
+  "Hold a key to look closer. It has none until you set one.",
+  "Party frames with every part to choose, and Force frames in a place of their own.",
+  "Odyle Energy in parts, with its cap, a ring until more comes, and a word when it is nearly full.",
+  "Training begins by itself at the first hit on a dummy.",
+  "Undo while moving overlays, a search over all settings, a backup in one file.",
+];
+
 export function SettingsPage() {
+  return <Shell title="Settings"><AppGroups /></Shell>;
+}
+
+export function AppGroups() {
   const [version] = createResource(appVersion);
   const engineText = () => {
     const { status, message } = engine();
@@ -26,12 +55,8 @@ export function SettingsPage() {
     return message || { off: "Off.", missing: "Not installed.", starting: "Starting.", failed: "Stopped." }[status];
   };
   return (
-    <div class="page">
-      <header class="page-head">
-        <h1>Settings</h1>
-      </header>
-      <section class="block">
-        <h2>Live data</h2>
+    <>
+      <Group name="Live data">
         <Switch
           name="Live data"
           about="Reads a copy of the game's network traffic on this PC. Off means the engine does not run."
@@ -48,14 +73,12 @@ export function SettingsPage() {
             </ul>
           )}
         </Show>
-      </section>
-      <section class="block">
-        <h2>Windows</h2>
+      </Group>
+      <Group name="Windows">
         <Switch name="Start with Windows" about="In the tray, with no window." on={settings.startup} set={(on) => change((s) => (s.startup = on))} />
         <Switch name="Sleep while the game is closed" about="Gives the overlays' memory back until the game is there again." on={settings.sleep} set={(on) => change((s) => (s.sleep = on))} />
-      </section>
-      <section class="block">
-        <h2>Keys over the game</h2>
+      </Group>
+      <Group name="Keys over the game">
         <For each={ACTIONS}>
           {(action) => (
             <Line name={ACTION_NAMES[action]} about={taken().includes(action) ? "Another app has this key." : undefined} bad>
@@ -63,9 +86,8 @@ export function SettingsPage() {
             </Line>
           )}
         </For>
-      </section>
-      <section class="block">
-        <h2>Look</h2>
+      </Group>
+      <Group name="Look">
         <Line name="Theme">
           <Choices
             name="Theme"
@@ -77,13 +99,16 @@ export function SettingsPage() {
             }}
           />
         </Line>
-        <Line name="Accent">
-          <Choices
-            name="Accent"
-            all={ACCENTS.map((a) => [a, <span class="ui-swatch" data-accent={a} role="img" aria-label={a || "violet"} />] as const)}
-            value={settings.accent}
-            set={(v) => change((s) => (s.accent = v))}
-          />
+        <Line name="Accent" wide>
+          <span class="ui-row">
+            <Choices
+              name="Accent"
+              all={[...ACCENTS.map((a) => [a as string, <span class="ui-swatch" data-accent={a} role="img" aria-label={a || "violet"} />] as const), ["class", "Your class"] as const]}
+              value={settings.accent}
+              set={(v) => change((s) => (s.accent = v))}
+            />
+            <Colour name="Accent of your own" value={settings.accent.startsWith("#") ? settings.accent : ""} own={settings.accent === "class" ? classOf(near.you?.job ?? "").color : "var(--accent)"} set={(v) => change((s) => (s.accent = v))} />
+          </span>
         </Line>
         <Line name="Text size">
           <Choices
@@ -111,15 +136,87 @@ export function SettingsPage() {
           on={settings.safeColors}
           set={(on) => change((s) => (s.safeColors = on))}
         />
-      </section>
-      <section class="block">
-        <h2>About</h2>
+      </Group>
+      <Group name="History and backup">
+        <Line name="Fights to keep" about="Older ones are deleted as new ones come. Fewer than you have deletes them with the next fight.">
+          <Choices name="Fights to keep" all={KEEP.map((n) => [n as number, n ? String(n) : "All"] as const)} value={settings.fights.keep} set={(n) => change((s) => (s.fights.keep = n))} />
+        </Line>
+        <Backup />
+      </Group>
+      <Group name="Bug reports">
+        <Switch
+          name="Record the session"
+          about="Writes what the engine reads into a file on this PC, at most 256 MB. It also holds what other players around you did, so look twice before you give it to anyone."
+          on={settings.record}
+          set={(on) => change((s) => (s.record = on))}
+        />
+        <Line name="Recordings"><button class="ui-button" onClick={() => void openRecordingsFolder()}>Open their folder</button></Line>
+      </Group>
+      <div id="news">
+        <Group name="What is new">
+          <ul class="news"><For each={NEWS}>{(n) => <li>{n}</li>}</For></ul>
+        </Group>
+      </div>
+      <Group name="About">
         <p class="ui-muted">
           {NAME} {version()}. Not made or approved by NC. It sends nothing to the game and nothing to the internet. Other
           players' names stay in memory and are gone when it closes.
         </p>
-      </section>
-    </div>
+      </Group>
+    </>
+  );
+}
+
+/** Everything of yours in one file, and back from one. */
+function Backup() {
+  const [found, setFound] = createSignal<{ name: string; value: { settings: unknown; fights: unknown[] } }>();
+  const [said, setSaid] = createSignal<{ text: string; bad?: boolean }>();
+  const told = (failure: unknown) => setSaid({ text: String(failure), bad: true });
+  const pick = async (file: File | undefined) => {
+    setFound();
+    setSaid();
+    if (!file) return;
+    try {
+      const value = JSON.parse(await file.text());
+      if (value?.plume !== 1 || !Array.isArray(value.fights) || !value.settings) throw "This is not a backup of Plume.";
+      setFound({ name: file.name, value: { ...value, settings: read(value.settings) } });
+    } catch (failure) {
+      told(failure instanceof SyntaxError ? "This is not a backup of Plume." : failure);
+    }
+  };
+  const bring = () => {
+    const from = found()!;
+    setFound();
+    restore(from.value).then((n) => setSaid({ text: `Settings are back, with ${n} of ${from.value.fights.length} fights.` }), told);
+  };
+  return (
+    <>
+      <Line name="Backup" about="Settings, boss plans and your own part of every fight, in one file in Downloads.">
+        <button class="ui-button" onClick={() => backup(`plume-backup-${new Date().toISOString().slice(0, 10)}.json`).then(() => setSaid({ text: "Saved in Downloads." }), told)}>Save a backup</button>
+      </Line>
+      <Line name="Bring a backup back" about={said()?.text} bad={said()?.bad}>
+        <Show
+          when={found()}
+          fallback={
+            <label class="ui-button">
+              Choose a file
+              <input class="unseen" type="file" accept=".json" aria-label="Backup file" onChange={(e) => {
+                void pick(e.currentTarget.files?.[0]);
+                e.currentTarget.value = "";
+              }} />
+            </label>
+          }
+        >
+          {(f) => (
+            <span class="ui-row">
+              <small class="ui-muted">{f().name}: takes the place of your settings, and adds {f().value.fights.length} fights.</small>
+              <button class="ui-button" onClick={() => setFound()}>Cancel</button>
+              <button class="ui-button" data-main onClick={bring}>Bring it back</button>
+            </span>
+          )}
+        </Show>
+      </Line>
+    </>
   );
 }
 

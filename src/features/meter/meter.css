@@ -9,7 +9,7 @@
 }
 
 /* A row is a whole number of the screen's points at every size, so that what glides stays sharp: --px is one of them. */
-.meter { --row: round(25px, var(--px, 1px)); --mark: 20px; --icon: 14px; color: var(--text); }
+.meter { --row: round(var(--high, 25px), var(--px, 1px)); --mark: min(20px, var(--high, 25px) - 5px); --icon: 14px; --cast: round(24px, var(--px, 1px)); position: relative; border-radius: 14px; isolation: isolate; color: var(--text); font-size: calc(13px * var(--size, 1)); }
 .meter-head { display: flex; align-items: baseline; gap: var(--space-2); height: round(31px, var(--px, 1px)); padding: 7px 10px 6px; }
 .meter-head strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .meter-head span { color: color-mix(in srgb, var(--text) 78%, transparent); font-size: 12px; }
@@ -18,7 +18,7 @@
 .meter-pull { color: color-mix(in srgb, var(--text) 72%, transparent); font-size: 10.5px; white-space: nowrap; }
 .meter-pull em { margin-left: 5px; font-style: normal; font-weight: 650; }
 .meter-power { display: inline-flex; flex: none; align-items: center; gap: 3px; color: color-mix(in srgb, var(--text) 84%, transparent); font-size: 10.5px; font-weight: 500; }
-.meter-rows { position: relative; height: calc(var(--count) * var(--row)); margin: 0 5px 5px; }
+.meter-rows { position: relative; height: calc(var(--count) * var(--row) + var(--more, 0) * var(--cast)); margin: 0 5px 5px; }
 .meter-row, .meter-hero {
   --bright: color-mix(in oklab, var(--class) 80%, white);
   --deep: color-mix(in oklab, var(--class) 74%, #160b33);
@@ -47,23 +47,67 @@
   transform: translateX(calc((var(--length) - 1) * 100%));
   transition: transform var(--bar-time) var(--bar-ease);
 }
+/* What others' buffs added: the pale end of the bar. */
+.meter-got { position: absolute; inset: 0; z-index: -1; background: rgb(255 255 255 / 30%); transform: translateX(calc(var(--length) * (1 - var(--got)) * 100%)) scaleX(calc(var(--length) * var(--got))); transform-origin: left; transition: transform var(--bar-time) var(--bar-ease); }
+.meter-row[data-after] { transform: translateY(calc(var(--spot) * var(--row) + var(--cast))); }
 .meter-shine { position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 45%) 50%, transparent 65%); transform: translateX(-100%); pointer-events: none; }
 .meter-row > :is(span, small, b) { text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
 .meter-rank { flex: none; width: 10px; color: rgb(255 255 255 / 70%); font-size: 12px; font-style: italic; font-weight: 800; text-align: center; }
-.meter-rank[data-rank="1"] { color: #ffd66b; }
+.meter-rank[data-rank="1"] { color: var(--tone-best); }
 .meter-rank[data-rank="2"] { color: #dfe6f3; }
 .meter-rank[data-rank="3"] { color: #f2aa75; }
 .meter-name { display: flex; flex: 1; align-items: center; gap: 5px; min-width: 0; font-weight: 650; }
 .meter-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.meter-row small { color: color-mix(in srgb, var(--text) 86%, transparent); font-size: 10.5px; }
-.meter-row b { min-width: 42px; font-size: 13.5px; font-weight: 700; text-align: right; }
+.meter-row small { color: color-mix(in srgb, var(--text) 86%, transparent); font-size: calc(10.5px * var(--size, 1)); }
+.meter-row b { min-width: 42px; font-size: calc(13.5px * var(--size, 1)); font-weight: 700; text-align: right; }
 .meter-share { min-width: 34px; text-align: right; }
-.meter-row .meter-deaths { color: var(--danger-ink); }
-.meter-row[data-you] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bright) 80%, white); }
+.meter-row .meter-deaths { color: var(--tone-danger); }
+.meter-row[data-you] { box-shadow: inset 0 0 0 1px var(--tone-you); }
+.meter-row .meter-gap { color: color-mix(in srgb, var(--text) 62%, transparent); }
+/* Far above one's own average: light at the bar's edge and the number. */
+:is(.meter-row, .meter-hero)[data-burst] > b, .meter-hero[data-burst] .hero-rate b { color: var(--tone-best); }
+.meter-row[data-burst] { background: linear-gradient(90deg, color-mix(in srgb, var(--tone-best) 30%, transparent), transparent 60%), color-mix(in srgb, var(--text) 6%, transparent); }
+.meter-row[data-burst] .meter-bar { filter: brightness(1.22) saturate(1.15); }
+:is(.meter-row, .meter-hero)[data-dead] { filter: grayscale(.85) brightness(.72); }
+.meter-back { --mark: 64px; position: absolute; right: 52px; z-index: -1; display: grid; opacity: var(--back); pointer-events: none; }
+.meter-ring { display: contents; }
+.meter-casts { position: absolute; inset: calc((var(--yours) + 1) * var(--row)) 0 auto; display: flex; gap: 3px; height: var(--cast); padding: 1px 4px; overflow: hidden; }
+.meter-buttons { display: flex; justify-content: flex-end; gap: 1px; padding: 3px 6px 0; }
+.meter-buttons:empty { display: none; }
+.meter-button { display: grid; place-items: center; width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: color-mix(in srgb, var(--text) 70%, transparent); font: 11px var(--font-icons); }
+.meter-button:hover { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
+.meter-button[aria-pressed="true"] { color: var(--accent); }
+.meter-small { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: round(32px, var(--px, 1px)); padding: 4px 6px 4px 8px; }
+.meter-small .meter-name { flex: 0 1 auto; display: grid; gap: 0; line-height: 1.15; }
+.meter-small > b { margin-left: auto; font-size: calc(14px * var(--size, 1)); }
+.meter-small > b[data-over] { color: color-mix(in srgb, var(--text) 62%, transparent); }
+.meter-small .meter-buttons { margin-left: auto; padding: 0; }
+.small-feet { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; --icon: 15px; }
+.small-feet small { display: none; }
+.foot-item[data-tone="muted"] small { display: inline; }
+.meter-peek { display: grid; gap: 2px; margin: 0 5px 5px; padding: 5px 4px 2px; border-top: 1px solid color-mix(in srgb, var(--text) 9%, transparent); font-size: 12px; }
+.peek-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; padding: 0 4px 4px; }
+.peek-facts span { display: flex; justify-content: space-between; gap: 6px; }
+.peek-facts small, .peek-skill small { color: color-mix(in srgb, var(--text) 72%, transparent); font-size: 11px; }
+.peek-skill { position: relative; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px 0 2px; overflow: hidden; border-radius: 6px; isolation: isolate; }
+.peek-skill i { position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--class) 34%, transparent); transform: scaleX(var(--length)); transform-origin: left; }
+.peek-skill span:not(.pic) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A figure that changed, for a moment. */
+.foot-item { position: relative; }
+.pop { position: absolute; right: 0; bottom: 70%; color: color-mix(in srgb, var(--text) 80%, transparent); font-size: 12px; font-style: normal; font-weight: 750; text-shadow: 0 1px 3px #000; pointer-events: none; animation: pop 1.4s ease-out forwards; }
+.pop[data-up] { color: var(--tone-bonus); }
+@keyframes pop { 0% { opacity: 0; translate: 0 6px; } 15% { opacity: 1; translate: 0 0; } 70% { opacity: 1; } 100% { opacity: 0; translate: 0 -8px; } }
+.foot-item[data-tone="ending"] :is(b, small) { color: var(--tone-ending); }
+.foot-item[data-tone="muted"] { opacity: .8; }
+/* Fills until more of it comes. */
+.ringed { display: inline-grid; border-radius: 50%; }
+.ringed[data-ring] { padding: 2px; background: conic-gradient(var(--tone-bonus) calc(var(--part) * 1turn), color-mix(in srgb, var(--text) 14%, transparent) 0); mask: radial-gradient(farthest-side, #000 calc(100% - 3px), transparent calc(100% - 3px) calc(100% - 2px), #000 calc(100% - 2px)); }
 .meter-row[data-ghost] { background: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--class) 45%, transparent); }
 .meter-row[data-ghost] .meter-bar { opacity: .3; }
 .meter-row[data-ghost] .meter-name { color: color-mix(in srgb, var(--class) 45%, white); font-weight: 500; }
 .meter-row[data-ghost] .class-mark { opacity: .55; }
+.meter-top { margin: 0 0 4px; }
 .meter-foot { --icon: 17px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 10px; padding: 5px 10px 6px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
 .foot-item { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; line-height: 1.2; white-space: nowrap; }
 .foot-item b { font-weight: 650; }
@@ -71,7 +115,7 @@
 .foot-item small { color: color-mix(in srgb, var(--text) 74%, transparent); font-size: 10.5px; }
 
 /* No panel: each piece floats, a line of light under each name. */
-.meter[data-style="line"] { display: grid; gap: round(4px, var(--px, 1px)); --row: round(27px, var(--px, 1px)); }
+.meter[data-style="line"]:not([data-small]) { display: grid; gap: round(4px, var(--px, 1px)); --row: round(var(--high, 25px) + 2px, var(--px, 1px)); }
 .meter[data-style="line"] :is(.meter-boss, .meter-head, .meter-foot), .meter[data-style="line"] .meter-row {
   border: 0; border-radius: 9px; background: linear-gradient(90deg, color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% + 20%), transparent), color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% - 10%), transparent));
 }
@@ -82,7 +126,7 @@
 .meter[data-style="line"] .meter-row[data-you] .meter-name > span { color: var(--bright); }
 
 /* Your card first and large, the others under it. */
-.meter[data-style="cards"] { display: grid; gap: round(5px, var(--px, 1px)); --mark: 18px; --row: round(23px, var(--px, 1px)); }
+.meter[data-style="cards"]:not([data-small]) { display: grid; gap: round(5px, var(--px, 1px)); --mark: min(18px, var(--high, 25px) - 7px); --row: round(var(--high, 25px) - 2px, var(--px, 1px)); }
 .meter[data-style="cards"] :is(.meter-boss, .meter-head, .meter-foot, .meter-hero), .meter[data-style="cards"] .meter-rows {
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% + 8%), transparent);
 }
@@ -101,11 +145,48 @@
 .hero-rate small { color: color-mix(in srgb, var(--text) 74%, transparent); font-size: 10.5px; }
 
 /* A compact table with no bars. */
-.meter[data-style="table"] { --row: round(20px, var(--px, 1px)); --mark: 16px; }
+.meter[data-style="table"] { --row: round(max(18px, var(--high, 25px) - 5px), var(--px, 1px)); --mark: min(16px, var(--row) - 4px); }
 .meter[data-style="table"] .meter-row { border-radius: 0; background: none; }
+:is(.meter[data-style="table"], .meter[data-style="cards"], .meter[data-style="line"], .meter[data-style="gauge"]) .meter-got { display: none; }
 .meter[data-style="table"] .meter-bar { width: 3px; border-radius: 2px; background: var(--class); transform: none; inset: 3px auto 3px 0; }
 .meter[data-style="table"] .meter-row[data-you] { background: color-mix(in srgb, var(--class) 18%, transparent); box-shadow: none; }
 
+/* A ring round each mark in place of a bar. */
+.meter[data-style="gauge"] { --row: round(var(--high, 25px) + 7px, var(--px, 1px)); --mark: calc(var(--high, 25px) - 4px); }
+.meter[data-style="gauge"] .meter-row { background: none; }
+.meter[data-style="gauge"] .meter-bar { display: none; }
+.meter[data-style="gauge"] .meter-ring {
+  display: grid; flex: none; padding: round(up, 3px, var(--px, 1px)); border-radius: 50%;
+  background: conic-gradient(from -.5turn, var(--deep), var(--bright) calc(var(--length) * 1turn), color-mix(in srgb, var(--text) 12%, transparent) 0);
+}
+.meter[data-style="gauge"] .meter-ring .class-mark { border-radius: 50%; }
+.meter[data-style="gauge"] .meter-row[data-you] { background: color-mix(in srgb, var(--class) 16%, transparent); }
+
+.meter[data-font="narrow"] { font-family: "Bahnschrift SemiCondensed", "Bahnschrift", var(--font-sans); }
+.meter[data-font="round"] { font-family: "Candara", "Trebuchet MS", var(--font-sans); }
+.meter[data-font="mono"] { font-family: var(--font-mono); }
+.meter[data-outline="soft"] .meter-name > span { text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 6px #000; }
+.meter[data-outline="solid"] .meter-name > span { -webkit-text-stroke: 3px #000; paint-order: stroke fill; text-shadow: none; }
+.meter[data-thin] :is(span, small, b, strong) { -webkit-text-stroke: 1.5px rgb(0 0 0 / 80%); paint-order: stroke fill; }
+.meter[data-thin][data-outline="solid"] .meter-name > span { -webkit-text-stroke-width: 3px; }
+
+/* Themes, and what is see-through. */
+.meter::before { content: ""; position: absolute; inset: 0; z-index: -2; border-radius: inherit; background: rgb(0 0 0 / calc(var(--shade, 0) * 100%)); }
+.meter[data-look="minimal"], .meter[data-look="minimal"] :is(.meter-boss, .meter-head, .meter-foot, .meter-hero, .meter-rows) { border-color: transparent !important; background: none !important; box-shadow: none !important; }
+.meter[data-look="minimal"] .meter-row { background: none; }
+.meter[data-look="minimal"] :is(span, small, b, strong) { text-shadow: 0 1px 3px #000, 0 0 2px #000; }
+.meter[data-look="solid"].glass, .meter[data-look="solid"] :is(.meter-boss, .meter-head, .meter-foot, .meter-hero):not(.glass *) { background: var(--surface-base); }
+.meter[data-look="light"].glass, .meter[data-look="light"]:not(.glass) :is(.meter-boss, .meter-head, .meter-foot, .meter-hero, .meter-rows) { --tint: .9; }
+.meter[data-look="light"] .meter-row { --bright: color-mix(in oklab, var(--class) 62%, white); --deep: color-mix(in oklab, var(--class) 45%, white); }
+.meter[data-look="light"] .meter-row > :is(span, small, b) { text-shadow: 0 0 2px rgb(255 255 255 / 80%); }
+.meter[data-look="light"] .meter-row .meter-rank:not([data-rank="1"], [data-rank="2"], [data-rank="3"]) { color: var(--text-muted); }
+.meter[data-look="light"] .meter-rank { color: #8a6a10 !important; }
+.meter[data-look="light"] .boss-line b { background: none; color: #a3368f; }
+.meter[data-strong] small, .meter[data-strong] .boss-sub { color: var(--text); }
+.meter[data-strong] .meter-bar { filter: saturate(1.25) brightness(1.12); }
+.meter[data-strong] :is(span, small, b, strong) { text-shadow: 0 1px 2px #000, 0 0 3px rgb(0 0 0 / 85%); }
+
 @media (prefers-reduced-motion: reduce) {
-  .meter-row, .meter-bar { transition: none; }
+  .meter-row, .meter-bar, .meter-got { transition: none; }
+  .pop { animation: none; }
 }

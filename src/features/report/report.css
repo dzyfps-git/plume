@@ -2,7 +2,7 @@
 .report-line { margin: 0 0 var(--space-4); padding: 0 var(--space-2); }
 .findings { display: grid; gap: var(--space-1); margin: 0 0 var(--space-4); padding: 0; list-style: none; }
 .findings li { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-2) 0; border-radius: var(--radius); background: var(--surface-hover); overflow: hidden; }
-.findings li::before { content: ""; margin: calc(var(--space-2) * -1) 0; background: color-mix(in srgb, var(--danger-ink) calc(25% + var(--cost) * 75%), transparent); }
+.findings li::before { content: ""; margin: calc(var(--space-2) * -1) 0; background: color-mix(in srgb, var(--tone-danger) calc(25% + var(--cost) * 75%), transparent); }
 
 .lanes { display: grid; gap: 2px; margin-bottom: var(--space-4); }
 .lane { display: grid; grid-template-columns: 150px minmax(0, 1fr) 96px; gap: var(--space-3); align-items: center; min-height: 22px; padding: 0 var(--space-2); border-radius: var(--radius); }
@@ -44,14 +44,14 @@
 .figure > :not(:first-child) { text-align: right; }
 .figure:not(.figure-head):hover { background: var(--surface-hover); }
 .figure-head { border-bottom: 1px solid var(--border); border-radius: 0; color: var(--text-muted); }
-.better { color: var(--success-ink); }
-.worse { color: var(--danger-ink); }
+.better { color: var(--tone-ready); }
+.worse { color: var(--tone-danger); }
 
 .recap { margin-bottom: var(--space-4); }
 .recap h3 { margin: 0 0 var(--space-1); padding: 0 var(--space-2); font-size: 13px; font-weight: 600; }
 .recap .ui-row-item { --columns: 60px minmax(0, 1fr) 90px 90px; }
 .recap .ui-row-item[data-left] { position: relative; }
-.recap .ui-row-item[data-left]::after { content: ""; position: absolute; bottom: 1px; left: calc(60px + var(--space-2) + var(--space-3)); width: calc((100% - 60px - var(--space-2) * 2 - var(--space-3)) * var(--left)); height: 2px; border-radius: 1px; background: var(--success-ink); }
+.recap .ui-row-item[data-left]::after { content: ""; position: absolute; bottom: 1px; left: calc(60px + var(--space-2) + var(--space-3)); width: calc((100% - 60px - var(--space-2) * 2 - var(--space-3)) * var(--left)); height: 2px; border-radius: 1px; background: var(--tone-ready); }
 .recap .ui-row-item > :nth-child(n + 3) { text-align: right; }
 
 .wave { display: block; width: 100%; height: 56px; overflow: visible; }

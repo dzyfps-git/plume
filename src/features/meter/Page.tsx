@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { engineSend } from "../../api";
 import { fight, skills } from "../../live/store";
-import { change, settings } from "../../store";
+import { change, hideNames, settings } from "../../store";
 import { MODES, VIEWS, type Mode, type View } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, short } from "../../ui/format";
@@ -84,7 +84,7 @@ export function MeterPage() {
               >
                 <i class="meter-bar" />
                 <ClassMark job={r.job} />
-                <span class="meter-name">{label(r, settings.meter.hideNames, i() + 1)}<Show when={r.power > 0}><small class="meter-power ui-num"><Thing of="power" />{power(r.power)}</small></Show></span>
+                <span class="meter-name">{label(r, hideNames(), i() + 1)}<Show when={r.power > 0 && !settings.discreet}><small class="meter-power ui-num"><Thing of="power" />{power(r.power)}</small></Show></span>
                 <small class="ui-num">{short(total)}</small>
                 <small class="ui-num">{share.toFixed(1)}%</small>
                 <b class="ui-num">{settings.meter.view === "hits" ? rate.toFixed(1) : short(rate)}</b>
@@ -98,7 +98,7 @@ export function MeterPage() {
         <Show when={row()}>
           {(r) => (
             <section class="block">
-              <h2>{label(r(), settings.meter.hideNames, fight.rows.indexOf(r()) + 1)}</h2>
+              <h2>{label(r(), hideNames(), fight.rows.indexOf(r()) + 1)}</h2>
               <Show when={skills().id === r().id && skills().skills.length} fallback={<p class="ui-muted">Reading skills.</p>}>
                 <Skills skills={skills().skills} job={r().job} />
               </Show>

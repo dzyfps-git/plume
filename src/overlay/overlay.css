@@ -1,5 +1,6 @@
 html, body, #root { height: 100%; background: transparent; overflow: hidden; user-select: none; }
-.screen { position: fixed; inset: 0; }
+.screen { position: fixed; inset: 0; transition: opacity 1.2s; }
+.screen[data-idle] { opacity: .4; }
 .screen[data-editing] { background: rgb(0 0 0 / 30%); }
 .frame { position: absolute; top: 0; left: 0; }
 .frame[data-editing] { border-radius: var(--radius-large); outline: 1px dashed var(--accent); cursor: move; touch-action: none; }
@@ -13,3 +14,14 @@ html, body, #root { height: 100%; background: transparent; overflow: hidden; use
 .frame-bar .ui-icon-button { width: 24px; height: 24px; border-radius: 50%; }
 .frame[data-locked] { outline-color: var(--text-muted); cursor: default; }
 .edit-bar { position: fixed; bottom: 48px; left: 50%; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); width: max-content; max-width: min(980px, 92vw); height: auto; translate: -50% 0; background: var(--overlay-solid); }
+.over-panel {
+  position: fixed; top: 50%; left: 50%; display: grid; gap: var(--space-2); width: min(560px, 92vw); max-height: 88vh; padding: var(--space-3); overflow: auto; translate: -50% -50%;
+  border: 1px solid var(--border); border-radius: var(--radius-large); background: var(--overlay-solid); color: var(--text); box-shadow: var(--shadow);
+}
+.over-panel header, .over-panel footer { display: flex; align-items: center; gap: var(--space-1); }
+.over-panel header strong { flex: 1; font-size: 15px; font-weight: 600; }
+.over-panel footer { justify-content: flex-end; gap: var(--space-2); }
+.over-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.line { display: flex; align-items: center; gap: var(--space-4); min-height: 40px; padding: var(--space-1) var(--space-2); }
+.slide { display: flex; align-items: center; gap: var(--space-3); width: 240px; }
+.slide > span { min-width: 56px; text-align: right; }

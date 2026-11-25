@@ -18,7 +18,7 @@ const LONGEST_WAIT: Duration = Duration::from_secs(30);
 const STEADY: Duration = Duration::from_secs(60);
 /// Whole fights of this session, kept in memory only.
 const SESSION: usize = 200;
-const COMMANDS: [&str; 6] = ["mode", "rate", "limit", "watch", "credit", "reset"];
+const COMMANDS: [&str; 8] = ["mode", "rate", "limit", "watch", "credit", "train", "record", "reset"];
 
 type Tell = dyn Fn(&str, &Value) + Send + Sync;
 

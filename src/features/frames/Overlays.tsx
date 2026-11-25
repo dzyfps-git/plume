@@ -1,13 +1,14 @@
-import { For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import { near } from "../../live/store";
 import type { Aura, Unit } from "../../live/types";
-import { settings } from "../../store";
+import { hideNames, settings } from "../../store";
 import { ClassMark, classOf } from "../../ui/classes";
 import { short } from "../../ui/format";
 import { ticking } from "../../ui/now";
 import { buffs, debuffs, effects } from "../effects/logic";
 import { Tiles } from "../effects/Tile";
-import { dead, share, who } from "./logic";
+import { power } from "../meter/logic";
+import { dead, groups, ordered, share, who } from "./logic";
 import "./frames.css";
 
 function Frame(props: { of: Unit; name: string; auras: Aura[]; label: string; monster?: boolean }) {
@@ -42,7 +43,7 @@ export const TargetOverlay = () => (
 
 export const FoeOverlay = () => (
   <Show when={near.foe}>
-    {(u) => <Frame of={u()} name={who(u(), 0, settings.meter.hideNames)} auras={[...buffs(u().auras), ...debuffs(u().auras)]} label="Target player" />}
+    {(u) => <Frame of={u()} name={who(u(), 0, hideNames())} auras={[...buffs(u().auras), ...debuffs(u().auras)]} label="Target player" />}
   </Show>
 );
 
@@ -52,23 +53,61 @@ const shown = (u: Unit) => {
   return [...debuffs(all), ...all.filter((a) => a.yours && !a.bad && a.end > 0)];
 };
 
+const health = (u: Unit) => {
+  if (dead(u)) return "dead";
+  const [part, how] = [share(u), settings.party.health];
+  if (part === undefined || how === "off") return "";
+  const percent = `${Math.round(part * 100)}%`;
+  return how === "percent" ? percent : how === "number" ? short(u.hp) : `${short(u.hp)} ${percent}`;
+};
+
+function Member(props: { of: Unit; at: number; now: number }) {
+  const set = () => settings.party;
+  const tiles = () => <Tiles of={shown(props.of)} now={props.now} most={set().most} small />;
+  return (
+    <div class="party-cell" data-icons={set().icons}>
+      <div
+        class="party-row"
+        data-dead={dead(props.of) || undefined}
+        data-low={(set().low > 0 && (share(props.of) ?? 1) * 100 <= set().low) || undefined}
+        style={{ "--class": classOf(props.of.job).color, "--length": share(props.of) ?? 0 }}
+      >
+        <i />
+        <Show when={set().mark}><ClassMark job={props.of.job} /></Show>
+        <span>{who(props.of, props.at, hideNames())}</span>
+        <Show when={set().power && !settings.discreet && props.of.power > 0}><small class="ui-num">{power(props.of.power)}</small></Show>
+        <Show when={set().icons === "on"}>{tiles()}</Show>
+        <b class="ui-num">{health(props.of)}</b>
+      </div>
+      <Show when={set().icons === "beside"}>{tiles()}</Show>
+    </div>
+  );
+}
+
+const style = () => ({ "--wide": `${settings.party.width}px`, "--tall": `${settings.party.height}px` });
+
+/** With icons beside, they stand on the side with room. */
 export function PartyOverlay() {
   const now = ticking();
+  const all = createMemo(() => ordered(near.party, settings.party));
   return (
-    <section class="party glass" aria-label="Party frames">
-      <For each={near.party}>
-        {(u, i) => (
-          <div
-            class="party-row"
-            data-dead={dead(u) || undefined}
-            data-low={(share(u) ?? 1) * 100 <= settings.alerts.ally.value || undefined}
-            style={{ "--class": classOf(u.job).color, "--length": share(u) ?? 0 }}
-          >
-            <i />
-            <ClassMark job={u.job} />
-            <span>{who(u, i(), settings.meter.hideNames)}</span>
-            <Tiles of={shown(u)} now={now()} most={4} small />
-            <b class="ui-num">{dead(u) ? "dead" : share(u) === undefined ? "" : `${Math.round(share(u)! * 100)}%`}</b>
+    <section class="party glass" aria-label="Party frames" style={{ ...style(), "--columns": settings.party.columns }}>
+      <For each={all()}>{({ unit, at }) => <Member of={unit} at={at} now={now()} />}</For>
+    </section>
+  );
+}
+
+/** A Force in its groups, side by side. */
+export function ForceOverlay() {
+  const now = ticking();
+  const all = createMemo(() => groups(ordered(near.party, { ...settings.party, order: "game" })));
+  return (
+    <section class="force" aria-label="Force frames" style={style()}>
+      <For each={all()}>
+        {(group, i) => (
+          <div class="party glass">
+            <small class="force-name">Group {i() + 1}</small>
+            <For each={group}>{({ unit, at }) => <Member of={unit} at={at} now={now()} />}</For>
           </div>
         )}
       </For>

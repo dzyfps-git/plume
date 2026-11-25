@@ -1,5 +1,5 @@
 import type { Aura, Near, Unit } from "../../live/types.ts";
-import type { Named } from "../../store/settings.ts";
+import type { Named, Settings } from "../../store/settings.ts";
 
 /** What keeps you from acting, in words. */
 export const CONTROL: Record<string, string> = {
@@ -39,6 +39,17 @@ export const debuffs = (auras: readonly Aura[]) => auras.filter((a) => a.bad).so
 
 /** What holds you longest of what keeps you from acting. */
 export const held = (auras: readonly Aura[]): Aura | undefined => auras.filter((a) => a.tag in CONTROL).sort((a, b) => soonest(b, a))[0];
+
+/** The same, of the kinds you want to see, and not the short ones. */
+export const heldFor = (auras: readonly Aura[], set: Pick<Settings["control"], "skip" | "least">) =>
+  held(auras.filter((a) => !set.skip.includes(a.tag) && (!a.end || a.end - a.start >= set.least * 1000)));
+
+/** Buffs you want to see, those of items in a list of their own when they stand apart. */
+export function chosenBuffs(auras: readonly Aura[], set: Pick<Settings["buffs"], "items" | "skip">): { main: Aura[]; items: Aura[] } {
+  const all = buffs(auras).filter((a) => !set.skip.some((s) => same(s, a)));
+  if (set.items === "with") return { main: all, items: [] };
+  return { main: all.filter((a) => !a.item), items: set.items === "apart" ? all.filter((a) => a.item) : [] };
+}
 
 /** The same effect, or another rank of it. */
 export const same = (of: Named, a: Pick<Aura, "id" | "name">) => of.id === a.id || (!!of.name && of.name === a.name);

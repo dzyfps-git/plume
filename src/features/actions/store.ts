@@ -1,6 +1,6 @@
 import { createMemo, createResource, createRoot, createSignal } from "solid-js";
 import { fight as loadFight, on } from "../../api";
-import { near, onHappened } from "../../live/store";
+import { near, onHappened, sampling } from "../../live/store";
 import type { Saved } from "../../live/types";
 import { fights, followFights } from "../history/store";
 import { learned, type Known } from "./logic";
@@ -41,6 +41,6 @@ export function followActions() {
       return [...kept.values()].sort((a, b) => b.start - a.start);
     });
     read = () => whole.latest ?? [];
-    known = createMemo(() => learned(read(), near.you?.job ?? ""));
+    known = createMemo(() => learned(read(), sampling() ? "" : (near.you?.job ?? "")));
   });
 }

@@ -1,8 +1,10 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
-import { overlayName, type Feature } from "../features/types";
-import { change, settings } from "../store";
+import { overlayName, widthOf, type Feature } from "../features/types";
+import { settings } from "../store";
 import { place } from "../store/settings";
 import { hold, snap, toPixels, toShare, type Spot } from "./layout";
+import { move as movePlaces } from "./undo";
+import { drag } from "./zones";
 
 interface Props {
   feature: Feature;
@@ -16,23 +18,25 @@ export function Frame(props: Props) {
   const overlay = props.feature.overlay!;
   let frame!: HTMLDivElement;
   /** As it is on the screen. */
-  const [size, setSize] = createSignal({ width: overlay.width, height: 80 });
+  const [size, setSize] = createSignal({ width: widthOf(overlay), height: 80 });
   const [screen, setScreen] = createSignal({ width: innerWidth, height: innerHeight });
   const [held, setHeld] = createSignal<Spot>();
 
+  const free = () => props.editing || !!overlay.loose?.();
+  const zoom = () => at().scale * settings.overlay.size;
   const at = () => place(settings.places[props.feature.id], overlay.place);
   const spot = () => {
     const height = at().height;
     if (held()) return held()!;
     // While it is placed, it is as high as it is.
     if (!overlay.edge || !height || props.editing) return toPixels(at(), size(), screen());
-    return hold(at(), size(), screen(), overlay.edge(), height * at().scale);
+    return hold(at(), size(), screen(), overlay.edge(), height * zoom());
   };
   // On a whole point of the screen: between two, everything in it would be soft.
   const whole = (v: number) => Math.round(v * devicePixelRatio) / devicePixelRatio;
   const put = (edit: Partial<ReturnType<typeof at>>) => {
-    const next = { ...at(), ...edit, height: size().height / at().scale };
-    change((s) => (s.places = { ...s.places, [props.feature.id]: next }), true);
+    const next = { ...at(), ...edit, height: size().height / zoom() };
+    movePlaces((all) => ({ ...all, [props.feature.id]: next }));
   };
   const putAt = (to: Spot) => put(toShare(to, size(), screen()));
 
@@ -52,28 +56,32 @@ export function Frame(props: Props) {
   // Leaving edit mode in the middle of a drag keeps where it was dragged to.
   createEffect(() => {
     const to = held();
-    if (!props.editing && to) {
+    if (!free() && to) {
       putAt(to);
       setHeld(undefined);
     }
   });
 
   function grab(event: PointerEvent) {
-    if (!props.editing || at().locked || event.button !== 0 || (event.target as Element).closest("button")) return;
+    if (!free() || at().locked || event.button !== 0 || (event.target as Element).closest("button")) return;
     frame.setPointerCapture(event.pointerId);
+    const begun = spot();
     const from = { x: event.clientX - spot().x, y: event.clientY - spot().y };
     setHeld(spot());
+    if (!props.editing) drag(true);
     const others = props.others().filter((o) => o.x !== spot().x || o.y !== spot().y);
     const move = (e: PointerEvent) => {
-      const free = { x: e.clientX - from.x, y: e.clientY - from.y };
+      const loose = { x: e.clientX - from.x, y: e.clientY - from.y };
       // Alt drags without the grid.
-      setHeld(e.altKey ? free : snap(free, size(), screen(), others));
+      setHeld(e.altKey || !settings.overlay.snap ? loose : snap(loose, size(), screen(), others));
     };
     const drop = () => {
       frame.removeEventListener("pointermove", move);
       const to = held();
-      if (to) putAt(to);
+      // A click is no move.
+      if (to && (to.x !== begun.x || to.y !== begun.y)) putAt(to);
       setHeld(undefined);
+      drag(false);
     };
     frame.addEventListener("pointermove", move);
     frame.addEventListener("lostpointercapture", drop, { once: true });
@@ -103,7 +111,7 @@ export function Frame(props: Props) {
       onKeyDown={walk}
       onWheel={(e) => props.editing && scale(e.deltaY < 0 ? 0.05 : -0.05)}
     >
-      <div class="frame-body" style={{ width: `${overlay.width}px`, zoom: at().scale, "--px": `${1 / (at().scale * devicePixelRatio)}px` }}>
+      <div class="frame-body" style={{ width: `${widthOf(overlay)}px`, zoom: zoom(), "--px": `${1 / (zoom() * devicePixelRatio)}px` }}>
         <overlay.view />
       </div>
       <Show when={props.editing}>

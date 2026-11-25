@@ -36,6 +36,7 @@ export function demoFight(ms: number): Fight {
     taken: Math.round(seconds * (i === 5 ? 2_900 : 700 + i * 40)),
     hps: i === 7 ? 8_400 : i === 6 ? 2_100 : 0,
     power: 98_400 + i * 2_350,
+    level: 2_040 + i * 60,
     healing: Math.round(seconds * (i === 7 ? 8_400 : i === 6 ? 2_100 : 0)),
     hits: Math.round(seconds * (2.2 + i * 0.2)),
     given: i === 6 ? Math.round(damage[0] * 0.08) + Math.round(damage[1] * 0.08) : 0,
@@ -51,12 +52,14 @@ export function demoFight(ms: number): Fight {
       maxHp: MAX_HP,
       boss: true,
       stagger: (now / 250) % 100,
+      dummy: false,
     },
     targets: [1],
     ms: now,
     total,
     timeup: false,
     dungeon: 0,
+    own: [Math.round(seconds * 2.2), Math.round(seconds * 0.97), Math.round(seconds * 1.34)],
     rows,
   };
 }
@@ -76,7 +79,7 @@ export function demoNear(ms: number, at: number): Near {
   const aura = (id: number, name: string, time: ReturnType<typeof cycle>, more: Partial<Aura> = {}) => time && demoAura(id, name, { ...time, ...more });
   const wave = (least: number, beat: number, shift: number) => least + (1 - least) * (0.5 + 0.5 * Math.sin(ms / beat + shift));
   const unit = (i: number, hp: number, auras: Aura[]): Unit => ({
-    key: String(i + 1), id: i + 1, name: PARTY[i][0], job: PARTY[i][1], you: i === 0, boss: false, hp: Math.round(hp * 42_000), maxHp: 42_000, auras,
+    key: String(i + 1), id: i + 1, name: PARTY[i][0], job: PARTY[i][1], you: i === 0, boss: false, hp: Math.round(hp * 42_000), maxHp: 42_000, power: 98_400 + i * 2_350, level: 2_040 + i * 60, auras,
   });
   const wind = (i: number) => aura(904, "Word of Wind", i < 6 ? cycle(30_000, 22_000) : undefined, { by: 7 });
   const you = unit(0, wave(0.15, 5_000, 0), list(
@@ -85,7 +88,7 @@ export function demoNear(ms: number, at: number): Near {
     wind(0),
     demoAura(910, "Herb Soup", { item: true, start: at - 600_000, end: at + 900_000 - ms }),
     aura(920, "Storm Mark", cycle(18_000, 6_000, 7_000), { bad: true, by: 900 }),
-    aura(921, "Thunder Stomp", cycle(24_000, 3_500, 2_000), { bad: true, tag: "stun", by: 900 }),
+    aura(921, "Thunder Stomp", cycle(6_000, 3_500, 2_000), { bad: true, tag: "stun", by: 900 }),
   ));
   return {
     you,
@@ -93,7 +96,7 @@ export function demoNear(ms: number, at: number): Near {
       wind(i), aura(920, "Storm Mark", cycle(20_000, 6_000, i * 5_000), { bad: true, by: 900 }), aura(930, "Venom", i === 2 ? cycle(15_000, 8_000) : undefined, { bad: true, by: 900 }),
     ))),
     target: {
-      key: "900", id: 900, name: "Stormbound Warden", job: "", you: false, boss: true, hp: Math.round(43_000_000 * (1 - (ms % LENGTH) / LENGTH)), maxHp: 43_000_000,
+      key: "900", id: 900, name: "Stormbound Warden", job: "", you: false, boss: true, hp: Math.round(43_000_000 * (1 - (ms % LENGTH) / LENGTH)), maxHp: 43_000_000, power: 0, level: 0,
       auras: list(
         aura(901, "Heart Gore", cycle(12_000, 8_000), { bad: true, yours: true }),
         aura(931, "Sunder", cycle(25_000, 15_000), { bad: true, by: 5, stacks: 4 }),
@@ -101,7 +104,7 @@ export function demoNear(ms: number, at: number): Near {
       ),
     },
     foe: {
-      key: "50", id: 50, name: "Rival", job: "ranger", you: false, boss: false, hp: Math.round(38_000 * wave(0.3, 7_000, 3)), maxHp: 38_000,
+      key: "50", id: 50, name: "Rival", job: "ranger", you: false, boss: false, hp: Math.round(38_000 * wave(0.3, 7_000, 3)), maxHp: 38_000, power: 0, level: 0,
       auras: list(aura(950, "Hawk Eye", cycle(16_000, 10_000), { by: 50 }), aura(901, "Heart Gore", cycle(12_000, 5_000, 3_000), { bad: true, yours: true })),
     },
     fighting: true,

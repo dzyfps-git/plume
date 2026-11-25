@@ -22,14 +22,19 @@ const VIEWS: [&str; 6] = ["damage", "rdps", "ndps", "healing", "taken", "hits"];
 struct Saved {
     path: PathBuf,
     settings: Mutex<Value>,
+    /// The page the main window opens on, when a key asked for one.
+    page: Mutex<String>,
 }
 
 /// Everything a page needs to draw its first frame.
 #[tauri::command]
-fn start_state(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>) -> Value {
+fn start_state(app: AppHandle, window: tauri::WebviewWindow, saved: State<Saved>, engine: State<Arc<Engine>>) -> Value {
     let settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
     let mut now = engine.now();
     now["settings"] = settings;
+    if window.label() == windowing::MAIN {
+        now["page"] = std::mem::take(&mut *saved.page.lock().unwrap_or_else(|p| p.into_inner())).into();
+    }
     now["editing"] = windowing::MODES[usize::from(app.state::<Overlay>().editing.load(SeqCst))].into();
     now
 }
@@ -61,16 +66,97 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
     if before["mode"] != settings["mode"] {
         let _ = engine.send(json!({ "cmd": "mode", "mode": settings["mode"].as_str().unwrap_or("bossTargets") }));
     }
-    // Weighing buffs costs time, so only while it is what the meter shows.
-    let _ = engine.send(json!({ "cmd": "credit", "on": settings["meter"]["view"].as_str().is_some_and(|v| v.ends_with("dps")) }));
+    if before["training"] != settings["training"] {
+        train(&engine, settings);
+    }
+    if before["record"] != settings["record"] {
+        record(app, settings);
+    }
+    engine.fights.keep.store(settings["fights"]["keep"].as_u64().unwrap_or(0) as usize, SeqCst);
+    // Weighing buffs costs time, so only while the meter shows something of it.
+    let weigh = settings["meter"]["buffShare"] == true || settings["meter"]["view"].as_str().is_some_and(|v| v.ends_with("dps"));
+    let _ = engine.send(json!({ "cmd": "credit", "on": weigh }));
     engine.want(settings["live"].as_bool().unwrap_or(false));
-    let key = |action: &str| settings["hotkeys"][action].as_str().unwrap_or_default().to_string();
-    hotkeys::set(["overlay", "edit", "reset", "view", "quick"].map(|a| (a.to_string(), key(a))).to_vec())
+    let keys = settings["hotkeys"].as_object().into_iter().flatten();
+    hotkeys::set(keys.map(|(action, key)| (action.clone(), key.as_str().unwrap_or_default().to_string())).collect())
+}
+
+/// Whether a dummy turns training on by itself, and how long a run is.
+fn train(engine: &Engine, settings: &Value) {
+    let ms = settings["training"]["seconds"].as_i64().unwrap_or(0) * 1000;
+    let _ = engine.send(json!({ "cmd": "train", "auto": settings["training"]["auto"] == true, "ms": ms }));
+}
+
+/// Records the session into a file of its own, or stops.
+fn record(app: &AppHandle, settings: &Value) {
+    let path = (settings["record"] == true).then(|| recordings_folder(app)).filter(|f| std::fs::create_dir_all(f).is_ok()).map(|f| {
+        let seconds = std::time::UNIX_EPOCH.elapsed().map_or(0, |d| d.as_secs());
+        f.join(format!("session-{seconds}.txt"))
+    });
+    let _ = app.state::<Arc<Engine>>().send(json!({ "cmd": "record", "path": path }));
+}
+
+fn recordings_folder(app: &AppHandle) -> PathBuf {
+    app.state::<Saved>().path.with_file_name("recordings")
+}
+
+#[tauri::command(async)]
+fn open_recordings_folder(app: AppHandle) -> Result<(), String> {
+    show_folder(recordings_folder(&app))
 }
 
 #[tauri::command]
-fn engine_send(engine: State<Arc<Engine>>, command: Value) -> Result<(), String> {
+fn engine_send(app: AppHandle, engine: State<Arc<Engine>>, command: Value) -> Result<(), String> {
+    // Where a file is written is not for a page to say.
+    if command["cmd"] == "record" {
+        return Err("not from here".into());
+    }
+    if command["cmd"] == "reset" {
+        let _ = app.emit("cleared", ());
+    }
     engine.send(command)
+}
+
+/// Settings and fights in one file, in Downloads.
+#[tauri::command(async)]
+fn backup(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>, name: String) -> Result<(), String> {
+    let settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    let all = json!({ "plume": 1, "settings": settings, "fights": engine.fights.all() });
+    export(app, name, all.to_string().into_bytes())
+}
+
+/// What a backup held: its settings take the place of yours, its fights come beside yours. Gives back how many.
+#[tauri::command(async)]
+fn restore(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>, value: Value) -> Result<usize, String> {
+    let fights = value["fights"].as_array().filter(|_| value["plume"] == 1 && value["settings"].is_object());
+    let fights = fights.ok_or("This is not a backup of Plume.")?;
+    save_settings(app.clone(), saved, value["settings"].clone())?;
+    let mut count = 0;
+    for fight in fights {
+        let fight = storage::kept(fight);
+        if !fight["you"].is_null() && engine.fights.save(&fight).is_ok() {
+            count += 1;
+        }
+    }
+    let _ = app.emit("saved", json!({ "id": "" }));
+    Ok(count)
+}
+
+/// What of the overlay takes the mouse, when it is not being edited.
+#[tauri::command]
+fn set_zones(app: AppHandle, zones: Vec<[i32; 4]>) {
+    *app.state::<Overlay>().zones.lock().unwrap_or_else(|p| p.into_inner()) = zones;
+}
+
+/// Opens the main window on a page.
+#[tauri::command(async)]
+fn open_page(app: AppHandle, page: String) {
+    if app.get_webview_window(windowing::MAIN).is_some() {
+        let _ = app.emit("go", &page);
+    } else {
+        *app.state::<Saved>().page.lock().unwrap_or_else(|p| p.into_inner()) = page;
+    }
+    windowing::show_main(&app);
 }
 
 #[tauri::command(async)]
@@ -160,6 +246,10 @@ fn engine_folder(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("engine"))
 }
 
+fn turn(value: &mut Value, unset: bool) {
+    *value = (!value.as_bool().unwrap_or(unset)).into();
+}
+
 /// A key pressed over the game. Never on the main thread: a window cannot be built from inside its loop.
 fn pressed(app: &AppHandle, action: &str) {
     let overlay = app.state::<Overlay>();
@@ -182,8 +272,18 @@ fn pressed(app: &AppHandle, action: &str) {
             windowing::edit(app, if overlay.editing.load(SeqCst) == mode { windowing::NONE } else { mode });
         }
         "reset" => {
+            let _ = app.emit("cleared", ());
             let _ = app.state::<Arc<Engine>>().send(json!({ "cmd": "reset" }));
         }
+        "peek" => {
+            let _ = app.emit("peek", ());
+        }
+        "compact" => set(&|s| turn(&mut s["meter"]["small"], false)),
+        "lock" => set(&|s| turn(&mut s["meter"]["locked"], true)),
+        "discreet" => set(&|s| turn(&mut s["discreet"], false)),
+        // Both are off until you turn them on.
+        "buffs" | "actions" => set(&|s| turn(&mut s["places"][action]["on"], false)),
+        "history" | "details" | "settings" => open_page(app.clone(), action.into()),
         _ => {}
     }
 }
@@ -230,6 +330,11 @@ fn main() {
             export,
             edit_overlays,
             open_engine_folder,
+            open_recordings_folder,
+            backup,
+            restore,
+            set_zones,
+            open_page,
             sound_files,
             sound_file,
             open_sounds_folder,
@@ -246,7 +351,7 @@ fn main() {
             };
             let path = folder.join("settings.json");
             let settings = storage::load(&path).unwrap_or(Value::Null);
-            app.manage(Saved { path, settings: Mutex::new(settings.clone()) });
+            app.manage(Saved { path, settings: Mutex::new(settings.clone()), page: Mutex::default() });
 
             let name = "plume-engine.exe";
             let mut places: Vec<PathBuf> = std::env::var_os("PLUME_ENGINE").map(PathBuf::from).into_iter().collect();
@@ -271,6 +376,8 @@ fn main() {
             // The first start has no settings: the page makes them and saves.
             if settings.is_object() {
                 apply(&handle, &settings, &settings);
+                train(&handle.state::<Arc<Engine>>(), &settings);
+                record(&handle, &settings);
                 let _ = handle.state::<Arc<Engine>>().send(json!({ "cmd": "mode", "mode": settings["mode"].as_str().unwrap_or("bossTargets") }));
             }
             tray(&handle)?;
@@ -278,6 +385,7 @@ fn main() {
             if !settings.is_object() || !std::env::args().any(|a| a == startup::HIDDEN) {
                 windowing::show_main(&handle);
             }
+            windowing::point(handle.clone());
             windowing::watch(handle);
             Ok(())
         })

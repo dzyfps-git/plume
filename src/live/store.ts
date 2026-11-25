@@ -1,7 +1,9 @@
 import { batch, createSignal } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import { on, type Start } from "../api";
+import { settings } from "../store";
 import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type Near, type Reads, type Skill, type State, type Status } from "./types";
+import { limit, worth } from "./worth";
 
 const [engine, setEngine] = createSignal<{ status: Status; message?: string }>({ status: "off" });
 const [state, setState] = createSignal<State | null>(null);
@@ -16,7 +18,24 @@ const listeners = new Set<(h: Happened) => void>();
 export const live = () => engine().status === "running" && !!state()?.live;
 
 /** Rows keep their place in the page by player, so a bar moves instead of being drawn again. */
-export const showFight = (next: Fight) => setFight(reconcile(next, { key: "id" }));
+const showFight = (next: Fight) => setFight(reconcile(structuredClone(next), { key: "id" }));
+let told: Fight = NO_FIGHT;
+
+/** Nobody has hit the target for a while. */
+const [over, setOver] = createSignal(true);
+let ending = 0;
+function hearFight(next: Fight, force = false) {
+  if (!force && !worth(next, settings.fights.only)) return;
+  const hit = next.total !== told.total || next.target.code !== told.target.code;
+  told = next;
+  if (!sampling()) showFight(next);
+  if (!hit) return;
+  clearTimeout(ending);
+  setOver(next.rows.length === 0);
+  if (next.rows.length) ending = window.setTimeout(() => setOver(true), limit(next.target, settings.fights));
+}
+/** An empty meter, until the next hit. */
+export const clearFight = () => hearFight(NO_FIGHT, true);
 
 /** Made-up things are shown in place of what is really near. Nothing alerts to them. */
 const [sampling, setSampling] = createSignal(false);
@@ -29,16 +48,17 @@ function hearNear(next: Near) {
   if (!sampling()) showNear(next);
 }
 
-/** Shows something made up, or what is really near again. */
-export function sampleNear(made?: Near) {
+/** Shows something made up, or what is really going on again. */
+export function sample(made?: { near: Near; fight?: Fight }) {
   // At once, or what was made up would pass for real in between.
   batch(() => {
     setSampling(!!made);
-    showNear(made ?? said);
+    showNear(made?.near ?? said);
+    showFight(made?.fight ?? told);
   });
 }
 
-export { engine, state, reads, fight, skills, near, entries, sampling };
+export { engine, state, reads, fight, skills, near, entries, sampling, over };
 
 export const tell = (h: Happened) => listeners.forEach((hear) => hear(h));
 /** Calls `hear` with everything that happens, for as long as the window is open. */
@@ -48,7 +68,7 @@ export async function follow(start: Start) {
   setEngine(start.engine);
   setState(start.state);
   setReads(start.reads);
-  if (start.fight) showFight(start.fight);
+  if (start.fight) hearFight(start.fight);
   if (start.near) hearNear(start.near);
   if (start.entries) setEntries(start.entries);
   await on("engine", (value) => {
@@ -60,7 +80,7 @@ export async function follow(start: Start) {
     setEntries(NO_ENTRIES);
   });
   await on("live", (message) => {
-    if (message.t === "fight") showFight(message);
+    if (message.t === "fight") hearFight(message);
     else if (message.t === "state") setState(message);
     else if (message.t === "skills") setSkills(message);
     else if (message.t === "reads") setReads(message);
@@ -68,4 +88,5 @@ export async function follow(start: Start) {
     else if (message.t === "entries") setEntries(message);
     else if (message.t === "happened") tell(message);
   });
+  await on("cleared", clearFight);
 }

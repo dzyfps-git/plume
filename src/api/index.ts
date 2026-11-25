@@ -12,6 +12,8 @@ export type Editing = "" | "move" | "quick";
 export interface Start {
   settings: unknown;
   editing: Editing;
+  /** The page to open on, or empty. */
+  page?: string;
   engine: { status: Status; message?: string };
   state: State | null;
   reads: Reads | null;
@@ -32,6 +34,14 @@ export const keptFight = (id: string) => invoke<Saved | null>("kept_fight", { id
 export const exportFile = (name: string, bytes: Uint8Array) => invoke<void>("export", { name, bytes: Array.from(bytes) });
 export const deleteFight = (id: string) => invoke<void>("delete_fight", { id });
 export const editOverlays = (mode: Editing) => invoke<void>("edit_overlays", { mode });
+/** Opens the main window on a page. */
+export const openPage = (page: string) => invoke<void>("open_page", { page });
+/** Settings and fights in one file in Downloads, and back from one. Gives back how many fights came. */
+export const backup = (name: string) => invoke<void>("backup", { name });
+export const restore = (value: unknown) => invoke<number>("restore", { value });
+export const openRecordingsFolder = () => invoke<void>("open_recordings_folder");
+/** What of the overlay takes the mouse: left, top, right, bottom in points of the screen. */
+export const setZones = (zones: [number, number, number, number][]) => invoke<void>("set_zones", { zones });
 export const openEngineFolder = () => invoke<void>("open_engine_folder");
 /** The names of your own sound files. */
 export const soundFiles = () => invoke<string[]>("sound_files");
@@ -48,6 +58,11 @@ interface Events {
   settings: unknown;
   saved: { id: string };
   edit: Editing;
+  /** The meter was emptied. */
+  cleared: null;
+  /** The key to look closer was pressed, or is still held. */
+  peek: null;
+  go: string;
 }
 
 export const on = <K extends keyof Events>(event: K, heard: (value: Events[K]) => void) =>

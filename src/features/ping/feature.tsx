@@ -11,7 +11,7 @@ function PingOverlay() {
     <section class="flight glass" aria-label="Ping">
       <div class="flight-line">
         <span><PingBars ping={Math.max(0, near.ping)} /> {near.jitter >= 0 ? `Ping, moves by ${near.jitter}` : "Ping"}</span>
-        <b class="ui-num" style={{ color: bad() ? "var(--fresh)" : undefined }}>{near.ping >= 0 ? `${near.ping} ms` : "-"}</b>
+        <b class="ui-num" style={{ color: bad() ? "var(--tone-ending)" : undefined }}>{near.ping >= 0 ? `${near.ping} ms` : "-"}</b>
       </div>
     </section>
   );

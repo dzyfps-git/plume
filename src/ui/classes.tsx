@@ -27,7 +27,8 @@ const SAFE: Record<keyof typeof CLASSES, string> = {
 export function classOf(job: Job) {
   const found = CLASSES[job as keyof typeof CLASSES];
   if (!found) return NONE;
-  return settings.safeColors ? { ...found, color: SAFE[job as keyof typeof CLASSES] } : found;
+  const color = settings.colors[job as keyof typeof CLASSES] || (settings.safeColors && SAFE[job as keyof typeof CLASSES]);
+  return color ? { ...found, color } : found;
 }
 
 export function ClassMark(props: { job: Job }) {

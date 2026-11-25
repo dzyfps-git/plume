@@ -1,5 +1,6 @@
 import { createSignal, For, onCleanup, Show } from "solid-js";
 import { change, settings } from "../../store";
+import { Group } from "../../ui/Group";
 import { Line, Slide } from "../../ui/Line";
 import { Switch } from "../../ui/Switch";
 import { speak, voices } from "../timers/voice";
@@ -12,8 +13,7 @@ export function Voice() {
   speechSynthesis.addEventListener("voiceschanged", refresh);
   onCleanup(() => speechSynthesis.removeEventListener("voiceschanged", refresh));
   return (
-    <section class="block">
-      <h2>Voice and volume</h2>
+    <Group name="Voice and volume">
       <Switch name="Say marks, timers and the enrage" about="With a voice of Windows, on this PC. The overlays have to be on." on={settings.voice.on} set={(v) => change((s) => (s.voice.on = v))} />
       <Line name="Voice" about={names().length ? undefined : "Windows has no voice installed."} bad>
         <span class="ui-row">
@@ -32,6 +32,6 @@ export function Voice() {
           <Slide name="Seconds ahead" least={2} most={15} step={1} value={settings.voice.lead} text={`${settings.voice.lead} s`} set={(v) => change((s) => (s.voice.lead = v))} />
         </Line>
       </Show>
-    </section>
+    </Group>
   );
 }

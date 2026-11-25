@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createRoot, createSignal, For, Show, untrack } from "solid-js";
 import { fight, near, onHappened, sampling } from "../../live/store";
-import { settings } from "../../store";
+import { hideNames, settings } from "../../store";
 import { plan } from "../../store/settings";
 import { ticking } from "../../ui/now";
 import { key } from "../bosses/logic";
@@ -61,11 +61,11 @@ export function followAlerts() {
 
     let before: Look | undefined;
     createEffect(() => {
-      const now = look(near, settings.alerts, before);
+      const now = look(near, settings.alerts, before, settings.control);
       const made = sampling();
       untrack(() => {
         // The first look is how things are, and nothing that happened.
-        if (before && !made) for (const r of raised(before, now, near, settings.meter.hideNames)) alert(r);
+        if (before && !made) for (const r of raised(before, now, near, hideNames())) alert(r);
         before = near.you && !made ? now : undefined;
       });
     });

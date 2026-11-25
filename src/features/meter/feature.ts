@@ -1,7 +1,7 @@
-import { fight } from "../../live/store";
 import { settings } from "../../store";
 import type { Feature } from "../types";
-import { MeterOverlay } from "./Overlay";
+import { followMeter } from "./live";
+import { bare, MeterOverlay } from "./Overlay";
 import { MeterPage } from "./Page";
 
 export const meter: Feature = {
@@ -14,9 +14,11 @@ export const meter: Feature = {
     view: MeterOverlay,
     group: "Fight",
     about: "Everyone's damage, with the boss's health above and what you have left below.",
-    width: 280,
+    width: () => settings.look.width,
     place: { on: true, x: 1, y: 1, scale: 1 },
-    empty: () => fight.rows.length === 0,
+    empty: bare,
+    beside: followMeter,
+    loose: () => !settings.meter.locked,
     edge: () => settings.meter.edge,
   },
 };

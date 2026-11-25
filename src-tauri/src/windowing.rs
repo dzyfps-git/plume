@@ -5,12 +5,15 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering::SeqCst};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use windows::Win32::Foundation::POINT;
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow};
-use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
+use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetForegroundWindow, GetWindowTextW};
 
 pub const MAIN: &str = "main";
 pub const OVERLAY: &str = "overlay";
 const LOOK: Duration = Duration::from_millis(400);
+/// How often it is asked whether the pointer is on a button, while there are buttons.
+const POINT_LOOK: Duration = Duration::from_millis(30);
 /// The overlay window is closed once the game is gone for this long.
 const SLEEP: Duration = Duration::from_secs(60);
 /// What the overlay window is open for. The pages know them by these names.
@@ -29,6 +32,8 @@ pub struct Overlay {
     /// One of `MODES`.
     pub editing: AtomicU8,
     place: Mutex<(i32, i32, i32, i32)>,
+    /// What takes the mouse, in points of the screen from the window's corner: left, top, right, bottom.
+    pub zones: Mutex<Vec<[i32; 4]>>,
     /// Two threads ask for the window. A half-built one would lose what the other tells it.
     building: Mutex<()>,
 }
@@ -115,6 +120,35 @@ fn place(app: &AppHandle, w: &WebviewWindow) {
     }
 }
 
+/// Gives the mouse to the overlay while the pointer is on something of it that takes clicks, and back to the game after.
+pub fn point(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut taking = false;
+        loop {
+            let state = app.state::<Overlay>();
+            let zones = state.zones.lock().unwrap_or_else(|p| p.into_inner()).clone();
+            let window = app.get_webview_window(OVERLAY);
+            if state.editing.load(SeqCst) != NONE || window.is_none() || zones.is_empty() && !taking {
+                taking = false;
+                std::thread::sleep(LOOK);
+                continue;
+            }
+            let (left, top, ..) = *state.place.lock().unwrap_or_else(|p| p.into_inner());
+            let mut at = POINT::default();
+            let inside = unsafe { GetCursorPos(&mut at) }.is_ok() && within(&zones, at.x - left, at.y - top);
+            if inside != taking && let Some(w) = window {
+                taking = inside;
+                let _ = w.set_ignore_cursor_events(!inside);
+            }
+            std::thread::sleep(POINT_LOOK);
+        }
+    });
+}
+
+fn within(zones: &[[i32; 4]], x: i32, y: i32) -> bool {
+    zones.iter().any(|z| (z[0]..z[2]).contains(&x) && (z[1]..z[3]).contains(&y))
+}
+
 /// The title Windows keeps for the window in front. Nothing is asked of the game itself.
 fn game_in_front() -> bool {
     let mut text = [0u16; 64];
@@ -168,7 +202,14 @@ pub fn watch(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::is_game;
+    use super::{is_game, within};
+
+    #[test]
+    fn a_zone_takes_the_mouse_inside_its_edges() {
+        let zones = [[10, 10, 20, 20], [0, 50, 5, 60]];
+        assert!(within(&zones, 10, 19) && within(&zones, 4, 50));
+        assert!(!within(&zones, 20, 10) && !within(&zones, 9, 10) && !within(&[], 0, 0));
+    }
 
     #[test]
     fn the_game_is_told_from_a_page_about_it() {

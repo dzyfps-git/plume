@@ -1,12 +1,15 @@
-import { createSignal, For, onCleanup, Show, type Component } from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show, type Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
-import { appWindow } from "../api";
+import { appWindow, on } from "../api";
 import { FEATURES } from "../features";
 import { engine, live } from "../live/store";
+import { settings } from "../store";
 import { GAME, NAME } from "./brand";
+import { LookPage } from "./Look";
 import { OverlaysPage } from "./Overlays";
 import { Palette } from "./Palette";
 import { SettingsPage } from "./Settings";
+import { FirstStart } from "./Start";
 
 export interface Page {
   id: string;
@@ -18,15 +21,28 @@ export interface Page {
 
 const PAGES: Page[] = [
   ...FEATURES.flatMap(({ id, name, icon, color, page }) => (page ? [{ id, name, icon, color, view: page }] : [])),
+  { id: "look", name: "Meter look", icon: "\ue790", color: "#e58cff", view: LookPage },
   { id: "overlays", name: "Overlays", icon: "", color: "#8f9bff", view: OverlaysPage },
   { id: "settings", name: "Settings", icon: "", color: "#a9b4c8", view: SettingsPage },
 ];
 
-export function App() {
+export function App(props: { page?: string }) {
   const [page, setPage] = createSignal(PAGES[0]);
   const [folded, setFolded] = createSignal(false);
   const [palette, setPalette] = createSignal(false);
   const go = (next: Page) => next !== page() && window.House.morph(() => setPage(next), "page");
+
+  /** A page that the overlay or a key asked for. */
+  const open = (id: string) => {
+    const found = PAGES.find((p) => p.id === ({ details: "history", news: "settings" }[id] ?? id));
+    if (found) go(found);
+    if (id === "news") setTimeout(() => document.getElementById("news")?.scrollIntoView(), 400);
+  };
+  onMount(() => {
+    if (props.page) open(props.page);
+    const heard = on("go", open);
+    onCleanup(() => void heard.then((stop) => stop()));
+  });
 
   const keys = (e: KeyboardEvent) => {
     if (!e.ctrlKey || e.altKey || e.shiftKey) return;
@@ -74,7 +90,7 @@ export function App() {
           {(p, i) => (
             <button
               class="ui-nav-item"
-              data-last={p.id === "overlays" || undefined}
+              data-last={p.id === "look" || undefined}
               aria-current={page() === p ? "page" : undefined}
               aria-keyshortcuts={`Control+${i() + 1}`}
               data-tip={folded() ? p.name : undefined}
@@ -91,6 +107,7 @@ export function App() {
           <Dynamic component={page().view} />
         </section>
       </main>
+      <Show when={!settings.started}><FirstStart /></Show>
       <Show when={palette()}>
         <Palette pages={PAGES} go={go} close={() => setPalette(false)} />
       </Show>

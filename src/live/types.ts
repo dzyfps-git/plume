@@ -38,6 +38,8 @@ export interface Target {
   boss: boolean;
   /** How far the stagger gauge is worn down, 0 to 100. -1 when there is none. */
   stagger: number;
+  /** A training dummy. */
+  dummy: boolean;
 }
 
 export interface Row {
@@ -54,6 +56,8 @@ export interface Row {
   taken: number;
   hps: number;
   power: number;
+  /** Item level, of you and of those in your party. 0 when not known. */
+  level: number;
   healing: number;
   hits: number;
   /** Damage this player's buffs added to others', and others' to theirs. 0 unless the meter shows it. */
@@ -72,6 +76,8 @@ export interface Fight {
   /** The training time limit has run out. */
   timeup: boolean;
   dungeon: number;
+  /** Your direct hits on it: how many, criticals, from behind. */
+  own: [hits: number, crits: number, backs: number];
   rows: Row[];
 }
 
@@ -246,6 +252,9 @@ export interface Unit {
   hp: number;
   /** The most that was said or seen. 0 when not known. */
   maxHp: number;
+  /** Combat Power and item level, of you and your party alone. 0 when not known. */
+  power: number;
+  level: number;
   /** Yours are only in `Near.you`. */
   auras: Aura[];
 }
@@ -317,11 +326,12 @@ export type Message =
 
 export const NO_FIGHT: Fight = {
   mode: "",
-  target: { name: "", code: 0, hp: -1, maxHp: 0, boss: false, stagger: -1 },
+  target: { name: "", code: 0, hp: -1, maxHp: 0, boss: false, stagger: -1, dummy: false },
   targets: [],
   ms: 0,
   total: 0,
   timeup: false,
   dungeon: 0,
+  own: [0, 0, 0],
   rows: [],
 };

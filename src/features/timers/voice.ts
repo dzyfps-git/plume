@@ -9,6 +9,7 @@ import { calls, key } from "../bosses/logic";
 export const voices = () => speechSynthesis.getVoices().filter((v) => v.localService);
 
 export function speak(text: string) {
+  if (settings.voice.mute) return;
   const words = new SpeechSynthesisUtterance(text);
   const voice = voices().find((v) => v.name === settings.voice.name) ?? voices().find((v) => v.default) ?? voices()[0];
   // With no voice of its own, Windows stays silent rather than ask another computer.

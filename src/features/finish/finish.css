@@ -1,6 +1,6 @@
 .finish { display: grid; gap: 6px; color: var(--text); --panel: color-mix(in srgb, var(--surface-base) calc(var(--tint) * 100% + 22%), transparent); }
 .finish header { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; text-shadow: 0 1px 3px rgb(0 0 0 / 85%); }
-.finish header em { color: #ffd66b; font-style: normal; font-weight: 700; }
+.finish header em { color: var(--tone-best); font-style: normal; font-weight: 700; }
 .finish-top, .finish-place { --bright: color-mix(in oklab, var(--class) 80%, white); --deep: color-mix(in oklab, var(--class) 74%, #160b33); border: 1px solid color-mix(in srgb, var(--class) 38%, transparent); }
 .finish-top { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border-color: rgb(255 208 110 / 50%); border-radius: 16px; background: radial-gradient(80% 160% at 0 50%, color-mix(in srgb, var(--deep) 92%, transparent), transparent 72%), radial-gradient(60% 110% at 100% 0, rgb(255 180 90 / 20%), transparent), var(--panel); }
 .finish-ring { position: relative; display: grid; place-items: center; width: 80px; height: 80px; --mark: 60px; }

@@ -1,142 +1,193 @@
-import { For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show, type Component } from "solid-js";
+import { Dynamic } from "solid-js/web";
 import { editOverlays } from "../api";
 import { FEATURES } from "../features";
-import { GROUPS, overlayName } from "../features/types";
-import { change, settings } from "../store";
-import { VIEW_NAMES } from "../features/meter/logic";
+import { followActions, skills } from "../features/actions/store";
+import { SignalLines } from "../features/alerts/SignalLines";
+import { known } from "../features/auras/Page";
+import { called, CONTROL, same } from "../features/effects/logic";
+import { GROUPS, overlayName, widthOf, type Feature } from "../features/types";
 import { WHEN_NAMES } from "../overlay/rules";
-import { FOOTER, FPS, place, rule, STYLES, VIEWS, WHEN, type Footer, type Rule, type View, type When } from "../store/settings";
+import { change, settings } from "../store";
+import { FPS, place, rule, WHEN, type Rule, type Settings, type When } from "../store/settings";
 import { CLASSES } from "../ui/classes";
-import { Choices, Line, Slide } from "../ui/Line";
+import { Group } from "../ui/Group";
+import { Chips, Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
-
-const FOOTER_NAMES: Record<Footer, string> = { ping: "Ping", total: "Total", flight: "Flight", odyle: "Odyle Energy", entries: "Tickets", kina: "Kina today", points: "Abyss Points" };
-const STYLE_NAMES = { bar: "Full bars", line: "Lines of light", cards: "Cards", table: "Table" } as const;
+import { Preview } from "./Preview";
+import { Shell } from "./Shell";
 
 export function OverlaysPage() {
   return (
-    <div class="page">
-      <header class="page-head">
-        <h1>Overlays</h1>
+    <Shell
+      title="Overlays"
+      action={
         <button class="ui-button" data-main aria-keyshortcuts={settings.hotkeys.edit} onClick={() => void editOverlays("move")}>
           <span class="ui-icon" aria-hidden="true">{""}</span>
           Move them
         </button>
-      </header>
-      <section class="block">
-        <Switch name="Show overlays" about={settings.hotkeys.overlay || "No key"} on={settings.overlay.on} set={(on) => change((s) => (s.overlay.on = on))} />
-        <Switch name="Only over the game" about="Hidden while another window is in front." on={settings.overlay.onlyInGame} set={(on) => change((s) => (s.overlay.onlyInGame = on))} />
-        <Switch name="Hide when there is nothing to show" on={settings.overlay.hideEmpty} set={(on) => change((s) => (s.overlay.hideEmpty = on))} />
-      </section>
-      <For each={GROUPS}>
-        {(group) => (
-          <section class="block">
-            <h2>{group}</h2>
-            <For each={FEATURES.filter((f) => f.overlay?.group === group)}>
-              {(f) => {
-                const at = () => place(settings.places[f.id], f.overlay!.place);
-                return (
-                  <>
-                    <Switch
-                      name={overlayName(f)}
-                      about={f.overlay!.about}
-                      on={at().on}
-                      set={(on) => change((s) => (s.places = { ...s.places, [f.id]: { ...at(), on } }))}
-                    />
-                    <Show when={at().on}>
-                      <ShowRule id={f.id} name={overlayName(f)} />
-                    </Show>
-                  </>
-                );
-              }}
-            </For>
-          </section>
-        )}
-      </For>
-      <section class="block">
-        <h2>Look</h2>
-        <Line name="Background">
-          <Slide
-            name="Background" least={0.2} most={1} step={0.02}
-            value={settings.overlay.opacity}
-            text={`${Math.round(settings.overlay.opacity * 100)}%`}
-            set={(v) => change((s) => (s.overlay.opacity = v))}
-          />
-        </Line>
+      }
+    >
+      <OverlayGroups />
+    </Shell>
+  );
+}
+
+/** The overlays' settings. `still` leaves out the pictures. */
+export function OverlayGroups(props: { still?: boolean }) {
+  const over = () => settings.overlay;
+  const set = <K extends keyof Settings["overlay"]>(key: K) => (value: Settings["overlay"][K]) => change((s) => (s.overlay[key] = value));
+  return (
+    <>
+      <Group name="All overlays">
+        <Switch name="Show overlays" about={settings.hotkeys.overlay || "No key"} on={over().on} set={set("on")} />
+        <Switch name="Only over the game" about="Hidden while another window is in front." on={over().onlyInGame} set={set("onlyInGame")} />
+        <Switch name="Hide when there is nothing to show" on={over().hideEmpty} set={set("hideEmpty")} />
+        <Line name="Size of all"><Slide name="Size of all" least={0.6} most={1.6} step={0.05} value={over().size} text={`${Math.round(over().size * 100)}%`} set={set("size")} /></Line>
+        <Switch name="Snap while moving" about="To the screen's edges and to each other." on={over().snap} set={set("snap")} />
+        <Switch name="Care for an OLED screen" about="Overlays fade after a minute without a fight, and move two points every few minutes." on={settings.oled} set={(on) => change((s) => (s.oled = on))} />
+        <Switch name="Names and Combat Power hidden" about={`Yours too, for pictures and streams. ${settings.hotkeys.discreet || "No key"}`} on={settings.discreet} set={(on) => change((s) => (s.discreet = on))} />
         <Line name="Bar movement" about="Frames a second. Higher is smoother and costs more.">
-          <Choices
-            name="Bar movement"
-            all={FPS.map((n) => [n, n ? String(n) : "Screen"] as const)}
-            value={settings.fps}
-            set={(n) => change((s) => (s.fps = n))}
-          />
+          <Choices name="Bar movement" all={FPS.map((n) => [n, n ? String(n) : "Screen"] as const)} value={settings.fps} set={(n) => change((s) => (s.fps = n))} />
         </Line>
         <Line name="Numbers change every" about="Shorter is more live and costs more.">
-          <Slide
-            name="Numbers change every" least={50} most={1000} step={50}
-            value={settings.updateMs}
-            text={`${settings.updateMs} ms`}
-            set={(v) => change((s) => (s.updateMs = v))}
-          />
+          <Slide name="Numbers change every" least={50} most={1000} step={50} value={settings.updateMs} text={`${settings.updateMs} ms`} set={(v) => change((s) => (s.updateMs = v))} />
         </Line>
-      </section>
-      <section class="block">
-        <h2>Damage meter</h2>
-        <Line name="Style">
-          <Choices name="Style" all={STYLES.map((s) => [s, STYLE_NAMES[s]] as const)} value={settings.meter.style} set={(v) => change((s) => (s.meter.style = v))} />
-        </Line>
-        <Line name="Rows" about="Yours always shows.">
-          <Slide name="Rows" least={1} most={24} step={1} value={settings.meter.rows} text={String(settings.meter.rows)} set={(v) => change((s) => (s.meter.rows = v))} />
-        </Line>
-        <Line name="Edge that stays put" about="As rows come and go.">
-          <Choices name="Edge that stays put" all={[["top", "Top"], ["bottom", "Bottom"]] as const} value={settings.meter.edge} set={(v) => change((s) => (s.meter.edge = v))} />
-        </Line>
-        <Line name="Shows" about={settings.hotkeys.view ? `${settings.hotkeys.view} goes to the next.` : undefined}>
-          <select class="ui-select" aria-label="What the meter shows" value={settings.meter.view} onChange={(e) => change((s) => (s.meter.view = e.currentTarget.value as View))}>
-            <For each={VIEWS}>{(view) => <option value={view}>{VIEW_NAMES[view]}</option>}</For>
-          </select>
-        </Line>
-        <Switch name="Share of the damage" on={settings.meter.share} set={(on) => change((s) => (s.meter.share = on))} />
-        <Switch name="Total damage" on={settings.meter.total} set={(on) => change((s) => (s.meter.total = on))} />
-        <Switch name="Boss health" about="Above the rows, with its stagger gauge and how long until it falls." on={settings.meter.boss} set={(on) => change((s) => (s.meter.boss = on))} />
-        <Switch name="Your best as a row" about="Where your best fight of this target would be by now." on={settings.meter.ghost} set={(on) => change((s) => (s.meter.ghost = on))} />
-        <Switch name="Your pull" about="Which try it is, and how it goes against your best." on={settings.meter.head} set={(on) => change((s) => (s.meter.head = on))} />
-        <Switch name="Combat Power" about="Small, beside each name. Other players' is never written down." on={settings.meter.power} set={(on) => change((s) => (s.meter.power = on))} />
-        <Switch name="Class marks" on={settings.meter.icons} set={(on) => change((s) => (s.meter.icons = on))} />
-        <Switch name="Hide other players' names" about="In every overlay." on={settings.meter.hideNames} set={(on) => change((s) => (s.meter.hideNames = on))} />
-        <Line name="Footer" about="A line under the bars.">
-          <div class="ui-row" role="group" aria-label="Footer">
-            <For each={FOOTER}>
-              {(f) => (
-                <button
-                  class="ui-chip"
-                  aria-pressed={settings.meter.footer.includes(f)}
-                  onClick={() => change((s) => (s.meter.footer = s.meter.footer.includes(f) ? s.meter.footer.filter((x) => x !== f) : [...s.meter.footer, f]))}
-                >
-                  {FOOTER_NAMES[f]}
-                </button>
-              )}
-            </For>
-          </div>
-        </Line>
-      </section>
+      </Group>
+      <For each={GROUPS}>
+        {(group) => <Group name={group}><For each={FEATURES.filter((f) => f.overlay?.group === group)}>{(f) => <One of={f} still={props.still} />}</For></Group>}
+      </For>
+    </>
+  );
+}
+
+/** One overlay: on or off, and what it can be told. */
+function One(props: { of: Feature; still?: boolean }) {
+  const name = () => overlayName(props.of);
+  const at = () => place(settings.places[props.of.id], props.of.overlay!.place);
+  const [open, setOpen] = createSignal(false);
+  const now = () => rule(settings.rules[props.of.id]);
+  const set = (to: Partial<Rule>) => change((s) => (s.rules = { ...s.rules, [props.of.id]: { ...now(), ...to } }));
+  const more = () => (
+    <>
+      <Line name="When it shows">
+        <select class="ui-select" aria-label={`When ${name()} shows`} value={now().when} onChange={(e) => set({ when: e.currentTarget.value as When })}>
+          <For each={WHEN}>{(w) => <option value={w}>{WHEN_NAMES[w]}</option>}</For>
+        </select>
+      </Line>
+      <Line name="For which class">
+        <select class="ui-select" aria-label={`Class ${name()} shows for`} value={now().job} onChange={(e) => set({ job: e.currentTarget.value as Rule["job"] })}>
+          <option value="">Every class</option>
+          <For each={Object.entries(CLASSES)}>{([job, c]) => <option value={job}>{c.name}</option>}</For>
+        </select>
+      </Line>
+      <Show when={MORE[props.of.id]}>{(more) => <Dynamic component={more()} />}</Show>
+    </>
+  );
+  return (
+    <div class="over">
+      <div class="over-head">
+        <Switch name={name()} about={props.of.overlay!.about} on={at().on} set={(on) => change((s) => (s.places = { ...s.places, [props.of.id]: { ...at(), on } }))} />
+        <Show when={!props.still}>
+          <button class="ui-icon-button" aria-label={`Options of ${name()}`} aria-expanded={open()} onClick={() => setOpen(!open())}>{open() ? "" : ""}</button>
+        </Show>
+      </div>
+      <Show when={props.still}><Group name={name()}>{more()}</Group></Show>
+      <Show when={open() && !props.still}>
+        <div class="over-more">
+          <Preview width={widthOf(props.of.overlay!)}><Dynamic component={props.of.overlay!.view} /></Preview>
+          {more()}
+        </div>
+      </Show>
     </div>
   );
 }
 
-/** When one overlay may show, and for which class. */
-function ShowRule(props: { id: string; name: string }) {
-  const now = () => rule(settings.rules[props.id]);
-  const set = (to: Partial<Rule>) => change((s) => (s.rules = { ...s.rules, [props.id]: { ...now(), ...to } }));
+/** What else an overlay can be told, by its id. */
+const MORE: Partial<Record<string, Component>> = { party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control };
+
+/** Party and Force frames look the same. */
+function Party() {
+  const p = () => settings.party;
+  const set = <K extends keyof Settings["party"]>(key: K) => (value: Settings["party"][K]) => change((s) => (s.party[key] = value));
   return (
-    <div class="show-rule">
-      <select class="ui-select" aria-label={`When ${props.name} shows`} value={now().when} onChange={(e) => set({ when: e.currentTarget.value as When })}>
-        <For each={WHEN}>{(w) => <option value={w}>{WHEN_NAMES[w]}</option>}</For>
-      </select>
-      <select class="ui-select" aria-label={`Class ${props.name} shows for`} value={now().job} onChange={(e) => set({ job: e.currentTarget.value as Rule["job"] })}>
-        <option value="">Every class</option>
-        <For each={Object.entries(CLASSES)}>{([job, c]) => <option value={job}>{c.name}</option>}</For>
-      </select>
-    </div>
+    <>
+      <Line name="Columns" about="Of a party. A Force stands in its groups."><Choices name="Columns" all={[[1, "One"], [2, "Two"]] as const} value={p().columns} set={set("columns")} /></Line>
+      <Line name="Width of a card"><Slide name="Width of a card" least={160} most={420} step={10} value={p().width} text={String(p().width)} set={set("width")} /></Line>
+      <Line name="Height of a card"><Slide name="Height of a card" least={22} most={56} step={1} value={p().height} text={String(p().height)} set={set("height")} /></Line>
+      <Line name="Effects"><Choices name="Effects" all={[["on", "On the card"], ["beside", "Beside it"], ["off", "None"]] as const} value={p().icons} set={set("icons")} /></Line>
+      <Line name="Most effects"><Slide name="Most effects" least={1} most={8} step={1} value={p().most} text={String(p().most)} set={set("most")} /></Line>
+      <Line name="Order" about="Those who hold, those who heal, the rest. A Force keeps the game's.">
+        <Choices name="Order" all={[["game", "The game's"], ["role", "Role"], ["name", "Name"]] as const} value={p().order} set={set("order")} />
+      </Line>
+      <Switch name="Yourself too" on={p().you} set={set("you")} />
+      <Line name="Health"><Choices name="Health" all={[["percent", "%"], ["number", "Number"], ["both", "Both"], ["off", "None"]] as const} value={p().health} set={set("health")} /></Line>
+      <Switch name="Class marks on the cards" on={p().mark} set={set("mark")} />
+      <Switch name="Combat Power on the cards" on={p().power} set={set("power")} />
+      <Line name="Red edge below"><Slide name="Red edge below" least={0} most={90} step={5} value={p().low} text={p().low ? `${p().low}%` : "Never"} set={set("low")} /></Line>
+    </>
+  );
+}
+
+function Cooldowns() {
+  followActions();
+  const c = () => settings.cooldowns;
+  const set = <K extends keyof Settings["cooldowns"]>(key: K) => (value: Settings["cooldowns"][K]) => change((s) => (s.cooldowns[key] = value));
+  return (
+    <>
+      <Switch name="Ready ones too" on={c().ready} set={set("ready")} />
+      <Line name="Brightness while cooling"><Slide name="Brightness while cooling" least={0.2} most={1} step={0.05} value={c().dim} text={`${Math.round(c().dim * 100)}%`} set={set("dim")} /></Line>
+      <Line name="Size of a skill"><Slide name="Size of a skill" least={24} most={56} step={2} value={c().size} text={String(c().size)} set={set("size")} /></Line>
+      <Line name="Skills" about={skills().length ? `${skills().filter((k) => !settings.skip.includes(k.skill)).length} of ${skills().length} shown.` : "Learned from your fights."} wide>
+        <div class="ui-row" role="group" aria-label="Skills">
+          <For each={skills()}>
+            {(k) => {
+              const on = () => !settings.skip.includes(k.skill);
+              return <button class="ui-chip" aria-pressed={on()} onClick={() => change((s) => (s.skip = on() ? [...s.skip, k.skill] : s.skip.filter((n) => n !== k.skill)))}>{k.name}</button>;
+            }}
+          </For>
+        </div>
+      </Line>
+    </>
+  );
+}
+
+function Buffs() {
+  followActions();
+  const b = () => settings.buffs;
+  const all = createMemo(() => known(false, true));
+  const left = (e: { id: number; name: string }) => b().skip.some((n) => same(n, e));
+  return (
+    <>
+      <Line name="Buffs as"><Choices name="Buffs as" all={[["tiles", "Tiles"], ["bars", "Long bars"]] as const} value={b().as} set={(v) => change((s) => (s.buffs.as = v))} /></Line>
+      <Line name="Scrolls, potions and food">
+        <Choices name="Scrolls, potions and food" all={[["with", "Among them"], ["apart", "Apart"], ["off", "None"]] as const} value={b().items} set={(v) => change((s) => (s.buffs.items = v))} />
+      </Line>
+      <Line name="Which buffs" about={all().length ? `${all().filter((e) => !left(e)).length} of ${all().length} shown.` : "Those of your fights are listed here."} wide>
+        <div class="ui-row" role="group" aria-label="Which buffs">
+          <For each={all()}>
+            {(e) => <button class="ui-chip" aria-pressed={!left(e)} onClick={() => change((s) => (s.buffs.skip = left(e) ? s.buffs.skip.filter((n) => !same(n, e)) : [...s.buffs.skip, e]))}>{called(e)}</button>}
+          </For>
+        </div>
+      </Line>
+    </>
+  );
+}
+
+function Control() {
+  const c = () => settings.control;
+  const kinds = Object.keys(CONTROL);
+  const held = () => settings.alerts.held;
+  return (
+    <>
+      <Line name="Loss of control as"><Choices name="Loss of control as" all={[["card", "Card"], ["ring", "Ring"], ["text", "Text"]] as const} value={c().look} set={(v) => change((s) => (s.control.look = v))} /></Line>
+      <Switch name="What did it" about="The skill or effect that holds you." on={c().by} set={(v) => change((s) => (s.control.by = v))} />
+      <Line name="Nothing shorter than"><Slide name="Nothing shorter than" least={0} most={3} step={0.5} value={c().least} text={c().least ? `${c().least} s` : "All"} set={(v) => change((s) => (s.control.least = v))} /></Line>
+      <Line name="Kinds" wide>
+        <Chips name="Kinds" all={kinds} names={CONTROL} value={kinds.filter((k) => !c().skip.includes(k))} set={(v) => change((s) => (s.control.skip = kinds.filter((k) => !v.includes(k))))} />
+      </Line>
+      <Switch name="Sound as it begins" about="The same as the alert You lose control." on={held().on} set={(on) => change((s) => (s.alerts.held.on = on))} />
+      <Show when={held().on}><SignalLines of={held()} words="Stunned" set={(to) => change((s) => Object.assign(s.alerts.held, to))} /></Show>
+    </>
   );
 }

@@ -6,7 +6,7 @@ import { bosses } from "./bosses/feature";
 import { buffs, control, debuffs, partyDebuffs, ready } from "./effects/feature";
 import { finish } from "./finish/feature";
 import { flight } from "./flight/feature";
-import { foe, party, target, you } from "./frames/feature";
+import { foe, force, party, target, you } from "./frames/feature";
 import { history } from "./history/feature";
 import { meter } from "./meter/feature";
 import { ping } from "./ping/feature";
@@ -19,7 +19,7 @@ import type { Feature } from "./types";
 /** Pages stand in the menu in this order. */
 export const FEATURES: Feature[] = [
   meter, boss, finish, timers, training, history, bosses, resources, auras, alerts,
-  you, target, foe, party,
+  you, target, foe, party, force,
   buffs, debuffs, partyDebuffs, control, ready, actions,
   flight, ping, pvp,
 ];

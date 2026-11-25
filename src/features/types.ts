@@ -25,7 +25,7 @@ export interface Overlay {
   /** One line for the overlay list. */
   about: string;
   /** In CSS pixels at scale 1. The height follows the content. */
-  width: number;
+  width: number | (() => number);
   place: Place;
   /** Nothing to show right now, so it hides unless it is being placed. */
   empty?: () => boolean;
@@ -33,6 +33,9 @@ export interface Overlay {
   edge?: () => "top" | "bottom";
   /** Runs once beside the overlays, shown or not. */
   beside?: () => void;
+  /** It can be dragged without move mode, now. */
+  loose?: () => boolean;
 }
 
+export const widthOf = (o: Overlay) => (typeof o.width === "number" ? o.width : o.width());
 export const overlayName = (f: Feature) => f.overlay?.name ?? f.name;

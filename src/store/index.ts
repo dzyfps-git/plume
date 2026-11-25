@@ -16,8 +16,6 @@ const dark = matchMedia("(prefers-color-scheme: dark)");
 function wear(overlay: boolean) {
   const theme = settings.theme === "auto" ? (dark.matches ? "dark" : "light") : settings.theme;
   root.dataset.theme = overlay ? "dark" : theme;
-  if (settings.accent) root.dataset.accent = settings.accent;
-  else delete root.dataset.accent;
   if (!overlay) root.style.setProperty("zoom", String(settings.text));
   root.style.setProperty("--bar-time", `${settings.updateMs}ms`);
   root.style.setProperty("--bar-ease", barEase(settings.fps, settings.updateMs));
@@ -43,6 +41,9 @@ async function keep() {
     console.error(failure);
   }
 }
+
+/** Whose names are hidden: nobody's, others', or everyone's. */
+export const hideNames = (): boolean | "all" => (settings.discreet ? "all" : settings.meter.hideNames);
 
 let timer = 0;
 /** Changes settings now, and writes them down once the changing stops. */

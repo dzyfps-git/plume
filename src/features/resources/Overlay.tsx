@@ -1,8 +1,8 @@
-import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
-import { entries, near } from "../../live/store";
+import { createSignal, onCleanup, Show } from "solid-js";
+import { entries, live, near } from "../../live/store";
 import { settings } from "../../store";
-import { Thing, type ThingName } from "../../ui/icons";
-import { counted, resets, strip, wait } from "./logic";
+import { Feet } from "../meter/Foot";
+import { resets, strip, wait } from "./logic";
 import "../meter/meter.css";
 import "./resources.css";
 
@@ -16,14 +16,15 @@ export function minutes() {
   return now;
 }
 
+/** Popped out of the meter, it always shows. */
+export const bare = () => near.odyle[0] < 0 && !shown().length && !(settings.odyle.place === "out" && live());
+
 export function ResourcesOverlay() {
   const now = minutes();
-  const list = createMemo(shown);
   return (
     <section class="left-strip glass ui-num" aria-label="Resources">
-      <For each={list()} fallback={<span>Resources</span>}>
-        {(l) => <span aria-label={l.name}><Show when={l.kind} fallback={l.name}>{(kind) => <Thing of={kind() as ThingName} />}</Show> <b>{l.value}</b><Show when={l.more}><span class="bonus">{l.more}</span></Show><Show when={l.runs !== undefined}><em>{counted(l.runs!, "run")}</em></Show></span>}
-      </For>
+      <Feet of={["odyle", "entries"]} class="left-feet" />
+      <Show when={bare()}><span>Resources</span></Show>
       <span class="left-reset">resets in {wait(resets(now()).daily)}</span>
     </section>
   );

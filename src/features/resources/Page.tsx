@@ -1,13 +1,15 @@
 import { For, Show } from "solid-js";
 import { entries, near } from "../../live/store";
 import { change, settings } from "../../store";
-import { KINDS, ODYLE_RUN, type Resource } from "../../store/settings";
+import { KINDS, ODYLE, ODYLE_RUN, type Kind, type Resource } from "../../store/settings";
 import { full } from "../../ui/format";
 import { Thing, type ThingName } from "../../ui/icons";
-import { Choices, Line } from "../../ui/Line";
+import { Chips, Choices, Line } from "../../ui/Line";
+import { Switch } from "../../ui/Switch";
 import { Waiting } from "../../ui/Waiting";
-import { KIND_NAMES, kindOf, nameOf, resets, runsLeft, wait } from "./logic";
+import { guess, KIND_NAMES, kindOf, nameOf, ODYLE_NAMES, resets, runsLeft, wait } from "./logic";
 import { minutes } from "./Overlay";
+import { seen } from "./watch";
 import "./resources.css";
 
 export function ResourcesPage() {
@@ -20,6 +22,8 @@ export function ResourcesPage() {
       if (at < 0) s.resources.push(next);
       else s.resources[at] = next;
     });
+  const named = () => new Set(entries().counts.map(([id]) => kindOf(id, settings.resources)));
+  const maybe = (id: number) => (kindOf(id, settings.resources) ? "" : guess(seen()[id], named(), settings.odyle.member));
   const some = () => entries().counts.length > 0 || near.odyle[0] >= 0;
   const stats = () =>
     [
@@ -45,6 +49,8 @@ export function ResourcesPage() {
           <Line name="Odyle Energy a run takes" about="80 is claiming twice in one run, with a membership: half the runs.">
             <Choices name="Odyle Energy a run takes" all={ODYLE_RUN.map((n) => [n, String(n)] as const)} value={settings.odyleRun} set={(n) => change((s) => (s.odyleRun = n))} />
           </Line>
+          <Line name="Odyle Energy shows as"><Chips name="Odyle Energy shows as" all={ODYLE} names={ODYLE_NAMES} value={settings.odyle.parts} set={(v) => change((s) => (s.odyle.parts = v))} /></Line>
+          <Switch name="Membership" about="Odyle Energy grows to 840 in place of 560, and Shugo keys to 21 in place of 12. Nothing comes faster." on={settings.odyle.member} set={(on) => change((s) => (s.odyle.member = on))} />
         </section>
         <section class="block">
           <h2>Tickets and entries</h2>
@@ -63,6 +69,15 @@ export function ResourcesPage() {
                 <span class="ui-num">{full(first)}</span>
                 <span class="bonus ui-num">{second > 0 ? `+${full(second)}` : ""}</span>
                 <button class="ui-chip" aria-pressed={known(id).show} aria-label={`Show ${nameOf(id, settings.resources) || id}`} onClick={() => set(id, { show: !known(id).show })}>Show</button>
+                <Show when={maybe(id)}>
+                  {(kind) => (
+                    <span class="left-guess">
+                      <Thing of={kind() as ThingName} />
+                      <small>It grows as {KIND_NAMES[kind() as Kind]} does. Is it that?</small>
+                      <button class="ui-button" onClick={() => set(id, { kind: kind() as Kind })}>Yes</button>
+                    </span>
+                  )}
+                </Show>
               </div>
             )}
           </For>

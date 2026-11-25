@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use std::sync::{Mutex, MutexGuard};
 
 /// Writes beside the file, then takes its place. The one before stays as `.bak`.
@@ -109,11 +110,13 @@ pub struct Fights {
     folder: PathBuf,
     /// What the list shows of each, read once: the files are long.
     briefs: Mutex<Option<HashMap<String, Value>>>,
+    /// How many are kept, 0 for all.
+    pub keep: AtomicUsize,
 }
 
 impl Fights {
     pub fn new(folder: PathBuf) -> Self {
-        Self { folder, briefs: Mutex::new(None) }
+        Self { folder, briefs: Mutex::new(None), keep: AtomicUsize::new(0) }
     }
 
     fn briefs(&self) -> MutexGuard<'_, Option<HashMap<String, Value>>> {
@@ -138,7 +141,18 @@ impl Fights {
         }
         // A fight is written again as it grows, and the last is the whole of it.
         let _ = fs::remove_file(path.with_extension("bak"));
+        let keep = self.keep.load(SeqCst);
+        if keep > 0 {
+            for old in self.list().iter().skip(keep) {
+                let _ = self.delete(old["id"].as_str().unwrap_or_default());
+            }
+        }
         Ok(())
+    }
+
+    /// Every fight, whole.
+    pub fn all(&self) -> Vec<Value> {
+        self.list().iter().filter_map(|f| self.load(f["id"].as_str()?)).collect()
     }
 
     pub fn load(&self, id: &str) -> Option<Value> {
@@ -192,6 +206,13 @@ const OURS: [&str; 20] = [
 
 fn list<'a>(fight: &'a Value, key: &str) -> &'a [Value] {
     fight[key].as_array().map_or(&[], Vec::as_slice)
+}
+
+/// What of a kept fight may come back from a backup: what would have been written down, and nothing more.
+pub fn kept(fight: &Value) -> Value {
+    let own = ["deaths", "stagger", "buffs", "you", "others", "players"];
+    let all = fight.as_object().into_iter().flatten();
+    Value::Object(all.filter(|(k, _)| OURS.contains(&k.as_str()) || own.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect())
 }
 
 /// What may be written down of a fight. Other players become one sum: no names, classes, ids or numbers of theirs.
@@ -363,6 +384,13 @@ mod tests {
         }
         fights.delete("a").unwrap();
         assert!(fights.load("a").is_none() && fights.list().len() == 1);
+        fights.keep.store(2, SeqCst);
+        fights.save(&fight("c", 3)).unwrap();
+        fights.save(&fight("d", 4)).unwrap();
+        let ids: Vec<_> = fights.all().iter().map(|f| f["id"].as_str().unwrap().to_string()).collect();
+        assert_eq!(ids, ["d", "c"]);
+        let back = kept(&json!({ "id": "x", "you": 1, "rows": [1], "credits": [], "casts": [2] }));
+        assert_eq!(back, json!({ "id": "x", "you": 1, "casts": [2] }));
         fs::remove_dir_all(&fights.folder).unwrap();
     }
 }

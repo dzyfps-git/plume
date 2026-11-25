@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoFight, demoSkills } from "../../live/demo.ts";
 import { NO_ENTRIES, type Row } from "../../live/types.ts";
-import { VIEWS, type Footer, type Resource } from "../../store/settings.ts";
+import { DEFAULTS, VIEWS, type Footer, type Resource } from "../../store/settings.ts";
 import { strip } from "../resources/logic.ts";
-import { against, BEST, footer, gain, label, length, lines, partyDps, power, ranked, shown, signed, withBest } from "./logic.ts";
+import { against, BEST, bursts, footer, gain, gap, odyleFoot, label, length, lines, partyDps, power, ranked, shown, signed, withBest } from "./logic.ts";
 
 const row = (id: number, damage: number, you = false) => ({ id, name: you ? "Me" : `P${id}`, damage, you }) as Row;
 const rows = [row(1, 100), row(2, 50), row(3, 25), row(4, 10, true)];
@@ -90,9 +90,9 @@ test("the footer says what you chose and what is known", () => {
   const entries = { ...NO_ENTRIES, counts: [[1, 5, 1], [4, 2, 0]] as [number, number, number][], kinah: 182_300 };
   const chosen = [{ id: 1, name: "", kind: "", show: true }, { id: 4, name: "Mine", kind: "", show: true }] as Resource[];
   const said = (which: Footer[], n: typeof near, e: typeof NO_ENTRIES) =>
-    footer(which, n, { total: 1_500 }, e, strip(e, n.odyle, chosen), 80).map((f) => [f.name, f.icon ?? f.thing ?? "", f.value, f.bonus ?? "", f.more].join(" ").trim());
-  assert.deepEqual(said(["ping", "total", "flight", "odyle", "entries", "kina", "points"], near, entries), [
-    "Ping ping 40  ms", "Total  1.50K", "Odyle Energy odyle 120 +1,335 18 runs", "Shugo Festival keys shugo 5 +1", "Mine  2", "Kina today kina 182K",
+    footer(which, n, { total: 1_500, own: [200, 88, 121] }, e, strip(e, n.odyle, chosen), { ...DEFAULTS, odyleRun: 80 }).map((f) => [f.name, f.icon ?? f.thing ?? "", f.value, f.bonus ?? "", f.more].join(" ").trim());
+  assert.deepEqual(said(["ping", "total", "flight", "odyle", "entries", "kina", "points", "crit", "back"], near, entries), [
+    "Ping ping 40  ms", "Total  1.50K", "Odyle Energy odyle 120 +1,335 18 runs", "Shugo Festival keys shugo 5 +1", "Mine  2", "Kina today kina 182K", "Crit  44%", "Back  61%",
   ]);
   assert.deepEqual(said(["ping", "entries", "kina"], { ...near, ping: -1 }, NO_ENTRIES), []);
 });
@@ -106,4 +106,27 @@ test("your best stands among the rows without taking a place", () => {
   assert.deepEqual(all.slice(0, 3).map((r) => [r.row.id === BEST, r.rank]), [[false, 1], [true, 0], [false, 2]]);
   assert.equal(withBest(list, 1, f.ms, "").at(-1)!.row.id, BEST);
   assert.equal(shown(withBest(list, 1e9, f.ms, ""), 2).filter((r) => r.row.you).length, 1);
+});
+
+test("Odyle Energy says what you want of it, and warns", () => {
+  const said = (odyle: [number, number], more: object) => odyleFoot(odyle, { odyleRun: 40, odyle: { ...DEFAULTS.odyle, ...more } });
+  assert.deepEqual([said([420, 35], { parts: ["energy", "cap"] }).more, said([420, 35], { parts: ["energy", "cap"] }).bonus], ["of 560", ""]);
+  assert.equal(said([420, 0], { parts: ["cap"], member: true }).more, "of 840");
+  assert.deepEqual([said([520, 0], {}).tone, said([520, 0], {}).more, said([560, 0], { parts: [] }).more, said([520, 0], { warn: false }).tone], ["ending", "13 runs, nearly full", "full", undefined]);
+  assert.deepEqual([said([520, 0], { member: true }).tone, said([-1, -1], {}).more], [undefined, "log in once more"]);
+});
+
+test("you can stand first, and how far the next place is", () => {
+  const list = rows.map((row) => ({ row, rate: row.damage }));
+  assert.deepEqual(shown(list, 2, true).map(({ row, rank }) => [row.id, rank]), [[4, 4], [1, 1]]);
+  assert.deepEqual([gap(list), gap(list.slice(3)), gap(list.slice(0, 2))], [15, undefined, undefined]);
+});
+
+test("a burst is far above one's own average", () => {
+  const look = bursts();
+  const at = (ms: number, a: number, b: number) => look({ ms, rows: [{ ...row(1, a), others: false }, { ...row(2, b), others: false }] });
+  for (let s = 1; s <= 20; s++) assert.equal(at(s * 1000, s * 100, s * 100).size, 0, String(s));
+  for (let s = 21; s <= 24; s++) at(s * 1000, 2_000 + (s - 20) * 400, s * 100);
+  assert.deepEqual([...at(25_000, 4_000, 2_500)], [1]);
+  assert.equal(at(1_000, 100, 100).size, 0);
 });

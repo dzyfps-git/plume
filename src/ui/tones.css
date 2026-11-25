@@ -1,0 +1,9 @@
+/* What a colour says, the same everywhere. Yours comes from `paint.ts`. */
+:root, [data-theme] {
+  --tone-bonus: var(--own-bonus, var(--ocean-start));
+  --tone-best: var(--own-best, #ffd66b);
+  --tone-ready: var(--own-ready, var(--success-ink));
+  --tone-ending: var(--own-ending, var(--fresh));
+  --tone-danger: var(--own-danger, var(--danger-ink));
+  --tone-you: var(--own-you, var(--accent));
+}

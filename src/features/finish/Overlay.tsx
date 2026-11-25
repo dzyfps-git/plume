@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { demoSaved } from "../../live/demo";
 import type { FightRow, Saved } from "../../live/types";
-import { settings } from "../../store";
+import { hideNames } from "../../store";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, percent, short } from "../../ui/format";
 import { Drawn } from "../../ui/icons";
@@ -43,7 +43,7 @@ export function FinishOverlay() {
     return shown(list.length || !alone ? list : [{ id: alone.id, points: 0, damage: 0, healing: 0, stagger: 0, deaths: 0, row: alone }], 4);
   });
   const named = createMemo(() => titles(now().fight));
-  const name = (r: FightRow, rank: number) => label(r, settings.meter.hideNames, rank);
+  const name = (r: FightRow, rank: number) => label(r, hideNames(), rank);
   const broken = () => rows().reduce((n, r) => n + (r.stagger ?? 0), 0);
   return (
     <section class="finish" aria-label="End of the fight">

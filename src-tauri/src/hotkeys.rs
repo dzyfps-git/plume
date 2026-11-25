@@ -14,6 +14,9 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 type Wanted = (Vec<(String, String)>, Sender<Vec<String>>);
 
+/// This one comes again and again while it is held, which is how it is known to be held: no key is watched.
+const HELD: &str = "peek";
+
 static THREAD: AtomicU32 = AtomicU32::new(0);
 static WANTED: OnceLock<Mutex<Option<Wanted>>> = OnceLock::new();
 
@@ -76,7 +79,10 @@ pub fn start(pressed: impl Fn(&str) + Send + 'static) {
                     let mut taken = Vec::new();
                     for (id, (action, key)) in keys.iter().enumerate().filter(|(_, (_, key))| !key.is_empty()) {
                         let registered = parse(key)
-                            .is_some_and(|(mods, code)| RegisterHotKey(None, id as i32, mods | MOD_NOREPEAT, code).is_ok());
+                            .is_some_and(|(mods, code)| {
+                                let mods = if action == HELD { mods } else { mods | MOD_NOREPEAT };
+                                RegisterHotKey(None, id as i32, mods, code).is_ok()
+                            });
                         if !registered {
                             taken.push(action.clone());
                         }

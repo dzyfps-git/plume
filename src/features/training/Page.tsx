@@ -4,6 +4,7 @@ import { engineSend, fight as loadFight } from "../../api";
 import { fight, live, skills } from "../../live/store";
 import { settings } from "../../store";
 import { clock, day, short, time } from "../../ui/format";
+import { RunLength } from "../../ui/RunLength";
 import { Waiting } from "../../ui/Waiting";
 import { Skills } from "../meter/Skills";
 import { bestOf, bests } from "../history/logic";
@@ -12,8 +13,7 @@ import { unclean } from "../report/deep";
 import "../meter/meter.css";
 import "../meter/page.css";
 
-const LENGTHS: [number, string][] = [[30, "30 s"], [60, "1 min"], [120, "2 min"], [180, "3 min"], [300, "5 min"], [0, "No limit"]];
-const [seconds, setSeconds] = createSignal(60);
+const seconds = () => settings.training.seconds;
 
 /** What kept each run from being clean, by run. The list does not hold casts, so each is read whole, once. */
 const judged = new Map<string, string[]>();
@@ -69,13 +69,7 @@ export function TrainingPage() {
     <div class="page">
       <header class="page-head">
         <h1>Training dummy</h1>
-        <div class="ui-row" role="radiogroup" aria-label="Length">
-          <For each={LENGTHS}>
-            {([s, name]) => (
-              <button class="ui-chip" role="radio" aria-checked={seconds() === s} onClick={() => { setSeconds(s); begin(); }}>{name}</button>
-            )}
-          </For>
-        </div>
+        <RunLength after={begin} />
         <button class="ui-button" data-main onClick={begin}>
           <span class="ui-icon" aria-hidden="true">{""}</span>
           New run
@@ -122,7 +116,7 @@ export function TrainingPage() {
                   </Show>{" "}
                   <Show when={verdicts.latest?.get(run(f))}>
                     {(why) => (
-                      <Show when={why().length} fallback={<span class="ui-tag" style={{ "--tag": "var(--success-ink)" }}>Clean run</span>}>
+                      <Show when={why().length} fallback={<span class="ui-tag" style={{ "--tag": "var(--tone-ready)" }}>Clean run</span>}>
                         <small class="ui-muted">{why().join(", ")}</small>
                       </Show>
                     )}

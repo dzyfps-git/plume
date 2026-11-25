@@ -6,7 +6,7 @@ import { Sharp } from "../../ui/Sharp";
 import "../meter/meter.css";
 import "./effects.css";
 
-type Tiled = Pick<Aura, "id" | "name" | "bad" | "stacks" | "start" | "end"> & { glow?: boolean; skill?: number; /** Its number is a skill's. */ isSkill?: boolean };
+type Tiled = Pick<Aura, "id" | "name" | "bad" | "stacks" | "start" | "end"> & { glow?: boolean; ready?: boolean; cooling?: boolean; skill?: number; /** Its number is a skill's. */ isSkill?: boolean };
 
 /** One effect as its picture or its letters, darkening as it runs out. */
 export function Tile(props: { of: Tiled; now: number; small?: boolean }) {
@@ -22,6 +22,8 @@ export function Tile(props: { of: Tiled; now: number; small?: boolean }) {
       data-small={props.small || undefined}
       data-bad={props.of.bad || undefined}
       data-glow={props.of.glow || undefined}
+      data-ready={props.of.ready || undefined}
+      data-cooling={props.of.cooling || undefined}
       data-ending={(ms() ?? 1e9) < 4_000 || undefined}
       style={{ "--hue": hue(name()), "--gone": `${Math.round(gone() * 100)}%` }}
     >

@@ -1,6 +1,6 @@
 import type { Aura, Fight, Near } from "../../live/types.ts";
-import type { Alert, AlertId, BossPlan, Mechanic } from "../../store/settings.ts";
-import { called, CONTROL, held, same } from "../effects/logic.ts";
+import type { Alert, AlertId, BossPlan, Mechanic, Settings } from "../../store/settings.ts";
+import { called, CONTROL, heldFor, same } from "../effects/logic.ts";
 import { dead, share, who } from "../frames/logic.ts";
 
 export const ALERT_NAMES: Record<AlertId, { name: string; about: string; value?: string }> = {
@@ -30,7 +30,9 @@ export interface Look {
 /** Health has to come back this far above the mark before the same alert comes again. */
 const BACK = 10;
 
-export function look(near: Near, alerts: Pick<Record<AlertId, Alert>, "low" | "ally">, before?: Look): Look {
+const ALL_KINDS = { skip: [], least: 0 };
+
+export function look(near: Near, alerts: Pick<Record<AlertId, Alert>, "low" | "ally">, before?: Look, control: Pick<Settings["control"], "skip" | "least"> = ALL_KINDS): Look {
   const under = (u: { hp: number; maxHp: number }, mark: number, was: boolean) => {
     const part = share(u);
     return part !== undefined && part > 0 && part * 100 <= mark + (was ? BACK : 0);
@@ -40,7 +42,7 @@ export function look(near: Near, alerts: Pick<Record<AlertId, Alert>, "low" | "a
   return {
     low: !!near.you && under(near.you, alerts.low.value, before?.low ?? false),
     fighting: near.fighting,
-    held: held(near.you?.auras ?? [])?.tag ?? "",
+    held: heldFor(near.you?.auras ?? [], control)?.tag ?? "",
     enraged: near.target?.auras.some((a) => a.tag === "enrage") ?? false,
     lowAllies: keys(others.filter((u) => under(u, alerts.ally.value, before?.lowAllies.has(u.key) ?? false))),
     alive: keys(near.party.filter((u) => u.hp > 0)),
@@ -54,7 +56,7 @@ export interface Raised {
 }
 
 /** What to call attention to between two looks. `name` gives a party member's. */
-export function raised(before: Look, now: Look, near: Pick<Near, "party">, hide: boolean): Raised[] {
+export function raised(before: Look, now: Look, near: Pick<Near, "party">, hide: boolean | "all"): Raised[] {
   const all: Raised[] = [];
   const name = (key: string) => {
     const at = near.party.findIndex((u) => u.key === key);

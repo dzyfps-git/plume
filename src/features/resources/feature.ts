@@ -1,7 +1,7 @@
-import { near } from "../../live/store";
 import type { Feature } from "../types";
-import { ResourcesOverlay, shown } from "./Overlay";
+import { bare, ResourcesOverlay } from "./Overlay";
 import { ResourcesPage } from "./Page";
+import { followGrowth } from "./watch";
 
 export const resources: Feature = {
   id: "resources",
@@ -11,6 +11,6 @@ export const resources: Feature = {
   page: ResourcesPage,
   overlay: {
     view: ResourcesOverlay, group: "Other", about: "Odyle Energy, and the tickets and entries chosen on the Resources page.", width: 300,
-    place: { on: false, x: 1, y: 0.5, scale: 1 }, empty: () => near.odyle[0] < 0 && !shown().length,
+    place: { on: false, x: 1, y: 0.5, scale: 1 }, empty: bare, beside: followGrowth,
   },
 };
