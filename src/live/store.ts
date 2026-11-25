@@ -14,6 +14,8 @@ const [near, setNear] = createStore<Near>(structuredClone(NO_NEAR));
 const [entries, setEntries] = createSignal<Entries>(NO_ENTRIES);
 const [place, setPlace] = createSignal<Position | null>(null);
 const petListeners = new Set<(p: Pets) => void>();
+/** When each of your skills is back, as the game last said, and when it said it. */
+const [cooldowns, setCooldowns] = createSignal<ReadonlyMap<number, { end: number; at: number }>>(new Map());
 const listeners = new Set<(h: Happened) => void>();
 
 /** True when the game is connected. */
@@ -60,7 +62,7 @@ export function sample(made?: { near: Near; fight?: Fight }) {
   });
 }
 
-export { engine, state, reads, fight, skills, near, entries, place, sampling, over };
+export { engine, state, reads, fight, skills, near, entries, place, cooldowns, sampling, over };
 
 export const tell = (h: Happened) => listeners.forEach((hear) => hear(h));
 /** Calls `hear` with everything that happens, for as long as the window is open. */
@@ -95,6 +97,7 @@ export async function follow(start: Start) {
     else if (message.t === "happened") tell(message);
     else if (message.t === "place") setPlace(message);
     else if (message.t === "pets") petListeners.forEach((hear) => hear(message));
+    else if (message.t === "cooldowns") setCooldowns((all) => new Map([...all, ...message.list.map(([skill, ms]) => [skill, { end: message.at + ms, at: message.at }] as const)]));
   });
   await on("cleared", clearFight);
 }

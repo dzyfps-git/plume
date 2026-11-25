@@ -1,4 +1,5 @@
-import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
+import { createMemo, createResource, createSignal, For, Match, Show, Switch } from "solid-js";
+import { dungeonFile } from "../map/data";
 import { exportFile } from "../../api";
 import type { Saved } from "../../live/types";
 import { clock, day, full, short, time } from "../../ui/format";
@@ -266,6 +267,12 @@ function Records(props: { fights: Saved[]; open: (id: string) => void }) {
 }
 
 function RunCard(props: { run: Run; open: (id: string) => void }) {
+  // "Krao Cave, hard". Nothing without the engine's `dungeons.json`; the file is read once.
+  const [dungeons] = createResource(() => dungeonFile().catch(() => ({}) as Record<string, [string, string]>));
+  const place = () => {
+    const [name, hard] = dungeons()?.[props.run.dungeon] ?? ["", ""];
+    return name && `${hard ? `${name}, ${hard}` : name}, `;
+  };
   // Against the best of the others. A run that beat them all is the best itself.
   const other = createMemo(() => bestRun(allRuns(), props.run.dungeon, props.run.run));
   const first = createMemo(() => bestRun(allRuns(), props.run.dungeon)?.run === props.run.run && !!other());
@@ -277,7 +284,7 @@ function RunCard(props: { run: Run; open: (id: string) => void }) {
   };
   return (
     <section class="block">
-      <h2>{day(props.run.run)}, {time(props.run.run)} <Show when={first()}><span class="ui-tag" style={{ "--tag": "var(--tone-best)" }}>Best run</span></Show></h2>
+      <h2>{place()}{day(props.run.run)}, {time(props.run.run)} <Show when={first()}><span class="ui-tag" style={{ "--tag": "var(--tone-best)" }}>Best run</span></Show></h2>
       <div class="stats">
         <div class="stat" data-hero>
           <small>First pull to last</small>

@@ -1,10 +1,11 @@
-import { createMemo, createSignal, For, Show, type Component } from "solid-js";
+import { createMemo, createResource, createSignal, For, Show, type Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { editOverlays, secondScreen } from "../api";
 import { FEATURES } from "../features";
 import { followActions, skills } from "../features/actions/store";
 import { SignalLines } from "../features/alerts/SignalLines";
 import { known } from "../features/auras/Page";
+import { callFile } from "../features/map/data";
 import { called, CONTROL, same } from "../features/effects/logic";
 import { GROUPS, overlayName, widthOf, type Feature } from "../features/types";
 import { WHEN_NAMES } from "../overlay/rules";
@@ -119,7 +120,7 @@ function One(props: { of: Feature; still?: boolean }) {
 }
 
 /** What else an overlay can be told, by its id. */
-const MORE: Partial<Record<string, Component>> = { boss: Boss, finish: Finish, party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control };
+const MORE: Partial<Record<string, Component>> = { boss: Boss, finish: Finish, party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control, alerts: Calls };
 
 const against = (key: keyof Settings["against"]) => ({ on: settings.against[key], set: (on: boolean) => change((s) => (s.against[key] = on)) });
 
@@ -209,6 +210,35 @@ function Buffs() {
           </For>
         </div>
       </Line>
+    </>
+  );
+}
+
+/** Boss calls of `calls.json`, by dungeon. */
+function Calls() {
+  const c = () => settings.calls;
+  const [file] = createResource(() => callFile().catch(() => null));
+  const groups = createMemo(() => {
+    const all = new Map<string, string[]>();
+    for (const [key, b] of Object.entries(file()?.bosses ?? {})) all.set(b.group, [...(all.get(b.group) ?? []), key]);
+    return [...all].sort(([a], [b]) => a.localeCompare(b));
+  });
+  const names = () => Object.fromEntries(Object.entries(file()?.bosses ?? {}).map(([k, b]) => [k, b.name]));
+  return (
+    <>
+      <Switch name="Boss calls" about="The boss's lines and what to do, as its casts begin." on={c().on} set={(v) => change((s) => (s.calls.on = v))} />
+      <Show when={c().on}>
+        <Line name="Say"><Choices name="Say" all={[["say", "What to do"], ["line", "The boss's line"]] as const} value={c().mode} set={(v) => change((s) => (s.calls.mode = v))} /></Line>
+        <Switch name="Aloud" about="With the voice of Timers." on={c().voice} set={(v) => change((s) => (s.calls.voice = v))} />
+        <Show when={file() === null}><p class="ui-muted ui-small">No boss calls yet. The engine's tools/calls.py makes them.</p></Show>
+        <For each={groups()}>
+          {([group, keys]) => (
+            <Line name={group} wide>
+              <Chips name={group} all={keys} names={names()} value={keys.filter((k) => !c().off.includes(k))} set={(v) => change((s) => (s.calls.off = [...s.calls.off.filter((k) => !keys.includes(k)), ...keys.filter((k) => !v.includes(k))]))} />
+            </Line>
+          )}
+        </For>
+      </Show>
     </>
   );
 }

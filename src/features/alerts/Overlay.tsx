@@ -11,6 +11,8 @@ import { gain, signed } from "../meter/logic";
 import { short } from "../../ui/format";
 import { count, NONE } from "../pvp/logic";
 import { speak } from "../timers/voice";
+import { callFile } from "../map/data";
+import { heard, onBoss as onBossAuras, words as callWords, type CallFile, type GameCall } from "../calls/logic";
 import { ahead, look, notes, onBlow, onEffects, raised, safe, streakText, type Call, type Look, type Raised } from "./logic";
 import { signal } from "./signal";
 import "../meter/meter.css";
@@ -23,14 +25,31 @@ const MOST = 4;
 interface Banner {
   n: number;
   text: string;
+  /** A countdown to this, 0 for none. */
+  end: number;
 }
 const [banners, setBanners] = createSignal<readonly Banner[]>([]);
 let counted = 0;
-function show(text: string) {
+function show(text: string, end = 0, stay = STAY) {
   const n = ++counted;
-  setBanners((all) => [...all.filter((b) => b.text !== text), { n, text }].slice(-MOST));
-  setTimeout(() => setBanners((all) => all.filter((b) => b.n !== n)), STAY);
+  setBanners((all) => [...all.filter((b) => b.text !== text), { n, text, end }].slice(-MOST));
+  setTimeout(() => setBanners((all) => all.filter((b) => b.n !== n)), Math.max(stay, end - Date.now()));
 }
+
+/** Boss calls, once the file is read. None when there is no file. */
+let file: CallFile | undefined;
+/** The same call again this soon counts once. */
+const AGAIN = 1_200;
+const said = new Map<string, number>();
+function gameCall(c: GameCall, end: number) {
+  const now = Date.now();
+  if (now - (said.get(c.key) ?? -AGAIN) < AGAIN) return;
+  said.set(c.key, now);
+  const text = callWords(c, settings.calls.mode, file!);
+  show(text, end);
+  if (settings.calls.voice) speak(text);
+}
+
 
 const bossKey = () => key({ code: fight.target.code, target: fight.target.name });
 const set = () => plan(settings.bosses[bossKey()]);
@@ -58,6 +77,7 @@ function call(all: readonly Call[]) {
 
 /** Watches for what is worth your attention. */
 export function followAlerts() {
+  callFile().then((f) => (file = f), () => undefined);
   createRoot(() => {
     words = createMemo(() => notes(set(), fight, near.fighting));
 
@@ -90,11 +110,28 @@ export function followAlerts() {
           alert({ id: "record", text: `Record: ${h.name || "a hit"}, ${short(h.amount)}` });
         }
       } else if (h.what === "blow" && onBoss()) call(onBlow(set(), h, job()));
+      else if ((h.what === "begin" || h.what === "use") && file && settings.calls.on && !sampling()) {
+        for (const c of heard(file, h.what === "begin" ? "cast" : "use", h.skill, settings.calls.off)) gameCall(c, c.lead ? Date.now() + c.lead : 0);
+      }
     });
 
     onKept((kept, all) => {
       const more = gain(kept, all);
       if (more) alert({ id: "best", text: `New best, ${signed(more)}` });
+    });
+
+    let phases = { id: 0, seen: new Map<string, boolean>() };
+    createEffect(() => {
+      const [id, auras] = [near.target?.boss && !sampling() ? near.target.id : 0, near.target?.boss ? near.target.auras.map((a) => ({ ...a })) : []];
+      untrack(() => {
+        if (!file || !settings.calls.on) return;
+        const now = onBossAuras(file, auras, phases.id === id ? phases.seen : new Map(), settings.calls.off, Date.now());
+        if (id && phases.id === id) {
+          for (const s of now.shown) gameCall(s.call, s.end);
+          if (now.safe) show(file.safe, 0, 2_500);
+        }
+        phases = { id, seen: now.seen };
+      });
     });
 
     let seen = { id: 0, keys: new Set<string>(), safe: false };
@@ -127,7 +164,7 @@ export function CalloutsOverlay() {
       <Show when={untouchable()}>
         {(a) => <strong class="callout" data-safe>Cannot be hurt{a().end ? `, ${remaining(left(a(), now())!)}` : ""}</strong>}
       </Show>
-      <For each={banners()}>{(b) => <strong class="callout">{b.text}</strong>}</For>
+      <For each={banners()}>{(b) => <strong class="callout">{b.text}{b.end > now() ? `, ${remaining(b.end - now())}` : ""}</strong>}</For>
       <Show when={words()}>{(text) => <p class="callout-notes glass">{text()}</p>}</Show>
       <Show when={empty()}><strong class="callout">Callouts</strong></Show>
     </section>

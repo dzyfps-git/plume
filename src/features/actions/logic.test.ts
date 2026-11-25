@@ -18,3 +18,10 @@ test("a skill cools from its last cast", () => {
   assert.equal(cooling({ back: 10 }, 100, 110), undefined);
   assert.equal(cooling({ back: 10 }, undefined, 110), undefined);
 });
+
+test("what the game says since the cast wins over what was learned", () => {
+  assert.deepEqual(cooling({ back: 10 }, 100, 105, { end: 130, at: 101 }), { start: 100, end: 130 });
+  assert.equal(cooling({ back: 10 }, 100, 105, { end: 101, at: 101 }), undefined, "said to be back");
+  assert.deepEqual(cooling({ back: 10_000 }, 100_000, 105_000, { end: 999_000, at: 50_000 }), { start: 100_000, end: 110_000 }, "said before the cast");
+  assert.deepEqual(cooling({ back: 10 }, undefined, 105, { end: 130, at: 101 }), { start: 101, end: 130 });
+});

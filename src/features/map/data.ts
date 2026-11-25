@@ -3,6 +3,7 @@ import { worldFile } from "../../api";
 import { place } from "../../live/store";
 import type { Position } from "../../live/types";
 import type { PetFile } from "../pets/logic";
+import type { CallFile } from "../calls/logic";
 import { guess, type Drops, type MapInfo, type WorldMap } from "./logic";
 
 /** Each file is read once a window. One that could not be read is tried again next time. */
@@ -22,6 +23,9 @@ export const mapList = () => json<{ made: string; maps: MapInfo[] }>("index");
 export const worldMap = (id: number) => json<WorldMap>(`map_${id}`);
 export const dropFile = () => json<Drops>("drops");
 export const petFile = () => json<PetFile>("pets");
+export const callFile = () => json<CallFile>("calls");
+/** A dungeon's name and how hard, by the game's number. */
+export const dungeonFile = () => json<Record<string, [string, string]>>("dungeons");
 export const pictureOf = (name: string) => once(`${name}.webp`, (b) => createImageBitmap(new Blob([b], { type: "image/webp" })));
 
 /** The list of maps. Undefined while it is read, null when there are no files. */

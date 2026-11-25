@@ -323,6 +323,8 @@ export interface Settings {
   alerts: Record<AlertId, Alert>;
   world: World;
   pets: PetsKept;
+  /** Boss calls of `calls.json`: what is said, aloud too, and bosses or calls turned off by key. */
+  calls: { on: boolean; mode: "say" | "line"; voice: boolean; off: string[] };
   /** Starts with Windows. */
   startup: boolean;
   /** Closes the overlay window while the game is closed. */
@@ -392,6 +394,7 @@ export const DEFAULTS: Settings = {
   },
   world: { map: 0, layers: ["trace", "cube", "gather", "boss", "teleport", "village", "sealed", "rift", "stronghold"], follow: true, hideFound: false, tracked: [], found: {}, routes: [], across: 600 },
   pets: { goal: 3, levels: {}, souls: {}, told: 0 },
+  calls: { on: true, mode: "say", voice: true, off: [] },
   startup: false,
   sleep: true,
 };
@@ -468,6 +471,17 @@ function pets(v: unknown): PetsKept {
     levels: byPet(p.levels, 3),
     souls: byPet(p.souls, 100_000),
     told: number(p.told, 0, 2 ** 53, 0),
+  };
+}
+
+function calls(v: unknown): Settings["calls"] {
+  const c = object(v);
+  const d = DEFAULTS.calls;
+  return {
+    on: flag(c.on, d.on),
+    mode: one(c.mode as Settings["calls"]["mode"], ["say", "line"], d.mode),
+    voice: flag(c.voice, d.voice),
+    off: [...new Set((Array.isArray(c.off) ? c.off : []).filter((k): k is string => typeof k === "string" && k.length <= 120))].slice(0, 1000),
   };
 }
 
@@ -656,6 +670,7 @@ export function read(value: unknown): Settings {
     ) as Settings["alerts"],
     world: world(s.world),
     pets: pets(s.pets),
+    calls: calls(s.calls),
     startup: flag(s.startup, d.startup),
     sleep: flag(s.sleep, d.sleep),
   };

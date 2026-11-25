@@ -83,3 +83,8 @@ test("the map and pets keep only what fits", () => {
   assert.deepEqual(s.pets, { goal: 3, levels: { 1066: 3, 1004: 3 }, souls: { 1066: 24 }, told: 5 });
   assert.deepEqual(read(null).world.layers, DEFAULTS.world.layers);
 });
+
+test("boss calls keep a known mode and only names turned off", () => {
+  const s = read({ calls: { on: false, mode: "loud", voice: 1, off: ["thamon", "thamon", 4] } });
+  assert.deepEqual(s.calls, { on: false, mode: "say", voice: true, off: ["thamon"] });
+});

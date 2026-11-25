@@ -1,4 +1,4 @@
-// When your skills come back. The game's traffic does not say it, so it is learned from your own fights.
+// When your skills come back: as the game says it, or else as learned from your own fights.
 import type { Job, Saved } from "../../live/types.ts";
 import { nameOf, waited } from "../report/logic.ts";
 
@@ -29,8 +29,11 @@ export function learned(fights: readonly Saved[], job: Job): Known[] {
     .sort((a, b) => b.back - a.back || a.skill - b.skill);
 }
 
-/** From the last cast until it is back. Nothing when it is ready. */
-export function cooling(known: Pick<Known, "back">, cast: number | undefined, now: number): { start: number; end: number } | undefined {
+/** From the last cast until it is back. Nothing when it is ready. What the game said since the cast comes first. */
+export function cooling(known: Pick<Known, "back">, cast: number | undefined, now: number, told?: { end: number; at: number }): { start: number; end: number } | undefined {
+  if (told && (cast === undefined || told.at >= cast - 500)) {
+    return told.end > now ? { start: cast ?? told.at, end: told.end } : undefined;
+  }
   if (cast === undefined || cast + known.back <= now) return undefined;
   return { start: cast, end: cast + known.back };
 }

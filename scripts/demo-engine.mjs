@@ -28,6 +28,9 @@ setInterval(() => say({ t: "near", ...demoNear(Date.now() - begun, Date.now()) }
   setInterval(() => say({ t: "happened", what: "cast", at: Date.now(), skill, name, job: "", amount: 0 }), every),
 );
 setInterval(() => say({ t: "happened", what: "blow", at: Date.now(), skill: 101, name: "Thunder Stomp", job: "", amount: 0 }), 16_000);
+// A boss cast bar, as the boss calls of `calls.json` know it, and the game's cooldowns.
+setInterval(() => say({ t: "happened", what: "begin", at: Date.now(), skill: 1609011, name: "", job: "", amount: 0 }), 20_000);
+setInterval(() => say({ t: "cooldowns", list: [[0, 9_000], [2, 15_000]], at: Date.now() }), 12_000);
 setInterval(() => {
   say({ t: "happened", what: "kill", at: Date.now(), skill: 0, name: "Rival", job: "", amount: 0 });
   say({ t: "happened", what: "points", at: Date.now(), skill: 0, name: "", job: "", amount: 180 });

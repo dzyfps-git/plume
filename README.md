@@ -92,6 +92,14 @@ game's own drop chances. They are not in this repository. `src/features/map/logi
 a map is in metres, as the game says it, and the picture spans the map's `bounds`. Your place between two the game said
 is a guess, drawn as a dashed ring, for three seconds at most.
 
+Boss calls and dungeon names come from the same folder: `calls.json` and `dungeons.json`, which the engine's
+`tools/calls.py` makes. A call goes off when a boss's cast bar begins, a skill of its goes off, or an effect lands on it,
+and says the boss's own line or what to do, as `src/features/calls/logic.ts` describes. Nothing is predicted. The
+action bars count down with the cooldowns the game sends, and with what was learned only until it does.
+
+Timers and mechanics you set for a boss are keyed by the skill the boss used. Since the engine names each boss skill by
+its own number, plans saved before then under a family number (such as 1600000) no longer match and need setting again.
+
 ## Rights
 
 Copyright (c) 2026 dzyfps. All rights reserved. No license is given to use, copy, change or share this code.

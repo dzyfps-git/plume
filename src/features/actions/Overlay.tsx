@@ -1,4 +1,5 @@
 import { createMemo, For, Show } from "solid-js";
+import { cooldowns } from "../../live/store";
 import { settings } from "../../store";
 import { ticking } from "../../ui/now";
 import { Tile } from "../effects/Tile";
@@ -15,11 +16,11 @@ export function ActionsOverlay() {
   const list = createMemo(bar);
   const set = () => settings.cooldowns;
   return (
-    <section class="strip glass" aria-label="Cooldowns, about" style={{ "--tile": `${set().size}px`, "--dim": set().dim }}>
+    <section class="strip glass" aria-label="Cooldowns" style={{ "--tile": `${set().size}px`, "--dim": set().dim }}>
       <div class="tiles">
         <For each={list()} fallback={<Tile of={{ id: 0, name: "Action Bars", bad: false, stacks: 0, start: 0, end: 0 }} now={0} />}>
           {(k) => {
-            const on = () => cooling(k, casts().get(k.skill), now());
+            const on = () => cooling(k, casts().get(k.skill), now(), cooldowns().get(k.skill));
             return (
               <Show when={on() || set().ready}>
                 <Tile of={{ id: k.skill, isSkill: true, name: k.name, bad: false, stacks: 0, start: on()?.start ?? 0, end: on()?.end ?? 0, ready: !on(), cooling: !!on() }} now={now()} />

@@ -303,8 +303,8 @@ export interface Entries {
 
 /** Something that just happened. */
 export interface Happened {
-  /** Yours, but for `blow`, which is a monster's. `big` is your biggest hit with a skill since the engine connected. */
-  what: "cast" | "blow" | "kill" | "assist" | "death" | "points" | "big";
+  /** Yours, but for `blow`, `begin` and `use`, which are a monster's: a hit, a cast bar beginning, a skill going off. `big` is your biggest hit with a skill since the engine connected. */
+  what: "cast" | "blow" | "begin" | "use" | "kill" | "assist" | "death" | "points" | "big";
   at: number;
   skill: number;
   name: string;
@@ -349,6 +349,7 @@ export type Message =
   | ({ t: "entries" } & Entries)
   | ({ t: "place" } & Position)
   | ({ t: "pets" } & Pets)
+  | { t: "cooldowns"; /** Skill and ms left, when the game said it. */ list: [skill: number, ms: number][]; at: number }
   | ({ t: "happened" } & Happened);
 
 export const NO_FIGHT: Fight = {
