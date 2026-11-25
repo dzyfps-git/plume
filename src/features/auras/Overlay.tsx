@@ -43,7 +43,7 @@ export function AurasOverlay() {
           {(key) => (
             <Show when={of(key)}>
               {(s) => (
-                <Tile of={{ id: s().rule.of.id, name: s().name, bad: s().rule.kind === "low", stacks: s().stacks, start: s().start, end: s().end, glow: s().rule.glow || s().text === "missing" }} now={now()} />
+                <Tile of={{ id: s().rule.of.id, isSkill: s().rule.kind === "ready", name: s().name, bad: s().rule.kind === "low", stacks: s().stacks, start: s().start, end: s().end, glow: s().rule.glow || s().text === "missing" }} now={now()} />
               )}
             </Show>
           )}

@@ -17,7 +17,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WindowEvent};
 use windowing::Overlay;
 
 /// What the meter shows, in the order its key goes through. The same as in `src/store/settings.ts`.
-const VIEWS: [&str; 5] = ["damage", "rdps", "healing", "taken", "hits"];
+const VIEWS: [&str; 6] = ["damage", "rdps", "ndps", "healing", "taken", "hits"];
 
 struct Saved {
     path: PathBuf,
@@ -62,7 +62,7 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
         let _ = engine.send(json!({ "cmd": "mode", "mode": settings["mode"].as_str().unwrap_or("bossTargets") }));
     }
     // Weighing buffs costs time, so only while it is what the meter shows.
-    let _ = engine.send(json!({ "cmd": "credit", "on": settings["meter"]["view"] == "rdps" }));
+    let _ = engine.send(json!({ "cmd": "credit", "on": settings["meter"]["view"].as_str().is_some_and(|v| v.ends_with("dps")) }));
     engine.want(settings["live"].as_bool().unwrap_or(false));
     let key = |action: &str| settings["hotkeys"][action].as_str().unwrap_or_default().to_string();
     hotkeys::set(["overlay", "edit", "reset", "view", "quick"].map(|a| (a.to_string(), key(a))).to_vec())
@@ -121,6 +121,25 @@ fn sound_file(app: AppHandle, name: String) -> Result<tauri::ipc::Response, Stri
 #[tauri::command(async)]
 fn open_sounds_folder(app: AppHandle) -> Result<(), String> {
     show_folder(sounds_folder(&app)?)
+}
+
+fn pictures_folder(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("icons"))
+}
+
+#[tauri::command(async)]
+fn pictures(app: AppHandle) -> Result<Value, String> {
+    Ok(storage::pictures(&pictures_folder(&app)?))
+}
+
+#[tauri::command(async)]
+fn picture(app: AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
+    storage::picture(&pictures_folder(&app)?, &name).map(tauri::ipc::Response::new)
+}
+
+#[tauri::command(async)]
+fn open_pictures_folder(app: AppHandle) -> Result<(), String> {
+    show_folder(pictures_folder(&app)?)
 }
 
 fn sounds_folder(app: &AppHandle) -> Result<PathBuf, String> {
@@ -213,7 +232,10 @@ fn main() {
             open_engine_folder,
             sound_files,
             sound_file,
-            open_sounds_folder
+            open_sounds_folder,
+            pictures,
+            picture,
+            open_pictures_folder
         ])
         .setup(|app| {
             let handle = app.handle().clone();

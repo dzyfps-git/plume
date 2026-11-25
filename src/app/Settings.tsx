@@ -1,10 +1,11 @@
 import { createResource, createSignal, For, Show } from "solid-js";
-import { appVersion, openEngineFolder } from "../api";
+import { appVersion, openEngineFolder, openPicturesFolder } from "../api";
 import { health } from "../live/health";
 import { engine, reads, state } from "../live/store";
 import { change, settings, taken } from "../store";
 import { ACCENTS, ACTIONS, TEXTS, type Action } from "../store/settings";
 import { Choices, Line } from "../ui/Line";
+import { pictureCount, readPicturesAgain } from "../ui/Pic";
 import { Switch } from "../ui/Switch";
 import { hotkey } from "./keys";
 import { NAME } from "./brand";
@@ -91,6 +92,18 @@ export function SettingsPage() {
             value={settings.text}
             set={(v) => change((s) => (s.text = v))}
           />
+        </Line>
+        <Switch
+          name="Skill pictures"
+          about={pictureCount() ? `${pictureCount()} pictures in your folder. Without one, letters stand in.` : "None in your folder yet, so letters stand in."}
+          on={settings.pictures}
+          set={(on) => change((s) => (s.pictures = on))}
+        />
+        <Line name="Picture folder">
+          <div class="ui-row">
+            <button class="ui-button" onClick={() => void openPicturesFolder()}>Open it</button>
+            <button class="ui-button" onClick={readPicturesAgain}>Look again</button>
+          </div>
         </Line>
         <Switch
           name="Colour-blind class colours"

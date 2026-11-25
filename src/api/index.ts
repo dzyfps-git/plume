@@ -2,7 +2,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { Fight, Message, Near, Reads, Saved, State, Status } from "../live/types";
+import type { Entries, Fight, Message, Near, Reads, Saved, State, Status } from "../live/types";
 
 export { getVersion as appVersion } from "@tauri-apps/api/app";
 
@@ -17,6 +17,7 @@ export interface Start {
   reads: Reads | null;
   fight: Fight | null;
   near: Near | null;
+  entries: Entries | null;
 }
 
 export const startState = () => invoke<Start>("start_state");
@@ -36,6 +37,10 @@ export const openEngineFolder = () => invoke<void>("open_engine_folder");
 export const soundFiles = () => invoke<string[]>("sound_files");
 export const soundFile = (name: string) => invoke<ArrayBuffer>("sound_file", { name });
 export const openSoundsFolder = () => invoke<void>("open_sounds_folder");
+/** Which picture each skill and effect has. Null when there are none. */
+export const pictures = () => invoke<unknown>("pictures");
+export const picture = (name: string) => invoke<ArrayBuffer>("picture", { name });
+export const openPicturesFolder = () => invoke<void>("open_pictures_folder");
 
 interface Events {
   live: Message;

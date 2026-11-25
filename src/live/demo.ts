@@ -1,5 +1,5 @@
 // A made-up fight, to place overlays by and to try the app without the game.
-import type { Aura, Buff, Entry, Fight, FightRow, Job, Near, Saved, Skill, StaggerWindow, Unit } from "./types";
+import type { Aura, Buff, Entries, Entry, Fight, FightRow, Job, Near, Saved, Skill, StaggerWindow, Unit } from "./types";
 
 const PARTY: [string, Job, number][] = [
   ["You", "assassin", 46_200],
@@ -35,7 +35,7 @@ export function demoFight(ms: number): Fight {
     deaths: i === 5 && now > 90_000 ? 1 : 0,
     taken: Math.round(seconds * (i === 5 ? 2_900 : 700 + i * 40)),
     hps: i === 7 ? 8_400 : i === 6 ? 2_100 : 0,
-    power: 0,
+    power: 98_400 + i * 2_350,
     healing: Math.round(seconds * (i === 7 ? 8_400 : i === 6 ? 2_100 : 0)),
     hits: Math.round(seconds * (2.2 + i * 0.2)),
     given: i === 6 ? Math.round(damage[0] * 0.08) + Math.round(damage[1] * 0.08) : 0,
@@ -113,6 +113,8 @@ export function demoNear(ms: number, at: number): Near {
   };
 }
 
+export const demoEntries = (): Entries => ({ counts: [[1, 5, 1], [4, 2, 0], [60_000_002, 2, 1], [80_000_001, 0, 5]], duty: [3, 5], points: [1_240, 5_000], kinah: 182_300 });
+
 const SKILLS: [string, number, boolean][] = [
   ["Heart Gore", 0.27, false],
   ["Quick Slice", 0.21, false],
@@ -132,6 +134,12 @@ export const demoSkills = (total: number): Skill[] =>
       backs: Math.round(hits * 0.61),
       perfects: Math.round(hits * 0.12),
       doubles: Math.round(hits * 0.08),
+      multis: Math.round(hits * 0.3),
+      extras: Math.round(hits * 0.3) * 2,
+      bonus: Math.round(damage * 0.12),
+      parries: Math.round(hits * 0.02),
+      blocks: 0,
+      fronts: 0,
       min: Math.round((damage / hits) * 0.6),
       max: Math.round((damage / hits) * 2.1),
     };
@@ -215,6 +223,7 @@ export function demoSaved(id: string, options: { ms: number; seed?: number; skil
     id: i + 1, name, job, damage, dps: Math.round(damage / (ms / 1000)), share: 0, you: i === 0,
     deaths: i === 0 && died >= 0 ? 1 : 0, taken: i === 0 ? taken.reduce((sum, t) => sum + t[2], 0) : i === 5 ? 310_000 : 52_000 + i * 3_100,
     hitsTaken: i === 0 ? taken.length : 14, blocked: i === 5 ? 9 : 0,
+    power: 98_400 + i * 2_350,
     healing: i === 7 ? Math.round(ms * 8.4) : i === 6 ? Math.round(ms * 2.1) : i === 0 ? Math.round(ms * 0.4) : 0,
     given: i === 6 ? Math.round(mine * 0.04) : 0, got: i === 0 && !dummy ? Math.round(mine * 0.04) : 0,
     stagger: dummy ? 0 : 900 - i * 80, curve: dps, skills: demoSkills(damage),
@@ -235,6 +244,7 @@ export function demoSaved(id: string, options: { ms: number; seed?: number; skil
       { start: 18_000, end: 47_000, broke: true, max: 1_000, by: { 1: 320, 5: 410, 6: 270 } },
       { start: 80_000, end: 110_000, broke: false, max: 1_000, by: { 1: 210, 5: 300 } },
     ] as StaggerWindow[]).filter((w) => w.end < ms),
+    pings: Array.from({ length: Math.floor(ms / 5_000) + 1 }, (_, i): [number, number] => [i * 5_000, 38 + Math.round(6 * Math.sin(i))]),
     stats: { 1: 1_240 + seed * 10, 215: 300, 12: 88 },
     credits: dummy ? [] : [{ by: 7, to: 1, id: 904, name: "Word of Wind", damage: Math.round(mine * 0.04) }],
     you: rows.find((r) => r.you)!, others: total - mine, players: rows.length,

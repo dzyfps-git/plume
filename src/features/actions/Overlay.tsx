@@ -19,7 +19,7 @@ export function ActionsOverlay() {
         <For each={list()} fallback={<Tile of={{ id: 0, name: "Action Bars", bad: false, stacks: 0, start: 0, end: 0 }} now={0} />}>
           {(k) => {
             const on = () => cooling(k, casts().get(k.skill), now());
-            return <Tile of={{ id: k.skill, name: k.name, bad: false, stacks: 0, start: on()?.start ?? 0, end: on()?.end ?? 0, glow: !on() }} now={now()} />;
+            return <Tile of={{ id: k.skill, isSkill: true, name: k.name, bad: false, stacks: 0, start: on()?.start ?? 0, end: on()?.end ?? 0, glow: !on() }} now={now()} />;
           }}
         </For>
       </div>

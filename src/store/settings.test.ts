@@ -55,3 +55,8 @@ test("auras, rules, alerts and the rest keep only what can be", () => {
   assert.deepEqual(s.bosses["1"].mechanics, [{ id: 9, name: "Stomp", effect: false, note: "jump", job: "", say: false }]);
   assert.deepEqual(read(JSON.parse(JSON.stringify(s))), s);
 });
+
+test("a resource without a name that is not shown is not kept", () => {
+  const { resources } = read({ resources: [{ id: 4, name: "Keys" }, { id: 5 }, { id: 6, show: true }, { id: 0, name: "x" }, 3] });
+  assert.deepEqual(resources, [{ id: 4, name: "Keys", show: false }, { id: 6, name: "", show: true }]);
+});

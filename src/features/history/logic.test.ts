@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoSaved } from "../../live/demo.ts";
 import type { Saved } from "../../live/types.ts";
-import { alike, bestOf, bests, byDay, filtered, pace, path, runs, session, tries } from "./logic.ts";
+import { alike, bestOf, bests, byDay, filtered, pace, path, rdps, runs, session, tries } from "./logic.ts";
 
 const fight = (id: string, more: Partial<Saved> & { dps?: number } = {}): Saved => ({
   id, target: "Warden", code: 7, start: 1, ms: 60_000, total: 0, maxHp: 0, killed: false, dummy: false, dungeon: 0, others: 0, players: 1,
@@ -71,6 +71,13 @@ test("a dungeon run is its fights in order", () => {
   assert.deepEqual(all.map((r) => r.fights.map((f) => f.id)), [["a", "b"], ["o"]]);
   assert.deepEqual([all[0].ms, all[0].fought, all[0].kills], [460_000, 120_000, 1]);
   assert.deepEqual(filtered(list, "runs", "").length, 3);
+});
+
+test("rDPS is your own, with buffs counted", () => {
+  const you = { damage: 1_000, got: 100, given: 300 };
+  assert.equal(rdps({ ms: 10_000, you: you as never }), 120);
+  assert.equal(rdps({ ms: 10_000, you: { damage: 5 } as never }), undefined);
+  assert.equal(rdps({ ms: 10_000, you: null }), undefined);
 });
 
 test("only fights of one kind are compared", () => {

@@ -7,6 +7,7 @@ import { plan } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, percent, short } from "../../ui/format";
 import { Choices } from "../../ui/Line";
+import { Pic } from "../../ui/Pic";
 import { key } from "../bosses/logic";
 import { Chart } from "../history/Chart";
 import { path } from "../history/logic";
@@ -14,6 +15,7 @@ import { forgetFight } from "../history/store";
 import { label, length } from "../meter/logic";
 import { Skills } from "../meter/Skills";
 import { figures, luck, skillGains, statChanges, type Figure } from "./compare";
+import { buffsBySkill, opening, partyCurve, pings, players, rates, unclean } from "./deep";
 import { Lanes, type Lane } from "./Lanes";
 import { activeDps, casts, chains, findings, gaps, nameOf, opener, parts, procs, resultText, rhythm, starts, untouchable, waited, wipeLine } from "./logic";
 import { bytes, fileName, picture } from "./share";
@@ -134,6 +136,7 @@ function Stat(props: { name: string; value: string; tip?: string; hero?: boolean
 function buffLanes(f: Saved, list: Buff[], note: (b: Buff) => string, color: string): Lane[] {
   return list.map((b) => ({
     name: b.name || `Buff ${b.id}`,
+    of: { effect: b.id, skill: b.skill },
     note: note(b),
     color,
     marks: (b.passive ? [[0, f.ms, 1] as const] : b.spans).map(([from, to, stacks]) => ({
@@ -156,6 +159,8 @@ function Overview(props: { fight: Saved; best?: Saved }) {
   const cut = createMemo(() => parts(props.fight, set().marks.length ? set().marks : [75, 50, 25]));
   const off = createMemo(() => untouchable(props.fight).reduce((sum, s) => sum + s.to - s.from, 0));
   const you = () => props.fight.you;
+  const why = createMemo(() => unclean(props.fight));
+  const trip = createMemo(() => pings(props.fight));
   const credited = () => (you()?.damage ?? 0) - (you()?.got ?? 0) + (you()?.given ?? 0);
   return (
     <>
@@ -171,6 +176,13 @@ function Overview(props: { fight: Saved; best?: Saved }) {
         <Stat name={`Your share of ${props.fight.players}`} value={percent(you()?.damage ?? 0, props.fight.total)} />
         <Stat name="Time" value={clock(props.fight.ms)} />
       </div>
+      <Show when={props.fight.dummy && props.fight.casts?.length}>
+        <p class="report-line">
+          <Show when={why().length} fallback={<><span class="ui-tag" style={{ "--tag": "var(--success-ink)" }}>Clean run</span> Nothing was off: no pause, nobody else, no buff from others.</>}>
+            Not a clean run: {why().join(", and ")}.
+          </Show>
+        </p>
+      </Show>
       <Show when={wipeLine(props.fight, (id) => who(props.fight, id))}>{(line) => <p class="report-line">{line()}</p>}</Show>
       <Show when={(props.fight.lost ?? 0) > props.fight.total}>
         <p class="report-line">It lost {short(props.fight.lost!)} health, so players you could not see did about {short(props.fight.lost! - props.fight.total)} of it.</p>
@@ -183,7 +195,17 @@ function Overview(props: { fight: Saved; best?: Saved }) {
           </ul>
         </section>
       </Show>
-      <Chart curve={props.fight.curve ?? []} best={props.best?.curve} />
+      <Chart curve={props.fight.curve ?? []} best={props.best?.curve} party={partyCurve(props.fight)} deaths={(props.fight.deaths ?? []).map((d) => ({ ms: d.ms, you: d.you, who: who(props.fight, d.id) }))} />
+      <Show when={trip()}>
+        {(p) => (
+          <figure class="pings">
+            <svg class="wave" viewBox="0 0 600 34" preserveAspectRatio="none" role="img" aria-label="Ping over the fight">
+              <path d={`${path(p().line, 600, 34, p().most * 1.1, p().line.length)}V34H0Z`} />
+            </svg>
+            <figcaption class="ui-num">Ping {p().average} ms, {p().least} to {p().most}</figcaption>
+          </figure>
+        )}
+      </Show>
       <Show when={ownBuffs(props.fight).length}>
         <Lanes label="Buffs under the chart" ms={props.fight.ms} axis={false} lanes={buffLanes(props.fight, ownBuffs(props.fight).slice(0, 6), (b) => up(props.fight, b), "var(--accent)")} />
       </Show>
@@ -221,14 +243,48 @@ function Overview(props: { fight: Saved; best?: Saved }) {
             )}
           </For>
         </div>
+        <Show when={rows().length > 1}>
+          <section class="block by-skill players ui-num" role="table" aria-label="Players" style={{ "--columns": 5 }}>
+            <div role="row" class="ui-muted ui-small">
+              <span role="columnheader">A second</span>
+              <For each={[["Damage", "As it was"], ["rDPS", "With what their buffs gave others"], ["nDPS", "Without what others' buffs gave them"], ["Healing", ""], ["Support", "How long their passing buffs were on others, added up"]]}>
+                {([name, tip]) => <span role="columnheader" data-tip={tip || undefined}>{name}</span>}
+              </For>
+            </div>
+            <For each={players(props.fight)}>
+              {(p) => (
+                <div role="row">
+                  <span role="rowheader">{who(props.fight, p.id)}</span>
+                  <span role="cell">{short(p.dps)}</span>
+                  <span role="cell">{short(p.rdps)}</span>
+                  <span role="cell">{short(p.ndps)}</span>
+                  <span role="cell">{p.hps ? short(p.hps) : ""}</span>
+                  <span role="cell">{p.support ? clock(p.support) : ""}</span>
+                </div>
+              )}
+            </For>
+          </section>
+        </Show>
         <p class="ui-muted ui-small">Other players are gone when {NAME} closes.</p>
+      </Show>
+      <Show when={rates(row()?.skills).length}>
+        <div class="stats">
+          <For each={rates(row()!.skills)}>{(r) => <Stat name={r.name} value={percent(r.share, 1)} tip={r.tip} />}</For>
+          <Show when={row()!.hitsTaken}>{(n) => <Stat name="Blocked or parried" value={percent(row()!.blocked ?? 0, n())} tip={`${row()!.blocked ?? 0} of ${n()} hits taken`} />}</Show>
+          <Show when={row()!.healing}>{(n) => <Stat name="Healing a second" value={short(n() / Math.max(1, props.fight.ms / 1000))} tip={full(n())} />}</Show>
+          <Show when={row()!.power}>{(n) => <Stat name="Combat Power" value={full(n())} />}</Show>
+        </div>
       </Show>
       <Show when={row()}>{(r) => <Skills skills={r().skills ?? []} job={r().job} />}</Show>
     </>
   );
 }
 
+const ZOOMS = [[1, "Whole fight"], [2, "2x"], [4, "4x"], [8, "8x"]] as const;
+
 function Rotation(props: { fight: Saved; best?: Saved }) {
+  const [zoom, setZoom] = createSignal<number>(1);
+  const start = createMemo(() => opening(props.fight));
   const list = createMemo(() => casts(props.fight.casts));
   const waits = createMemo(() => new Map(waited(props.fight).map((w) => [w.skill, w])));
   const holes = createMemo(() => gaps(props.fight));
@@ -243,7 +299,7 @@ function Rotation(props: { fight: Saved; best?: Saved }) {
     }
     const skills = [...by].sort((a, b) => b[1].damage - a[1].damage).slice(0, 16).map(([skill, lane]) => {
       const lost = waits().get(skill);
-      return { name: nameOf(props.fight, skill), note: `${lane.marks.length}${lost?.more ? `, ${lost.more} more fit` : ""}`, marks: lane.marks };
+      return { name: nameOf(props.fight, skill), of: { skill }, note: `${lane.marks.length}${lost?.more ? `, ${lost.more} more fit` : ""}`, marks: lane.marks };
     });
     const extra: Lane[] = [];
     if (holes().length) extra.push({ name: "Nothing done", color: "var(--danger-ink)", note: clock(holes().reduce((s, g) => s + g.to - g.from, 0)), marks: holes().map((g) => ({ ...g, tip: `${clock(g.from)}, ${((g.to - g.from) / 1000).toFixed(1)} s` })) });
@@ -267,20 +323,36 @@ function Rotation(props: { fight: Saved; best?: Saved }) {
           <Stat name="In your best pull" value={short(first()[1]! / 20)} />
         </Show>
       </div>
+      <Show when={start().length > 1}>
+        <section class="block">
+          <h2>Opener</h2>
+          <div class="opener" role="list">
+            <For each={start()}>
+              {(c) => (
+                <span class="opener-cast" role="listitem" aria-label={`${nameOf(props.fight, c.skill)} at ${(c.ms / 1000).toFixed(1)} s`} data-tip={`${nameOf(props.fight, c.skill)}, ${short(c.damage)}`}>
+                  <Pic skill={c.skill} name={nameOf(props.fight, c.skill)} large />
+                  <small class="ui-num">{(c.ms / 1000).toFixed(1)}</small>
+                </span>
+              )}
+            </For>
+          </div>
+        </section>
+      </Show>
       <section class="block">
         <h2>Cast rhythm</h2>
         <svg class="wave" viewBox="0 0 600 56" preserveAspectRatio="none" role="img" aria-label="Casts a minute over the fight">
           <path d={`${path(wave(), 600, 56, most(), wave().length)}V56H0Z`} />
         </svg>
       </section>
-      <Lanes label="When you used each skill" ms={props.fight.ms} lanes={lanes()} />
+      <div class="report-line"><Choices name="Zoom" all={ZOOMS} value={zoom()} set={setZoom} /></div>
+      <Lanes label="When you used each skill" ms={props.fight.ms} lanes={lanes()} zoom={zoom()} />
       <Show when={waits().size}>
         <section class="block">
           <h2>Skills left waiting</h2>
           <For each={[...waits().values()].filter((w) => w.lost > 0)}>
             {(w) => (
               <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 130px 130px 110px" }}>
-                <span>{nameOf(props.fight, w.skill)}</span>
+                <span><Pic skill={w.skill} name={nameOf(props.fight, w.skill)} /> {nameOf(props.fight, w.skill)}</span>
                 <span class="ui-muted ui-num">again after {clock(w.usual)}</span>
                 <span class="ui-muted ui-num">waited {clock(w.lost)}</span>
                 <span class="ui-num">{w.more ? `${w.more} more fit` : "used well"}</span>
@@ -309,7 +381,7 @@ function Rotation(props: { fight: Saved; best?: Saved }) {
           <For each={gone().slice(0, 12)}>
             {(p) => (
               <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 110px 110px" }}>
-                <span>{p.name || `Buff ${p.id}`}</span>
+                <span><Pic effect={p.id} name={p.name || "Buff"} /> {p.name || `Buff ${p.id}`}</span>
                 <span class="ui-muted ui-num">{p.times} times</span>
                 <span class="ui-share" style={{ "--share": p.up / Math.max(1, props.fight.ms) }}>{percent(p.up, props.fight.ms)}</span>
               </div>
@@ -331,6 +403,7 @@ function Buffs(props: { fight: Saved }) {
   });
   const at = () => (targets().includes(on()!) ? on()! : targets()[0]);
   const list = createMemo(() => (f().buffs ?? []).filter((b) => b.on === at()).sort((a, b) => Number(a.passive) - Number(b.passive) || b.up - a.up));
+  const by = createMemo(() => buffsBySkill(f()));
   const from = (b: Buff) => (b.by === b.on ? "" : `, ${who(f(), b.by)}`);
   return (
     <>
@@ -340,7 +413,7 @@ function Buffs(props: { fight: Saved }) {
           <For each={[...f().credits!].sort((a, b) => b.damage - a.damage).slice(0, 12)}>
             {(c) => (
               <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) minmax(0, 1fr) 110px" }}>
-                <span>{c.name || `Buff ${c.id}`}</span>
+                <span><Pic effect={c.id} name={c.name || "Buff"} /> {c.name || `Buff ${c.id}`}</span>
                 <span class="ui-muted">{who(f(), c.by)} to {who(f(), c.to)}</span>
                 <span class="ui-share" style={{ "--share": c.damage / Math.max(1, ...f().credits!.map((x) => x.damage)) }}>{short(c.damage)}</span>
               </div>
@@ -357,6 +430,28 @@ function Buffs(props: { fight: Saved }) {
         ms={f().ms}
         lanes={buffLanes(f(), list().slice(0, 40), (b) => `${up(f(), b)}${b.passive ? "" : ` in ${starts(b)}`}${from(b)}`, "var(--accent)")}
       />
+      <Show when={by().rows.length}>
+        <section class="block">
+          <h2>Buffs by skill</h2>
+          <div class="by-skill ui-num" role="table" aria-label="Share of each skill's hits that had each buff" style={{ "--columns": by().buffs.length }}>
+            <div role="row">
+              <span role="columnheader" class="ui-muted ui-small">Share of its hits</span>
+              <For each={by().buffs}>
+                {(b) => <span role="columnheader" aria-label={b.name || `Buff ${b.id}`} data-tip={`${b.name || `Buff ${b.id}`}${b.on === f().you?.id ? "" : `, on ${who(f(), b.on)}`}`}><Pic effect={b.id} skill={b.skill} name={b.name || "Buff"} /></span>}
+              </For>
+            </div>
+            <For each={by().rows}>
+              {(r) => (
+                <div role="row">
+                  <span role="rowheader"><Pic skill={r.skill} name={nameOf(f(), r.skill)} /> {nameOf(f(), r.skill)} <small class="ui-muted">{r.hits}</small></span>
+                  <For each={r.shares}>{(s) => <span role="cell" data-share style={{ "--share": s }}>{percent(s, 1)}</span>}</For>
+                </div>
+              )}
+            </For>
+          </div>
+          <p class="ui-muted ui-small">Your direct hits. Buffs that were nearly always or never on are left out.</p>
+        </section>
+      </Show>
       <Show when={!f().rows}>
         <p class="ui-muted ui-small">Only buffs on you, and yours on the target, are kept after a session.</p>
       </Show>
@@ -386,7 +481,7 @@ function Taken(props: { fight: Saved }) {
             <h3>{who(f(), d.id)} died at {clock(d.ms)}{d.up >= 0 ? `, up again at ${clock(d.up)}` : ""}</h3>
             <For each={d.hits} fallback={<p class="ui-muted">Nothing that hit was seen in the last six seconds.</p>}>
               {([ms, skill, damage, hp]) => (
-                <div class="ui-row-item">
+                <div class="ui-row-item" data-left={hp >= 0 || undefined} style={{ "--left": hp >= 0 ? hp / Math.max(1, ...d.hits.map((h) => h[3] + h[2])) : 0 }}>
                   <span class="ui-muted ui-num">{((ms - d.ms) / 1000).toFixed(1)} s</span>
                   <span>{nameOf(f(), skill)}</span>
                   <span class="ui-num">{full(damage)}</span>
@@ -452,7 +547,7 @@ function Heals(props: { fight: Saved }) {
           <For each={row()!.heals}>
             {(s) => (
               <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 90px 110px 110px" }}>
-                <span>{s.name || `Skill ${s.code}`}{s.dot ? " over time" : ""}</span>
+                <span><Pic skill={s.code} name={s.name || "Skill"} /> {s.name || `Skill ${s.code}`}{s.dot ? " over time" : ""}</span>
                 <span class="ui-muted ui-num">{full(s.hits)} heals</span>
                 <span class="ui-muted ui-num">{short(s.damage / Math.max(1, s.hits))} each</span>
                 <span class="ui-share" style={{ "--share": s.damage / row()!.heals![0].damage }}>{short(s.damage)}</span>

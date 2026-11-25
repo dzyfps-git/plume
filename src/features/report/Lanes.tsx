@@ -1,5 +1,7 @@
 import { For, Show, type JSX } from "solid-js";
 import { clock } from "../../ui/format";
+import { Pic } from "../../ui/Pic";
+import type { Pictured } from "../../ui/pictures";
 
 export interface Mark {
   from: number;
@@ -12,6 +14,8 @@ export interface Mark {
 }
 export interface Lane {
   name: string;
+  /** What its picture is of. */
+  of?: Pictured;
   /** At the end of the lane. */
   note?: JSX.Element;
   color?: string;
@@ -19,14 +23,14 @@ export interface Lane {
 }
 
 /** Rows of spans over one span of time, all to the same scale. */
-export function Lanes(props: { lanes: Lane[]; ms: number; label: string; axis?: boolean }) {
+export function Lanes(props: { lanes: Lane[]; ms: number; label: string; axis?: boolean; zoom?: number }) {
   const at = (t: number) => `${(Math.min(Math.max(t, 0), props.ms) / Math.max(1, props.ms)) * 100}%`;
   return (
-    <div class="lanes" role="table" aria-label={props.label}>
+    <div class="lanes" role="table" aria-label={props.label} data-zoom={(props.zoom ?? 1) > 1 || undefined} style={{ "--zoom": props.zoom ?? 1 }}>
       <For each={props.lanes}>
         {(lane) => (
           <div class="lane" role="row" style={{ "--lane": lane.color ?? "var(--accent)" }}>
-            <span class="lane-name" role="rowheader">{lane.name}</span>
+            <span class="lane-name" role="rowheader"><Show when={lane.of}>{(of) => <Pic {...of()} name={lane.name} />}</Show>{lane.name}</span>
             <span class="lane-track" role="cell">
               <For each={lane.marks}>
                 {(m) => (
@@ -46,7 +50,7 @@ export function Lanes(props: { lanes: Lane[]; ms: number; label: string; axis?: 
         <div class="lane lane-axis ui-num" aria-hidden="true">
           <span />
           <span class="lane-track">
-            <For each={[0, 0.25, 0.5, 0.75, 1]}>{(part) => <span style={{ left: `${part * 100}%` }}>{clock(props.ms * part)}</span>}</For>
+            <For each={Array.from({ length: 4 * (props.zoom ?? 1) + 1 }, (_, i, all = 4 * (props.zoom ?? 1)) => i / all)}>{(part) => <span style={{ left: `${part * 100}%` }}>{clock(props.ms * part)}</span>}</For>
           </span>
         </div>
       </Show>

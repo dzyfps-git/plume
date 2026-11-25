@@ -12,10 +12,10 @@ const cell = (value: string | number) => {
 
 /** Your fights, one a line. */
 export function csv(fights: readonly Saved[]): string {
-  const head = ["Started", "Target", "Seconds", "Killed", "Your damage", "Your damage a second", "Share percent", "Deaths", "Damage taken", "Players"];
+  const head = ["Started", "Target", "Seconds", "Killed", "Your damage", "Your damage a second", "Share percent", "Deaths", "Damage taken", "Players", "Combat Power"];
   const lines = fights.map((f) => [
     new Date(f.start).toISOString(), f.target, Math.round(f.ms / 1000), f.killed ? "yes" : "no", f.you?.damage ?? 0, Math.round(f.you?.dps ?? 0),
-    Math.round(((f.you?.damage ?? 0) / Math.max(1, f.total)) * 1000) / 10, f.you?.deaths ?? 0, f.you?.taken ?? 0, f.players,
+    Math.round(((f.you?.damage ?? 0) / Math.max(1, f.total)) * 1000) / 10, f.you?.deaths ?? 0, f.you?.taken ?? 0, f.players, f.you?.power ?? 0,
   ]);
   return [head, ...lines].map((line) => line.map(cell).join(",")).join("\r\n");
 }

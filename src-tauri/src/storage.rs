@@ -79,6 +79,31 @@ pub fn sound(folder: &Path, name: &str) -> Result<Vec<u8>, String> {
     fs::read(&path).map_err(say)
 }
 
+/// A small picture of a skill or an effect. A larger file is a mistake.
+const PICTURE_BYTES: u64 = 1 << 20;
+
+/// Which picture each skill and effect has. Nothing when there are no pictures.
+pub fn pictures(folder: &Path) -> Value {
+    let path = folder.join("index.json");
+    let fits = fs::metadata(&path).is_ok_and(|m| m.len() <= PICTURE_BYTES);
+    let text = if fits { fs::read_to_string(path).ok() } else { None };
+    text.and_then(|t| serde_json::from_str(t.trim_start_matches('\u{feff}')).ok()).unwrap_or(Value::Null)
+}
+
+/// One of them. Its name is letters, digits and `_` alone, so it cannot leave the folder.
+pub fn picture(folder: &Path, name: &str) -> Result<Vec<u8>, String> {
+    if name.is_empty() || name.len() > 80 || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+        return Err("not a picture".into());
+    }
+    let path = folder.join(format!("{name}.png"));
+    let say = |e: std::io::Error| format!("{name}: {e}");
+    if fs::metadata(&path).map_err(say)?.len() > PICTURE_BYTES {
+        return Err(format!("{name} is too large"));
+    }
+    let bytes = fs::read(&path).map_err(say)?;
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") { Ok(bytes) } else { Err(format!("{name} is not a PNG")) }
+}
+
 /// Finished fights, one file each.
 pub struct Fights {
     folder: PathBuf,
@@ -147,7 +172,7 @@ fn brief(mut fight: Value) -> Value {
     if let Some(f) = fight.as_object_mut() {
         let left = f.get("health").and_then(Value::as_array).and_then(|h| h.last()).cloned();
         f.insert("left".into(), left.unwrap_or_else(|| (-1).into()));
-        for long in ["curve", "health", "casts", "taken", "blows", "names", "deaths", "stagger", "buffs", "stats"] {
+        for long in ["curve", "health", "casts", "taken", "blows", "names", "deaths", "stagger", "buffs", "stats", "pings"] {
             f.remove(long);
         }
         if let Some(you) = f.get_mut("you").and_then(Value::as_object_mut) {
@@ -160,9 +185,9 @@ fn brief(mut fight: Value) -> Value {
 }
 
 /// Lists of a fight that name no player.
-const OURS: [&str; 19] = [
+const OURS: [&str; 20] = [
     "id", "target", "code", "start", "ms", "total", "maxHp", "killed", "dummy", "dungeon", "run", "lost", "curve",
-    "health", "casts", "taken", "blows", "names", "stats",
+    "health", "casts", "taken", "blows", "names", "stats", "pings",
 ];
 
 fn list<'a>(fight: &'a Value, key: &str) -> &'a [Value] {
@@ -300,6 +325,23 @@ mod tests {
         }
         fs::remove_dir_all(&here).unwrap();
         assert!(sounds(&here).is_empty());
+    }
+
+    #[test]
+    fn only_pictures_of_their_own_folder_are_read() {
+        let here = folder("pictures");
+        fs::create_dir_all(&here).unwrap();
+        let png = b"\x89PNG\r\n\x1a\nrest";
+        fs::write(here.join("ICON_A_1.png"), png).unwrap();
+        fs::write(here.join("fake.png"), "<svg/>").unwrap();
+        fs::write(here.join("index.json"), r#"{"skills":{"1335":"ICON_A_1"}}"#).unwrap();
+        assert_eq!(picture(&here, "ICON_A_1").unwrap(), png);
+        assert_eq!(pictures(&here)["skills"]["1335"], "ICON_A_1");
+        for bad in ["fake", "none", "", "../ICON_A_1", "ICON_A_1.png", "a b", "C:x"] {
+            assert!(picture(&here, bad).is_err(), "{bad}");
+        }
+        fs::remove_dir_all(&here).unwrap();
+        assert!(pictures(&here).is_null());
     }
 
     #[test]

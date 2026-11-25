@@ -13,7 +13,7 @@ Not made, approved or supported by NC. Made for private use.
 - It opens no connection. There is no account, upload, ranking or player lookup.
 - Other players' names and numbers stay in memory and are gone when it closes. Only your own part of a fight is saved,
   with everyone else as one sum.
-- What is near you (health, effects, the player you fight) is never written down at all.
+- What is near you (health, effects, the player you fight) and others' Combat Power are never written down at all.
 - It writes to the registry only when you turn on "Start with Windows": one line in your own `Run` key.
 - A fight leaves it only when you save one: CSV, JSON or a picture, written into Downloads. CSV and JSON hold your own
   part alone. The picture numbers other players instead of naming them.
@@ -58,6 +58,9 @@ npm run tauri dev
 
 To add a feature, make a folder with a `feature.ts` and add it to `src/features/index.ts`. It gets its menu entry,
 overlay, switch and place by itself.
+
+Skill and effect pictures are read from the `icons` folder in the app's data, which Settings opens: `index.json` and PNG
+files. Letters stand in for those that are not there. They belong to NC, so none are in this repository.
 
 Your own sounds for alerts go into the `sounds` folder, which the Alerts page opens.
 

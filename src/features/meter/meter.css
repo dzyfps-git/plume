@@ -12,6 +12,13 @@
 .meter-head strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .meter-head span { color: var(--text-muted); font-size: 12px; }
 .meter-head b { font-size: 16px; font-weight: 600; line-height: 1; }
+.meter-power { margin-left: 6px; color: var(--text-muted); font-size: 10px; font-weight: 500; }
+.meter-you { display: flex; align-items: baseline; gap: 6px; padding: 7px 10px 0; font-size: 12px; }
+.meter-you .class-mark { align-self: center; color: color-mix(in srgb, var(--class) 70%, white); }
+.meter-you b { overflow: hidden; color: color-mix(in srgb, var(--class) 60%, white); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.meter-you small { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.meter-you span { margin-left: auto; color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.meter-you em { margin-left: 8px; font-style: normal; font-weight: 600; }
 .meter-rows { position: relative; height: calc(var(--count) * var(--row)); margin: 0 4px 4px; }
 .meter-row {
   position: absolute;

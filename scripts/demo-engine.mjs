@@ -1,12 +1,14 @@
 // Speaks the engine's protocol with a made-up fight. For looking at the pages and for `npm run bench`.
 import { createInterface } from "node:readline";
-import { demoFight, demoNear, demoSaved, demoSkills } from "../src/live/demo.ts";
+import { demoEntries, demoFight, demoNear, demoSaved, demoSkills } from "../src/live/demo.ts";
 
 const say = (message) => console.log(JSON.stringify(message));
 let begun = Date.now() - 60_000;
 let watched;
 
 say({ t: "state", protocol: 1, version: "demo", live: true, late: false, devices: 0 });
+
+say({ t: "entries", ...demoEntries() });
 
 const now = () => demoFight(Date.now() - begun);
 function fight() {

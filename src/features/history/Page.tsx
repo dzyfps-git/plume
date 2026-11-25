@@ -1,15 +1,15 @@
 import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import { exportFile } from "../../api";
 import type { Saved } from "../../live/types";
-import { clock, day, short, time } from "../../ui/format";
+import { clock, day, full, short, time } from "../../ui/format";
 import { Report } from "../report/Report";
 import { left } from "../report/logic";
 import { bytes, csv } from "../report/share";
-import { alike, bestOf, bests, byDay, filtered, runs, session, tries, type Filter, type Run } from "./logic";
+import { alike, bestOf, bests, byDay, filtered, rdps, runs, session, tries, type Filter, type Run } from "./logic";
 import { fights, followFights } from "./store";
 import "./history.css";
 
-const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"], ["runs", "Dungeon runs"], ["session", "Last session"]];
+const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"], ["runs", "Dungeon runs"], ["session", "Last session"], ["table", "Table"]];
 
 export function HistoryPage() {
   followFights();
@@ -57,6 +57,9 @@ export function HistoryPage() {
           <Match when={filter() === "runs"}>
             <div class="history-detail"><For each={runs(list())}>{(run) => <RunCard run={run} open={show} />}</For></div>
           </Match>
+          <Match when={filter() === "table"}>
+            <div class="history-detail"><Table fights={list()} best={best()} open={show} /></div>
+          </Match>
           <Match when={filter() === "session"}>
             <div class="history-detail"><Session fights={list()} /></div>
           </Match>
@@ -92,6 +95,33 @@ export function HistoryPage() {
           </Match>
         </Switch>
       </Show>
+    </div>
+  );
+}
+
+/** Every fight in a line. */
+function Table(props: { fights: Saved[]; best: Map<string, Saved>; open: (id: string) => void }) {
+  return (
+    <div class="history-table ui-num">
+      <div class="ui-row-item history-table-head">
+        <For each={["When", "Target", "", "Time", "Total", "You, a second", "rDPS", "Combat Power", "Deaths"]}>{(name) => <span>{name}</span>}</For>
+      </div>
+      <For each={props.fights.slice(0, 300)}>
+        {(f) => (
+          <button class="ui-row-item" onClick={() => props.open(f.id)}>
+            <span class="ui-muted">{new Date(f.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}, {time(f.start)}</span>
+            <span>{f.target}</span>
+            <span class="ui-muted">{f.dummy ? "dummy" : f.killed ? "killed" : "not killed"}</span>
+            <span>{clock(f.ms)}</span>
+            <span>{short(f.total)}</span>
+            <b>{bestOf(props.best, f)?.id === f.id ? <span class="ui-tag" style={{ "--tag": "var(--accent)" }}>Best</span> : ""} {short(f.you?.dps ?? 0)}</b>
+            <span>{rdps(f) === undefined ? "" : short(rdps(f)!)}</span>
+            <span>{f.you?.power ? full(f.you.power) : ""}</span>
+            <span>{f.you?.deaths || ""}</span>
+          </button>
+        )}
+      </For>
+      <Show when={props.fights.length > 300}><p class="ui-muted ui-small">The newest 300 of {props.fights.length}.</p></Show>
     </div>
   );
 }

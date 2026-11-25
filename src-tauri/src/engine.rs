@@ -33,6 +33,7 @@ struct Inner {
     reads: Value,
     fight: Value,
     near: Value,
+    entries: Value,
     session: Vec<Value>,
 }
 
@@ -58,6 +59,7 @@ impl Engine {
                 reads: Value::Null,
                 fight: Value::Null,
                 near: Value::Null,
+                entries: Value::Null,
                 session: Vec::new(),
             }),
             change: Condvar::new(),
@@ -73,7 +75,7 @@ impl Engine {
 
     pub fn now(&self) -> Value {
         let i = self.lock();
-        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight, "near": i.near })
+        json!({ "engine": i.status, "state": i.state, "reads": i.reads, "fight": i.fight, "near": i.near, "entries": i.entries })
     }
 
     /// The game is connected and talking.
@@ -148,6 +150,7 @@ impl Engine {
                 i.state = Value::Null;
                 i.reads = Value::Null;
                 i.near = Value::Null;
+                i.entries = Value::Null;
             }
         }
         (self.tell)("engine", &value);
@@ -247,6 +250,7 @@ impl Engine {
             Some("reads") => self.lock().reads = message.clone(),
             Some("fight") => self.lock().fight = message.clone(),
             Some("near") => self.lock().near = message.clone(),
+            Some("entries") => self.lock().entries = message.clone(),
             Some("saved") => {
                 {
                     let mut i = self.lock();

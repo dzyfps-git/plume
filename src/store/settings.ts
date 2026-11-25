@@ -9,9 +9,9 @@ export const STYLES = ["bar", "line", "table"] as const;
 export const ACCENTS = ["", "ocean", "forest", "ember", "rose", "mono"] as const;
 export const ACTIONS = ["overlay", "edit", "reset", "view", "quick"] as const;
 /** What the meter shows, in the order its key goes through. The same as in `src-tauri/src/main.rs`. */
-export const VIEWS = ["damage", "rdps", "healing", "taken", "hits"] as const;
+export const VIEWS = ["damage", "rdps", "ndps", "healing", "taken", "hits"] as const;
 export const WHEN = ["always", "fight", "boss", "dungeon", "pvp", "calm"] as const;
-export const FOOTER = ["ping", "total", "flight", "odyle"] as const;
+export const FOOTER = ["ping", "total", "flight", "odyle", "entries"] as const;
 export const AURA_KINDS = ["on", "missing", "target", "untarget", "ready", "low", "party"] as const;
 export const LOOKS = ["icon", "bar", "text"] as const;
 /** What each is stands in `src/features/alerts/logic.ts`. */
@@ -56,6 +56,14 @@ export interface Signal {
   /** A sound of `alerts/sound.ts`, or "file:" and the name of your own. Empty is none. */
   sound: string;
   say: boolean;
+}
+
+/** A ticket or an entry, by the game's number for it. */
+export interface Resource {
+  id: number;
+  /** What you call it. */
+  name: string;
+  show: boolean;
 }
 
 export interface AuraRule extends Signal {
@@ -125,7 +133,7 @@ export interface Settings {
   bosses: Record<string, BossPlan>;
   hotkeys: Record<Action, string>;
   overlay: { on: boolean; onlyInGame: boolean; opacity: number; hideEmpty: boolean };
-  meter: { style: (typeof STYLES)[number]; rows: number; share: boolean; total: boolean; icons: boolean; hideNames: boolean; view: View; edge: "top" | "bottom"; footer: Footer[] };
+  meter: { style: (typeof STYLES)[number]; rows: number; share: boolean; total: boolean; icons: boolean; power: boolean; head: boolean; hideNames: boolean; view: View; edge: "top" | "bottom"; footer: Footer[] };
   places: Record<string, Place>;
   /** When each overlay may show. One that is not here always may. */
   rules: Record<string, Rule>;
@@ -134,6 +142,9 @@ export interface Settings {
   ready: Named[];
   /** Skills left off the action bars. */
   skip: number[];
+  resources: Resource[];
+  /** Skills and effects with the game's pictures, when there are some. */
+  pictures: boolean;
   alerts: Record<AlertId, Alert>;
   /** Starts with Windows. */
   startup: boolean;
@@ -155,12 +166,14 @@ export const DEFAULTS: Settings = {
   bosses: {},
   hotkeys: { overlay: "Ctrl+Alt+F9", edit: "Ctrl+Alt+F10", reset: "Ctrl+Alt+F11", view: "Ctrl+Alt+F12", quick: "Ctrl+Alt+F8" },
   overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true },
-  meter: { style: "bar", rows: 8, share: true, total: false, icons: true, hideNames: false, view: "damage", edge: "top", footer: [] },
+  meter: { style: "bar", rows: 8, share: true, total: false, icons: true, power: true, head: true, hideNames: false, view: "damage", edge: "top", footer: [] },
   places: {},
   rules: {},
   auras: [],
   ready: [],
   skip: [],
+  resources: [],
+  pictures: true,
   alerts: {
     low: { on: false, banner: true, sound: "alarm", say: false, value: 30 },
     ally: { on: false, banner: true, sound: "drop", say: false, value: 25 },
@@ -271,6 +284,8 @@ export function read(value: unknown): Settings {
       share: flag(meter.share, d.meter.share),
       total: flag(meter.total, d.meter.total),
       icons: flag(meter.icons, d.meter.icons),
+      power: flag(meter.power, d.meter.power),
+      head: flag(meter.head, d.meter.head),
       hideNames: flag(meter.hideNames, d.meter.hideNames),
       view: one(meter.view, VIEWS, d.meter.view),
       edge: one(meter.edge, ["top", "bottom"] as const, d.meter.edge),
@@ -282,6 +297,9 @@ export function read(value: unknown): Settings {
     auras: list(s.auras, 60).map(aura),
     ready: list(s.ready, 40).map(named),
     skip: numbers(s.skip, 1, 2 ** 31, 200),
+    resources: list(s.resources, 200).map((r) => ({ id: Math.round(number(r.id, 0, 2 ** 32, 0)), name: text(r.name, 40), show: flag(r.show, false) }))
+      .filter((r) => r.id > 0 && (r.name || r.show)),
+    pictures: flag(s.pictures, d.pictures),
     alerts: Object.fromEntries(
       ALERTS.map((id) => {
         const a = object(alerts[id]);

@@ -1,0 +1,59 @@
+import { For, Show } from "solid-js";
+import { entries, near } from "../../live/store";
+import { change, settings } from "../../store";
+import type { Resource } from "../../store/settings";
+import { full } from "../../ui/format";
+import { Waiting } from "../../ui/Waiting";
+import { KNOWN, resets, wait } from "./logic";
+import { minutes } from "./Overlay";
+import "./resources.css";
+
+export function ResourcesPage() {
+  const now = minutes();
+  const known = (id: number): Resource => settings.resources.find((r) => r.id === id) ?? { id, name: "", show: false };
+  const set = (id: number, to: Partial<Resource>) =>
+    change((s) => {
+      const next = { ...known(id), ...to };
+      const at = s.resources.findIndex((r) => r.id === id);
+      if (at < 0) s.resources.push(next);
+      else s.resources[at] = next;
+    });
+  const some = () => entries().counts.length > 0 || near.odyle[0] >= 0;
+  const stats = () =>
+    [
+      ["Odyle Energy", near.odyle[0] < 0 ? "" : full(near.odyle[0])],
+      ["Odyle charged", near.odyle[1] <= 0 ? "" : full(near.odyle[1])],
+      ["Daily Duties", entries().duty[0] < 0 ? "" : `${entries().duty[0]} of ${entries().duty[1]}`],
+      ["Abyss Points this week", entries().points[0] < 0 ? "" : `${full(entries().points[0])} of ${full(entries().points[1])}`],
+      ["Kinah today", entries().kinah < 0 ? "" : full(entries().kinah)],
+      ["Daily reset in", wait(resets(now()).daily)],
+      ["Weekly reset in", wait(resets(now()).weekly)],
+    ].filter(([, value]) => value);
+  return (
+    <div class="page">
+      <header class="page-head">
+        <h1>Resources</h1>
+      </header>
+      <Show when={some()} fallback={<Waiting idle="The game says what is left as you log in or change character." />}>
+        <div class="stats">
+          <For each={stats()}>{([name, value]) => <div class="stat"><small>{name}</small><b class="ui-num">{value}</b></div>}</For>
+        </div>
+        <section class="block">
+          <h2>Tickets and entries</h2>
+          <p class="ui-muted ui-small">The game gives each a number and no name. Find it by its two figures, name it once, and choose what the overlay and the meter's footer show.</p>
+          <For each={entries().counts}>
+            {([id, first, second]) => (
+              <div class="ui-row-item left-row">
+                <span class="ui-muted ui-num">{id}</span>
+                <input class="ui-input" aria-label={`Name of ${id}`} placeholder={KNOWN[id] ?? "No name"} value={known(id).name} maxlength={40} onChange={(e) => set(id, { name: e.currentTarget.value.trim() })} />
+                <span class="ui-num">{full(first)}</span>
+                <span class="ui-muted ui-num">{second > 0 ? `+${full(second)}` : ""}</span>
+                <button class="ui-chip" aria-pressed={known(id).show} aria-label={`Show ${known(id).name || id}`} onClick={() => set(id, { show: !known(id).show })}>Show</button>
+              </div>
+            )}
+          </For>
+        </section>
+      </Show>
+    </div>
+  );
+}

@@ -5,7 +5,7 @@ import { change, settings } from "../../store";
 import { MODES, VIEWS, type Mode, type View } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, short } from "../../ui/format";
-import { label, partyDps, ranked, VIEW_NAMES } from "./logic";
+import { label, partyDps, power, ranked, VIEW_NAMES } from "./logic";
 import { Skills } from "./Skills";
 import { Waiting } from "../../ui/Waiting";
 import "./meter.css";
@@ -83,7 +83,7 @@ export function MeterPage() {
               >
                 <i class="meter-bar" />
                 <ClassMark job={r.job} />
-                <span class="meter-name">{label(r, settings.meter.hideNames, i() + 1)}</span>
+                <span class="meter-name">{label(r, settings.meter.hideNames, i() + 1)}<Show when={r.power > 0}><small class="meter-power ui-num">{power(r.power)}</small></Show></span>
                 <small class="ui-num">{short(total)}</small>
                 <small class="ui-num">{share.toFixed(1)}%</small>
                 <b class="ui-num">{settings.meter.view === "hits" ? rate.toFixed(1) : short(rate)}</b>
@@ -91,7 +91,7 @@ export function MeterPage() {
             )}
           </For>
         </div>
-        <Show when={settings.meter.view === "rdps"}>
+        <Show when={settings.meter.view.endsWith("dps")}>
           <p class="ui-muted ui-small">What buffs add is measured from this fight, so it takes a while and stays an estimate. One target at a time.</p>
         </Show>
         <Show when={row()}>

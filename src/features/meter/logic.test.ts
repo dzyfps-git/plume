@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { demoFight, demoSkills } from "../../live/demo.ts";
 import type { Row } from "../../live/types.ts";
 import { VIEWS } from "../../store/settings.ts";
-import { footer, label, length, lines, partyDps, ranked, shown } from "./logic.ts";
+import { against, footer, label, length, lines, partyDps, power, ranked, shown, signed } from "./logic.ts";
 
 const row = (id: number, damage: number, you = false) => ({ id, name: you ? "Me" : `P${id}`, damage, you }) as Row;
 const rows = [row(1, 100), row(2, 50), row(3, 25), row(4, 10, true)];
@@ -34,6 +34,20 @@ test("skill numbers come from hits", () => {
   const [line] = lines([{ ...demoSkills(1000)[0], hits: 4, damage: 200, crits: 1, backs: 2 }]);
   assert.deepEqual([line.share, line.average, line.crit, line.back], [1, 50, 0.25, 0.5]);
   assert.equal(lines([{ ...demoSkills(0)[0], hits: 0, damage: 0 }])[0].average, 0);
+});
+
+test("Combat Power is short, and nothing when not known", () => {
+  assert.deepEqual([power(112_012), power(950), power(0)], ["112.0K", "950", ""]);
+});
+
+test("a fight is held against your kept ones of the same target", () => {
+  const now = { ms: 60_000, target: { code: 5, name: "Boss" }, rows: [{ ...rows[3], dps: 104 }] } as never;
+  const kept = (code: number, ms: number, dps: number, damage = 1) => ({ code, ms, target: "Boss", you: { dps, damage } }) as never;
+  assert.deepEqual(against(now, []), { pull: 1 });
+  const a = against(now, [kept(5, 60_000, 100), kept(5, 5_000, 900), kept(6, 60_000, 800), kept(5, 60_000, 300, 10)])!;
+  assert.deepEqual([a.pull, a.best, signed(a.change!)], [3, 100, "+4%"]);
+  assert.equal(against({ ...(now as object), rows: [] } as never, []), undefined);
+  assert.equal(signed(-0.123), "-12%");
 });
 
 test("the made-up fight adds up", () => {

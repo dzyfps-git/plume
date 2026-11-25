@@ -1,12 +1,12 @@
 import type { Saved } from "../../live/types.ts";
 
-export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session";
+export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session" | "table";
 
 export function filtered(fights: readonly Saved[], filter: Filter, search: string): Saved[] {
   const words = search.trim().toLowerCase();
   return fights.filter(
     (f) =>
-      (filter === "all" || filter === "session" || (filter === "runs" ? !!f.run : filter === "dummies" ? f.dummy : !f.dummy && (filter === "bosses" || f.killed))) &&
+      (filter === "all" || filter === "session" || filter === "table" || (filter === "runs" ? !!f.run : filter === "dummies" ? f.dummy : !f.dummy && (filter === "bosses" || f.killed))) &&
       (!words || f.target.toLowerCase().includes(words)),
   );
 }
@@ -128,3 +128,7 @@ export function path(values: readonly number[], width: number, height: number, m
   const step = width / Math.max(1, count - 1);
   return values.map((v, i) => `${i ? "L" : "M"}${(i * step).toFixed(1)} ${(height - (v / most) * height).toFixed(1)}`).join("");
 }
+
+/** Your damage a second with buffs counted. Nothing where buffs were not weighed. */
+export const rdps = (f: Pick<Saved, "you" | "ms">): number | undefined =>
+  f.you?.given === undefined && f.you?.got === undefined ? undefined : (f.you!.damage - (f.you!.got ?? 0) + (f.you!.given ?? 0)) / Math.max(1, f.ms / 1000);

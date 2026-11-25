@@ -10,7 +10,7 @@ import { CLASSES } from "../ui/classes";
 import { Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
 
-const FOOTER_NAMES: Record<Footer, string> = { ping: "Ping", total: "Total", flight: "Flight", odyle: "Odyle Energy" };
+const FOOTER_NAMES: Record<Footer, string> = { ping: "Ping", total: "Total", flight: "Flight", odyle: "Odyle Energy", entries: "Tickets" };
 const STYLE_NAMES = { bar: "Full bars", line: "Thin lines", table: "Table" } as const;
 
 export function OverlaysPage() {
@@ -98,6 +98,8 @@ export function OverlaysPage() {
         </Line>
         <Switch name="Share of the damage" on={settings.meter.share} set={(on) => change((s) => (s.meter.share = on))} />
         <Switch name="Total damage" on={settings.meter.total} set={(on) => change((s) => (s.meter.total = on))} />
+        <Switch name="You at the top" about="Your class and Combat Power, which pull it is, and how it goes against your best." on={settings.meter.head} set={(on) => change((s) => (s.meter.head = on))} />
+        <Switch name="Combat Power" about="Small, beside each name. Other players' is never written down." on={settings.meter.power} set={(on) => change((s) => (s.meter.power = on))} />
         <Switch name="Class marks" on={settings.meter.icons} set={(on) => change((s) => (s.meter.icons = on))} />
         <Switch name="Hide other players' names" about="In every overlay." on={settings.meter.hideNames} set={(on) => change((s) => (s.meter.hideNames = on))} />
         <Line name="Footer" about="A line under the bars.">

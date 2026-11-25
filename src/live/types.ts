@@ -85,6 +85,13 @@ export interface Skill {
   backs: number;
   perfects: number;
   doubles: number;
+  /** Hits that came with extra hits, how many extra, and their damage. Not in fights of older versions, like what follows. */
+  multis?: number;
+  extras?: number;
+  bonus?: number;
+  parries?: number;
+  blocks?: number;
+  fronts?: number;
   min: number;
   max: number;
 }
@@ -102,6 +109,8 @@ export interface FightRow {
   hitsTaken?: number;
   /** Hits met with a block or a parry. */
   blocked?: number;
+  /** Combat Power. 0 when not known. */
+  power?: number;
   healing?: number;
   given?: number;
   got?: number;
@@ -193,6 +202,8 @@ export interface Saved {
   stagger?: StaggerWindow[];
   buffs?: Buff[];
   stats?: Record<string, number>;
+  /** Round trips: ms, how long. */
+  pings?: [ms: number, ping: number][];
   /** Only for a fight of this session. Never written to disk. */
   rows?: FightRow[];
   credits?: Credit[];
@@ -264,6 +275,16 @@ export interface Near {
   odyle: [daily: number, charged: number];
 }
 
+/** What your character has left. Yours alone, and not kept. */
+export interface Entries {
+  /** The game's own number for it, what it says first and what second: likely what is left, and more on top. */
+  counts: [id: number, first: number, second: number][];
+  /** -1 when not known, like the others. */
+  duty: [done: number, taken: number];
+  points: [now: number, most: number];
+  kinah: number;
+}
+
 /** Something that just happened. */
 export interface Happened {
   /** Yours, but for `blow`, which is a monster's. */
@@ -278,6 +299,8 @@ export const NO_NEAR: Near = {
   you: null, party: [], target: null, foe: null, fighting: false, dungeon: 0, flight: null, ping: -1, jitter: -1, odyle: [-1, -1],
 };
 
+export const NO_ENTRIES: Entries = { counts: [], duty: [-1, -1], points: [-1, -1], kinah: -1 };
+
 export type Status = "off" | "missing" | "starting" | "running" | "failed";
 
 export type Message =
@@ -286,6 +309,7 @@ export type Message =
   | ({ t: "fight" } & Fight)
   | { t: "skills"; id: number; skills: Skill[] }
   | ({ t: "near" } & Near)
+  | ({ t: "entries" } & Entries)
   | ({ t: "happened" } & Happened);
 
 export const NO_FIGHT: Fight = {

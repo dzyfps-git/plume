@@ -5,6 +5,7 @@
   font: inherit; text-align: left; isolation: isolate;
 }
 .board-row small { min-width: 64px; color: var(--text); font-size: 12px; text-align: right; }
+.board-row .meter-power { min-width: 0; color: var(--text-muted); font-size: 11px; }
 .board-row b { min-width: 64px; font-weight: 600; text-align: right; }
 .board-row .meter-bar { background: linear-gradient(90deg, color-mix(in srgb, var(--class) 20%, transparent), color-mix(in srgb, var(--class) 48%, transparent)); }
 .board-row:hover { background: var(--surface-selected); }
@@ -13,7 +14,7 @@
 
 .skills { display: grid; overflow-x: auto; }
 .skills-line {
-  display: grid; grid-template-columns: minmax(160px, 1fr) repeat(7, minmax(54px, 72px)); gap: var(--space-2); align-items: center;
+  display: grid; grid-template-columns: minmax(140px, 1fr) repeat(var(--columns, 7), minmax(42px, 72px)); gap: var(--space-1); align-items: center;
   min-height: var(--row-height); padding: 0 var(--space-2); border-radius: var(--radius); font-variant-numeric: tabular-nums;
 }
 .skills-line > :not(:first-child) { text-align: right; }
