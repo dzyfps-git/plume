@@ -117,7 +117,7 @@ export function demoNear(ms: number, at: number): Near {
   };
 }
 
-export const demoEntries = (): Entries => ({ counts: [[1, 5, 1], [4, 2, 0], [60_000_002, 2, 1], [80_000_001, 0, 5]], duty: [3, 5], points: [1_240, 5_000], kinah: 182_300 });
+export const demoEntries = (): Entries => ({ counts: [[1, 5, 1], [4, 2, 0], [60_000_002, 2, 1], [80_000_001, 0, 5]], duty: [3, 5], points: [1_240, 5_000], kinah: 182_300, shop: [[100_134, 2]], crafts: [[32_070_002, 4], [32_070_001, 9]] });
 
 const SKILLS: [string, number, boolean][] = [
   ["Heart Gore", 0.27, false],

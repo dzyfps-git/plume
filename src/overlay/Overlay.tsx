@@ -3,7 +3,7 @@ import { editOverlays, type Editing } from "../api";
 import { FEATURES } from "../features";
 import { overlayName, type Feature } from "../features/types";
 import { demoFight, demoNear } from "../live/demo";
-import { fight, near, sample, sampling } from "../live/store";
+import { fight, near, sample, sampling, WAIT_FOR_YOU, waitingForYou } from "../live/store";
 import { unwrap } from "solid-js/store";
 import { change, settings } from "../store";
 import { place, rule } from "../store/settings";
@@ -97,6 +97,14 @@ ${fits.who}` : "";
     const timer = setTimeout(() => setIdle(true), IDLE);
     onCleanup(() => clearTimeout(timer));
   });
+  // Over the game, once the wait is more than a login's: what to do so Plume learns who you are. It can be closed.
+  const [long, setLong] = createSignal(false);
+  const [shut, setShut] = createSignal(false);
+  createEffect(() => {
+    if (!waitingForYou()) return void (setLong(false), setShut(false));
+    const timer = setTimeout(() => setLong(true), 8000);
+    onCleanup(() => clearTimeout(timer));
+  });
   const [step, setStep] = createSignal(0);
   const drift = setInterval(() => setStep((n) => (n + 1) % DRIFT.length), DRIFT_EVERY);
   onCleanup(() => clearInterval(drift));
@@ -121,6 +129,16 @@ ${fits.who}` : "";
     >
       <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} pointer={props.pointer()} others={boxes} />}</For>
       <Show when={settings.overlay.button}><GameButton open={props.editing() === "quick"} /></Show>
+      <Show when={long() && !shut() && settings.overlay.on && !props.editing()}>
+        <div class="game-toast" role="status" data-touch>
+          <span class="ui-icon" aria-hidden="true">{"\ue77b"}</span>
+          <span>
+            <b>Waiting for your character</b>
+            <small>{WAIT_FOR_YOU}</small>
+          </span>
+          <button class="ui-icon-button" aria-label="Close" onClick={() => setShut(true)}>{"\ue8bb"}</button>
+        </div>
+      </Show>
       <Show when={props.editing() === "quick"}>
         <Panel all={all()} on={(f) => at(f).on} turn={turn} done={done} />
       </Show>

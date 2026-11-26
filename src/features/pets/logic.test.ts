@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { counts, done, hear, sources, toGo, type Pet } from "./logic.ts";
+import { counts, done, fits, hear, sources, toGo, type Pet } from "./logic.ts";
 
 const pet = (over: Partial<Pet> = {}): Pet => ({ id: 1066, name: "Papis", kind: "fera", where: [], ...over });
 
@@ -30,6 +30,19 @@ test("souls to go, done and how many have each level", () => {
 test("where souls come from", () => {
   const w = (map: number) => ({ npc: 1, name: "", level: 1, map, at: "", zones: [], spots: 1 });
   assert.deepEqual(sources(pet({ where: [w(1110), w(600021), w(23)] })), ["asmodian", "abyss", "dungeon"]);
-  assert.deepEqual(sources(pet({ how: "check Black Cloud Merchants for the pet item" })), ["market"]);
+  assert.deepEqual(sources(pet({ how: "Souls: possible reward from Pet Soul Chest: Fera (Bound). Pet unlock: check Black Cloud Merchants for the pet item; shop stock varies." })), ["chest", "market"]);
+  assert.deepEqual(sources(pet({ how: "In-game Menu > Shop > Atelier > Weapons/Wings/Pets" })), ["shop"]);
   assert.deepEqual(sources(pet()), ["other"]);
+});
+
+test("several kinds and places at once: any of each, both together", () => {
+  const w = (map: number) => ({ npc: 1, name: "", level: 1, map, at: "", zones: [], spots: 1 });
+  const elyosFera = pet({ where: [w(1010)] });
+  const abyssCogni = pet({ kind: "cogni", where: [w(20)] });
+  const none = new Set<never>();
+  assert.ok(fits(elyosFera, none, none), "nothing chosen is all");
+  assert.ok(fits(elyosFera, new Set(["fera", "cogni"]), none));
+  assert.ok(!fits(elyosFera, new Set(["cogni"]), none));
+  assert.ok(fits(abyssCogni, new Set(["cogni"]), new Set(["elyos", "abyss"])));
+  assert.ok(!fits(abyssCogni, new Set(["fera"]), new Set(["abyss"])), "kind and place both count");
 });

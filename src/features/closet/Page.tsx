@@ -1,6 +1,7 @@
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { full } from "../../ui/format";
 import { GameIcon } from "../../ui/Pic";
+import { flip } from "../../ui/sets";
 import { skinFile } from "../map/data";
 import { GRADE_NAMES, GRADES, rows, slotName, SLOTS, type Show as Shown, type Skin } from "./logic";
 import { closet } from "./watch";
@@ -13,12 +14,17 @@ const MOST = 240;
 export function ClosetPage() {
   const [file] = createResource(() => skinFile().catch(() => null));
   const [show, setShow] = createSignal<Shown>("missing");
-  const [slot, setSlot] = createSignal("");
-  const [grade, setGrade] = createSignal(-1);
+  const [slots, setSlots] = createSignal<ReadonlySet<string>>(new Set());
+  const [grades, setGrades] = createSignal<ReadonlySet<number>>(new Set());
+  const none = new Set<never>();
   const [query, setQuery] = createSignal("");
   const owned = createMemo(() => new Set(closet().ids));
   const skins = () => Object.entries(file()?.skins ?? {});
-  const list = createMemo(() => (file() ? rows(file()!, owned(), show(), slot(), query()).filter((r) => grade() < 0 || r.skin[2] === grade()) : []));
+  const list = createMemo(() =>
+    file() ? rows(file()!, owned(), show(), "", query()).filter((r) => (!grades().size || grades().has(r.skin[2])) && (!slots().size || slots().has(r.skin[3]))) : [],
+  );
+  /** A slot's picture: the first skin of it that has one, in the game's order. */
+  const slotPicture = (slot: string) => skins().filter(([, s]) => s[3] === slot && s[6]).sort(([, a], [, b]) => a[4] - b[4])[0]?.[1][6];
   const count = (ok: (s: Skin) => boolean) => {
     const of = skins().filter(([, s]) => ok(s));
     return `${of.filter(([id]) => owned().has(Number(id))).length}/${of.length}`;
@@ -49,25 +55,27 @@ export function ClosetPage() {
               </For>
               <h3>
                 Grade
-                <Show when={grade() >= 0 || slot()}><button class="side-reset" onClick={() => (setGrade(-1), setSlot(""))}>Reset</button></Show>
+                <Show when={grades().size || slots().size}><button class="side-reset" onClick={() => (setGrades(none), setSlots(none))}>Reset</button></Show>
               </h3>
               <For each={GRADE_NAMES.map((name, i) => [name, i] as const).filter(([, i]) => skins().some(([, s]) => s[2] === i))}>
                 {([name, i]) => (
-                  <button class="side-row" style={{ "--tint": `var(--grade-${GRADES[i]})` }} aria-pressed={grade() === i} onClick={() => setGrade(grade() === i ? -1 : i)}>
-                    <span class="tint-dot" aria-hidden="true" />
+                  <button class="side-row" style={{ "--tint": `var(--grade-${GRADES[i]})` }} role="checkbox" aria-checked={grades().has(i)} onClick={() => setGrades(flip(grades(), i))}>
+                    <span class="side-check" aria-hidden="true" />
                     <span>{name}</span>
                     <small class="ui-num">{count((s) => s[2] === i)}</small>
                   </button>
                 )}
               </For>
               <For each={Object.entries(SLOTS)}>
-                {([group, slots]) => (
+                {([group, inGroup]) => (
                   <>
-                    <h3>{group} <small class="ui-num">{count((s) => (slots as readonly string[]).includes(s[3]))}</small></h3>
-                    <For each={[...slots]}>
+                    <h3>{group} <small class="ui-num">{count((s) => (inGroup as readonly string[]).includes(s[3]))}</small></h3>
+                    <For each={[...inGroup]}>
                       {(s) => (
-                        <button class="side-row" aria-pressed={slot() === s} onClick={() => setSlot(slot() === s ? "" : s)}>
-                          <span aria-hidden="true" />
+                        <button class="side-row slot-row" role="checkbox" aria-checked={slots().has(s)} onClick={() => setSlots(flip(slots(), s))}>
+                          <span class="thing-pic" data-small aria-hidden="true">
+                            <Show when={slotPicture(s)} fallback={<span class="ui-icon">{"\ue7c3"}</span>}>{(name) => <GameIcon name={name()}>{null}</GameIcon>}</Show>
+                          </span>
                           <span>{slotName(s)}</span>
                           <small class="ui-num">{count((k) => k[3] === s)}</small>
                         </button>

@@ -15,18 +15,20 @@ export interface GameEvent {
   times: number[];
   /** Minutes it stays open. */
   lasts: number;
+  /** The game's picture for it. */
+  icon: string;
 }
 
 export const EVENTS: GameEvent[] = [
-  { id: "shugo", name: "Shugo Festival", times: hours(0, 1), lasts: 3 },
-  { id: "invasion", name: "Dimensional Invasion", times: hours(0, 1).map((m) => m + 30), lasts: 3 },
-  { id: "rift", name: "Spacetime Rift", times: hours(0, 3), lasts: 10 },
-  { id: "kaira", name: "Watcher Kaira", times: hours(1, 3), lasts: 30 },
-  { id: "argo", name: "Argo, the Spirit King", times: [10 * 60 + 30, 22 * 60 + 30], lasts: 30 },
-  { id: "arena", name: "Arena of Tactics", times: [11 * 60, 19 * 60], lasts: 120 },
-  { id: "siege", name: "Artifact Siege", days: [1, 4, 6], times: [21 * 60], lasts: 60 },
-  { id: "abyss", name: "Executors and Middle Abyss bosses", days: [1, 4, 6], times: [21 * 60 + 30], lasts: 30 },
-  { id: "nahma", name: "Guardian Lord Nahma", days: [0, 5], times: [21 * 60], lasts: 30 },
+  { id: "shugo", name: "Shugo Festival", times: hours(0, 1), lasts: 3, icon: "Icon_Currency_Treasure_Key_Legend_004" },
+  { id: "invasion", name: "Dimensional Invasion", times: hours(0, 1).map((m) => m + 30), lasts: 3, icon: "Icon_Currency_Treasure_Key_Legend_006" },
+  { id: "rift", name: "Spacetime Rift", times: hours(0, 3), lasts: 10, icon: "UT_Marker_Rift" },
+  { id: "kaira", name: "Watcher Kaira", times: hours(1, 3), lasts: 30, icon: "UT_Marker_Monster_Boss_Aggressive" },
+  { id: "argo", name: "Argo, the Spirit King", times: [10 * 60 + 30, 22 * 60 + 30], lasts: 30, icon: "UT_Marker_Monster_Boss_Aggressive" },
+  { id: "arena", name: "Arena of Tactics", times: [11 * 60, 19 * 60], lasts: 120, icon: "UT_Marker_ArenaCar" },
+  { id: "siege", name: "Artifact Siege", days: [1, 4, 6], times: [21 * 60], lasts: 60, icon: "UT_Marker_AbyssArtifact_Neutral" },
+  { id: "abyss", name: "Executors and Middle Abyss bosses", days: [1, 4, 6], times: [21 * 60 + 30], lasts: 30, icon: "UT_Marker_Monster_Boss" },
+  { id: "nahma", name: "Guardian Lord Nahma", days: [0, 5], times: [21 * 60], lasts: 30, icon: "UT_Marker_Monster_Boss_Aggressive" },
 ];
 
 export interface Next {

@@ -16,6 +16,30 @@ const SCREEN = { width: 1920, height: 1080 };
 const PICTURE = "screen-picture";
 const [picture, setPicture] = createSignal(localStorage.getItem(PICTURE) ?? "");
 
+const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
+const size = (f: Feature) => {
+  const k = at(f).scale * sizeOfAll(settings.overlay);
+  return { width: widthOf(f.overlay!) * k, height: (at(f).height ?? 120) * k };
+};
+const spot = (f: Feature) => toPixels(at(f), size(f), SCREEN);
+/** Where an overlay's box stands on the picture, in shares of it. */
+const boxStyle = (f: Feature) => ({
+  left: `${(spot(f).x / SCREEN.width) * 100}%`,
+  top: `${(spot(f).y / SCREEN.height) * 100}%`,
+  width: `${(size(f).width / SCREEN.width) * 100}%`,
+  height: `${(size(f).height / SCREEN.height) * 100}%`,
+});
+const shown = () => FEATURES.filter((f) => f.overlay && at(f).on);
+
+/** The overlays that are on, as boxes on the picture of the screen, to look at. */
+export function ScreenPreview() {
+  return (
+    <div class="screen-map" data-look style={{ "background-image": picture() ? `url(${picture()})` : undefined }} aria-hidden="true">
+      <For each={shown()}>{(f) => <span class="screen-box" style={boxStyle(f)}>{overlayName(f)}</span>}</For>
+    </div>
+  );
+}
+
 
 export function LayoutGroup() {
   const [code, setCode] = createSignal("");
@@ -67,12 +91,6 @@ export function ScreenMap() {
   const [grid, setGrid] = createSignal(true);
   let box!: HTMLDivElement;
   const all = () => FEATURES.filter((f) => f.overlay);
-  const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
-  const size = (f: Feature) => {
-    const k = at(f).scale * sizeOfAll(settings.overlay);
-    return { width: widthOf(f.overlay!) * k, height: (at(f).height ?? 120) * k };
-  };
-  const spot = (f: Feature) => toPixels(at(f), size(f), SCREEN);
   const others = (f: Feature) => all().filter((o) => o !== f && at(o).on).map((o) => ({ ...spot(o), ...size(o) }));
 
   const drag = (f: Feature, e: PointerEvent) => {
@@ -128,16 +146,11 @@ export function ScreenMap() {
         </Show>
       </div>
       <div ref={box} class="screen-map" data-grid={grid() || undefined} style={{ "background-image": picture() ? `url(${picture()})` : undefined, "--margin": `${(MARGIN / SCREEN.width) * 100}%` }}>
-        <For each={all().filter((f) => at(f).on)}>
+        <For each={shown()}>
           {(f) => (
             <button
               class="screen-box"
-              style={{
-                left: `${(spot(f).x / SCREEN.width) * 100}%`,
-                top: `${(spot(f).y / SCREEN.height) * 100}%`,
-                width: `${(size(f).width / SCREEN.width) * 100}%`,
-                height: `${(size(f).height / SCREEN.height) * 100}%`,
-              }}
+              style={boxStyle(f)}
               aria-label={`${overlayName(f)}: drag to move`}
               onPointerDown={(e) => drag(f, e)}
             >

@@ -78,6 +78,19 @@ export const LAYER_NAMES: Record<Layer, string> = {
   stronghold: "Strongholds", monolith: "Monoliths", quest: "Quests",
 };
 
+/** The game's own picture of each kind of mark, as the engine's `tools/marks.py` fetches them. Monsters and traces have none. */
+const LAYER_ICONS: Partial<Record<Layer, string>> = {
+  boss: "UT_Marker_Monster_Boss_Aggressive", dungeon: "UT_Marker_Dungeon", rift: "UT_Marker_Rift", portal: "UT_Marker_AbyssPortal",
+  monolith: "UT_Marker_Monolith_Light", quest: "UT_Marker_Quest_District_Incomplete", village: "UT_Marker_Vlillage",
+  teleport: "UT_Marker_TeleportArtifact_Light_Engraved", sealed: "UT_Marker_Exploration_Seal", stronghold: "UT_Marker_Exploration_Occupation",
+  npc: "UT_Marker_Shop", gather: "UT_Marker_Gather", cube: "site_HiddenCube",
+};
+/** A layer's picture; teleports are the side's own. */
+export const markOf = (layer: Layer, side?: MapInfo["side"]) =>
+  layer === "teleport" && side === "asmodian" ? "UT_Marker_TeleportArtifact_Dark_Engraved" : LAYER_ICONS[layer];
+/** Layers with so many marks that they are dots until you come in close. */
+export const DENSE: readonly Layer[] = ["gather", "npc", "cube"];
+
 /** Marker colours, by layer. */
 export const LAYER_COLOURS: Record<Layer, string> = {
   trace: "#7fd6ff", cube: "#ffcf5a", gather: "#5fdc95", monster: "#ff8f70", boss: "#ff5c7a", npc: "#c9b8ff", teleport: "#8f9bff",

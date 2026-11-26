@@ -1,5 +1,5 @@
 import { createContext, createEffect, createMemo, For, on, Show, useContext } from "solid-js";
-import { fight, near, over, sampling, skills } from "../../live/store";
+import { fight, near, over, sampling, skills, waitingForYou } from "../../live/store";
 import type { Row } from "../../live/types";
 import { hideNames, nameStyle, settings } from "../../store";
 import { barEase, type Footer, type Meter } from "../../store/settings";
@@ -92,7 +92,7 @@ function Whole(props: { gone: boolean; still: boolean }) {
   const sum = () => (view() === "damage" || view().endsWith("dps") ? (props.gone ? 0 : partyDps(fight)) : all().reduce((n, r) => n + r.rate, 0));
   // In one fixed order: a row moved in the page would jump instead of glide.
   const still = createMemo(() => [...rows()].sort((a, b) => a.id - b.id));
-  const title = () => (props.gone ? "Ready" : view() === "damage" ? fight.target.name || VIEW_NAMES.damage : VIEW_NAMES[view()]);
+  const title = () => (props.gone ? "Ready" : !props.still && !fight.rows.length && waitingForYou() ? "Waiting for your character" : view() === "damage" ? fight.target.name || VIEW_NAMES.damage : VIEW_NAMES[view()]);
   const pull = () => <Show when={m().head && !cards() && !props.gone && held()}>{(h) => <Pull of={h()} />}</Show>;
   const line = (row: Row) => <Show when={spots().get(row.id)}>{(at) => <MeterRow row={row} at={at()} most={most()} many={all().length > 1} gap={row.you && m().gap ? gap(all()) : undefined} />}</Show>;
   const feet = createMemo(footers);

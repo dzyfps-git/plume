@@ -1,7 +1,9 @@
 import { createEffect, createSignal, onCleanup, onMount, Show, untrack } from "solid-js";
+import { picture } from "../../api";
+import { settings } from "../../store";
 import type { Layer } from "../../store/settings";
 import type { You } from "./data";
-import { FINDABLE, isFound, keyOf, LAYER_COLOURS, LAYER_NAMES, unpack, type Spot, type Thing, type WorldMap } from "./logic";
+import { DENSE, FINDABLE, isFound, keyOf, LAYER_COLOURS, LAYER_NAMES, markOf, unpack, type Spot, type Thing, type WorldMap } from "./logic";
 
 export interface Picked {
   thing: Thing;
@@ -35,6 +37,20 @@ export interface MapProps {
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+/** The marks' pictures, read once a window. Missing ones stay dots. */
+const marks = new Map<string, ImageBitmap | null>();
+const [marksRead, setMarksRead] = createSignal(0);
+function markPicture(name: string | undefined) {
+  if (!name || !settings.pictures) return null;
+  if (!marks.has(name)) {
+    marks.set(name, null);
+    void picture(name)
+      .then((b) => createImageBitmap(new Blob([b], { type: "image/png" })))
+      .then((bitmap) => (marks.set(name, bitmap), setMarksRead((n) => n + 1)), () => {});
+  }
+  return marks.get(name) ?? null;
+}
+
 /** A map to pan and zoom, with its marks. Drawn on a canvas: some maps have twenty thousand. */
 export function MapCanvas(props: MapProps) {
   let canvas!: HTMLCanvasElement;
@@ -42,7 +58,7 @@ export function MapCanvas(props: MapProps) {
   /** The middle, in metres, and points of the screen per metre. 0 fits the map. */
   const [view, setView] = createSignal({ x: 0, y: 0, scale: 0 });
   /** Where each drawn mark is, to find the one under the mouse. */
-  let drawn: { x: number; y: number; thing: Thing; spot: Spot }[] = [];
+  let drawn: { x: number; y: number; r: number; thing: Thing; spot: Spot }[] = [];
   /** The mark under the mouse, for its name. */
   const [over, setOver] = createSignal<{ x: number; y: number; thing: Thing } | null>(null);
 
@@ -121,12 +137,18 @@ export function MapCanvas(props: MapProps) {
     drawn = [];
     // Small when the whole map shows, so thousands do not run together; larger as you come in.
     const dot = Math.min(5, 2.5 + (s / fit()) * 0.3);
+    const close = s / fit();
+    // The game's pictures: always for the few, and for the many once you come in.
+    const side = Math.min(30, 18 + close * 1.5);
     for (const thing of m.things) {
       const key = keyOf(m.id, thing);
       const tracked = props.tracked.has(key);
       if (!tracked && !on.has(thing.layer)) continue;
       const findable = FINDABLE.includes(thing.layer);
       pen.fillStyle = LAYER_COLOURS[thing.layer];
+      // The many stay dots until you are well in, and then come smaller, so they do not bury the map.
+      const dense = DENSE.includes(thing.layer);
+      const pic = dense && close < 6 ? null : markPicture(markOf(thing.layer, m.side));
       for (let i = 0; i + 4 < thing.spots.length; i += 5) {
         const p = toScreen(thing.spots[i], thing.spots[i + 1]);
         if (p.x < -10 || p.y < -10 || p.x > width + 10 || p.y > height + 10) continue;
@@ -134,6 +156,19 @@ export function MapCanvas(props: MapProps) {
         const found = findable && isFound(props.found, key, spot);
         if (found && props.hideFound) continue;
         pen.globalAlpha = found ? 0.35 : 1;
+        if (pic) {
+          const size = (tracked ? 1.25 : 1) * (dense ? side * 0.7 : side);
+          if (tracked) {
+            pen.strokeStyle = "#ffffff";
+            pen.lineWidth = 2;
+            pen.beginPath();
+            pen.arc(p.x, p.y, size / 2 + 2, 0, Math.PI * 2);
+            pen.stroke();
+          }
+          pen.drawImage(pic, p.x - size / 2, p.y - size / 2, size, size);
+          drawn.push({ x: p.x, y: p.y, r: size / 2, thing, spot });
+          continue;
+        }
         const r = tracked ? dot * 1.6 : dot;
         pen.beginPath();
         pen.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -142,7 +177,7 @@ export function MapCanvas(props: MapProps) {
         pen.strokeStyle = tracked ? "#ffffff" : "rgba(6, 8, 12, 0.8)";
         pen.lineWidth = tracked ? 1.5 : dot > 4 ? 1.25 : 0.75;
         pen.stroke();
-        drawn.push({ x: p.x, y: p.y, thing, spot });
+        drawn.push({ x: p.x, y: p.y, r, thing, spot });
       }
     }
     pen.globalAlpha = 1;
@@ -219,7 +254,7 @@ export function MapCanvas(props: MapProps) {
   createEffect(() => {
     // Everything drawn is read here, so a change of any draws again, once a frame.
     for (const key in props.found) void props.found[key].length;
-    void [props.map, props.picture, props.layers.join(), props.hideFound, props.tracked, props.you, props.route, props.picked, props.follow, props.across, size(), view()];
+    void [props.map, props.picture, props.layers.join(), props.hideFound, props.tracked, props.you, props.route, props.picked, props.follow, props.across, size(), view(), marksRead()];
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(draw);
   });
@@ -248,10 +283,10 @@ export function MapCanvas(props: MapProps) {
   };
   const near = (px: number, py: number) => {
     let best: (typeof drawn)[number] | null = null;
-    let least = 12;
+    let least = Infinity;
     for (const d of drawn) {
       const away = Math.hypot(d.x - px, d.y - py);
-      if (away < least) [best, least] = [d, away];
+      if (away <= Math.max(12, d.r + 2) && away < least) [best, least] = [d, away];
     }
     return best;
   };

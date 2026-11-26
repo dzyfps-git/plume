@@ -91,10 +91,10 @@ export function done(pet: Pet, level: number, souls: number, goal: number) {
   return all ? 1 - toGo(pet, level, souls, goal) / all : 1;
 }
 
-export const SOURCES = ["elyos", "asmodian", "abyss", "dungeon", "market", "other"] as const;
+export const SOURCES = ["elyos", "asmodian", "abyss", "dungeon", "chest", "market", "shop", "other"] as const;
 export type Source = (typeof SOURCES)[number];
 export const SOURCE_NAMES: Record<Source, string> = {
-  elyos: "Elyos lands", asmodian: "Asmodian lands", abyss: "Abyss", dungeon: "Dungeons", market: "Black Cloud Merchant", other: "Other",
+  elyos: "Elyos lands", asmodian: "Asmodian lands", abyss: "Abyss", dungeon: "Dungeons", chest: "Pet Soul Chests", market: "Black Cloud Merchant", shop: "Shop and packs", other: "Other",
 };
 
 /** The sides of the maps that have one. Anything else with monsters is a dungeon. */
@@ -103,10 +103,16 @@ const SIDES: Record<number, Source> = { 1010: "elyos", 1011: "elyos", 1000: "ely
 /** Where a pet's souls can be had. */
 export function sources(pet: Pet): Source[] {
   const from = new Set<Source>(pet.where.map((w) => SIDES[w.map] ?? "dungeon"));
+  if (/soul chest/i.test(pet.how ?? "")) from.add("chest");
   if (/black cloud/i.test(pet.how ?? "")) from.add("market");
+  if (/shop >|founder|pet chest contains/i.test(pet.how ?? "")) from.add("shop");
   if (!from.size) from.add("other");
   return SOURCES.filter((s) => from.has(s));
 }
+
+/** Whether a pet is among those chosen: any of the kinds, and any of the places. None chosen is all. */
+export const fits = (pet: Pet, kinds: ReadonlySet<Kind>, from: ReadonlySet<Source>) =>
+  (!kinds.size || kinds.has(pet.kind)) && (!from.size || sources(pet).some((s) => from.has(s)));
 
 /** How many have reached each level, of those that can. */
 export function counts(all: readonly Pet[], levels: Record<string, number>) {

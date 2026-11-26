@@ -3,21 +3,33 @@ import { openPage } from "../../api";
 import { change, settings } from "../../store";
 import { GOALS } from "../../store/settings";
 import { GameIcon } from "../../ui/Pic";
+import { flip } from "../../ui/sets";
 import { itemFile, mapList, petFile, pictureOf } from "../map/data";
-import { counts, CRYSTALS, done, KIND_NAMES, KINDS, NEEDED, SOURCE_NAMES, SOURCES, sources, toGo, type Kind, type Pet, type Source, type Where } from "./logic";
+import { LAYER_COLOURS } from "../map/logic";
+import { counts, CRYSTALS, done, fits, KIND_NAMES, KINDS, NEEDED, SOURCE_NAMES, SOURCES, sources, toGo, type Kind, type Pet, type Source, type Where } from "./logic";
 import "./pets.css";
+
+/** The game's own picture for each kind. */
+const KIND_ICONS: Record<Kind, string> = { cogni: "site_Creature_Intellect", fera: "site_Creature_Feral", natura: "site_Creature_Nature", varian: "site_Creature_Trans", special: "site_Creature_Special" };
 
 const SHOW = [["needed", "Needed"], ["all", "All"], ["done", "Done"]] as const;
 const ORDER = [["close", "Closest to done"], ["souls", "Fewest souls to go"], ["name", "Name"]] as const;
 const HELP = "pets-help-closed";
+/** A colour for each place: the side's own, the map's colour for dungeons, and quiet ones for the rest. */
+const WHERE_TINT: Record<Source, string> = {
+  elyos: "var(--side-elyos)", asmodian: "var(--side-asmodian)", abyss: "var(--side-abyss)", dungeon: LAYER_COLOURS.dungeon,
+  chest: "var(--grade-unique)", market: "var(--grade-epic)", shop: "var(--grade-special)", other: "var(--text-muted)",
+};
+
 
 export function PetsPage() {
   const [file] = createResource(() => petFile().catch(() => null));
   const [items] = createResource(() => itemFile().catch(() => null));
   const [faces] = createResource(() => pictureOf("pets").catch(() => null));
   const [maps] = createResource(() => mapList().catch(() => null));
-  const [kind, setKind] = createSignal<Kind | "">("");
-  const [source, setSource] = createSignal<Source | "">("");
+  const [kinds, setKinds] = createSignal<ReadonlySet<Kind>>(new Set());
+  const [from, setFrom] = createSignal<ReadonlySet<Source>>(new Set());
+  const none = new Set<never>();
   const [show, setShow] = createSignal<(typeof SHOW)[number][0]>("needed");
   const [order, setOrder] = createSignal<(typeof ORDER)[number][0]>("close");
   const [query, setQuery] = createSignal("");
@@ -29,16 +41,18 @@ export function PetsPage() {
   const left = (p: Pet) => toGo(p, level(p), souls(p), goal());
   const reached = (p: Pet) => (p.kind === "special" ? level(p) > 0 : left(p) === 0);
   const all = () => file()?.pets ?? [];
-  const farmed = createMemo(() => all().filter((p) => p.kind !== "special" && !p.soon));
+  // Everything counts only the pets chosen on the left; each filter's own counts leave out its own choice.
+  const chosen = createMemo(() => all().filter((p) => fits(p, kinds(), from())));
+  const farmed = createMemo(() => chosen().filter((p) => p.kind !== "special" && !p.soon));
   const had = () => counts(farmed(), settings.pets.levels);
   const needed = createMemo(() => farmed().filter((p) => left(p) > 0));
-  const of = (k: Kind) => all().filter((p) => p.kind === k);
+  const ofKind = (k: Kind) => all().filter((p) => p.kind === k && fits(p, none, from()));
+  const ofPlace = (s: Source) => all().filter((p) => fits(p, kinds(), new Set([s])));
+  const picking = () => kinds().size > 0 || from().size > 0;
 
   const rows = createMemo(() => {
     const words = query().trim().toLowerCase();
-    const list = all().filter((p) =>
-      (!kind() || p.kind === kind()) &&
-      (!source() || sources(p).includes(source() as Source)) &&
+    const list = chosen().filter((p) =>
       (show() === "all" || (show() === "done") === reached(p)) &&
       (!words || p.name.toLowerCase().includes(words) || p.where.some((w) => w.name.toLowerCase().includes(words) || w.at.toLowerCase().includes(words))),
     );
@@ -82,10 +96,10 @@ export function PetsPage() {
         {(f) => (
           <>
             <Show when={help()}>
-              <section class="block pets-help" aria-label="How pets are had">
+              <section class="block pets-help" aria-label="How pets work">
                 <h2>
                   <span class="ui-icon" aria-hidden="true">{"\ueb51"}</span>
-                  How pets are had
+                  How pets work
                   <button class="ui-icon-button" aria-label="Close" onClick={closeHelp}>{"\ue8bb"}</button>
                 </h2>
                 <ol>
@@ -107,25 +121,26 @@ export function PetsPage() {
                     </button>
                   )}
                 </For>
-                <h3>Kind</h3>
+                <h3>
+                  Kind
+                  <Show when={picking()}><button class="side-reset" onClick={() => (setKinds(none), setFrom(none))}>Reset</button></Show>
+                </h3>
                 <For each={KINDS}>
                   {(k) => (
-                    <button class="side-row" data-kind={k} aria-pressed={kind() === k} onClick={() => setKind(kind() === k ? "" : k)}>
-                      <span class="tint-dot" aria-hidden="true" />
-                      <span class="tint-text">{KIND_NAMES[k]}</span>
-                      <small class="ui-num">{of(k).filter(reached).length}/{of(k).length}</small>
+                    <button class="side-row" data-kind={k} role="checkbox" aria-checked={kinds().has(k)} onClick={() => setKinds(flip(kinds(), k))}>
+                      <span class="side-check" aria-hidden="true" />
+                      <span class="tint-text"><span class="kind-pic" aria-hidden="true"><GameIcon name={KIND_ICONS[k]}>{null}</GameIcon></span>{KIND_NAMES[k]}</span>
+                      <small class="ui-num">{ofKind(k).filter(reached).length}/{ofKind(k).length}</small>
                     </button>
                   )}
                 </For>
-                <h3>
-                  Where
-                  <Show when={source() || kind()}><button class="side-reset" onClick={() => (setSource(""), setKind(""))}>Reset</button></Show>
-                </h3>
+                <h3>Where</h3>
                 <For each={SOURCES}>
                   {(s) => (
-                    <button class="side-row" data-side={s === "elyos" || s === "asmodian" || s === "abyss" ? s : undefined} aria-pressed={source() === s} onClick={() => setSource(source() === s ? "" : s)}>
-                      <span class="tint-dot" aria-hidden="true" />
+                    <button class="side-row" style={{ "--tint": WHERE_TINT[s] }} role="checkbox" aria-checked={from().has(s)} disabled={!ofPlace(s).length && !from().has(s)} onClick={() => setFrom(flip(from(), s))}>
+                      <span class="side-check" aria-hidden="true" />
                       <span>{SOURCE_NAMES[s]}</span>
+                      <small class="ui-num">{ofPlace(s).filter(reached).length}/{ofPlace(s).length}</small>
                     </button>
                   )}
                 </For>
@@ -138,7 +153,7 @@ export function PetsPage() {
                 <div class="pets-sum">
                   <span class="ui-icon" aria-hidden="true">{"\ueb51"}</span>
                   <span>
-                    <b>Every pet to level {goal()}</b>
+                    <b>{picking() ? "The chosen pets" : "Every pet"} to level {goal()}</b>
                     <span class="ui-muted"> · </span>
                     <b class="ui-num">{needed().length}</b> pets to go
                     <span class="ui-muted"> · </span>

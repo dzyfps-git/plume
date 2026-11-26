@@ -36,6 +36,8 @@ export const KEEP = [5, 10, 25, 50, 100, 0] as const;
 /** Seconds of a training run. 0 is no limit. */
 export const RUNS = [30, 60, 120, 180, 300, 0] as const;
 /** What a ticket or an entry can be. Each has an icon in `src/ui/icons.tsx`. */
+/** What the Checklist does with rows that are done: shows them, hides them, or puts them together at the end. */
+export const COMPLETED = ["show", "hide", "group"] as const;
 export const KINDS = ["shugo", "invasion", "nightmare", "ascension", "transcendence", "conquest", "exploration", "fissure", "subjugation", "forge", "rift"] as const;
 export const AURA_KINDS = ["on", "missing", "target", "untarget", "ready", "low", "party"] as const;
 export const LOOKS = ["icon", "bar", "text"] as const;
@@ -357,6 +359,8 @@ export interface Settings {
   alerts: Record<AlertId, Alert>;
   world: World;
   pets: PetsKept;
+  /** Rows and characters left out of the Checklist, and what done rows do. */
+  checklist: { hidden: string[]; off: string[]; completed: (typeof COMPLETED)[number] };
   /** Boss calls of `calls.json`: what is said, aloud too, and bosses or calls turned off by key. */
   calls: { on: boolean; mode: "say" | "line"; voice: boolean; off: string[] };
   /** Events turned off, and the minutes before one that the alert comes. */
@@ -452,6 +456,7 @@ export const DEFAULTS: Settings = {
   },
   world: { map: 0, layers: ["trace", "cube", "gather", "boss", "teleport", "village", "sealed", "rift", "stronghold"], follow: true, hideFound: false, tracked: [], found: {}, routes: [], across: 600 },
   pets: { goal: 3, levels: {}, souls: {}, told: 0 },
+  checklist: { hidden: [], off: [], completed: "show" },
   calls: { on: true, mode: "say", voice: true, off: [] },
   events: { off: [], before: 5 },
   clock: { start: 0, stopped: 0, end: 0 },
@@ -495,6 +500,7 @@ const numbers = (v: unknown, least: number, most: number, many: number): number[
   (Array.isArray(v) ? v : []).filter((n): n is number => typeof n === "number" && n >= least && n <= most).slice(0, many);
 
 const text = (v: unknown, most: number) => (typeof v === "string" ? v.slice(0, most) : "");
+const strings = (v: unknown, many: number) => [...new Set((Array.isArray(v) ? v : []).filter((k): k is string => typeof k === "string" && k.length <= 80))].slice(0, many);
 const list = (v: unknown, most: number) => (Array.isArray(v) ? v : []).slice(0, most).map(object);
 const named = (v: Record<string, unknown>): Named => ({ id: Math.round(number(v.id, 0, 2 ** 32, 0)), name: text(v.name, 120) });
 const signal = (v: Record<string, unknown>, d: Signal): Signal => ({ sound: typeof v.sound === "string" ? text(v.sound, 120) : d.sound, say: flag(v.say, d.say) });
@@ -756,6 +762,11 @@ export function read(value: unknown): Settings {
     ) as Settings["alerts"],
     world: world(s.world),
     pets: pets(s.pets),
+    checklist: {
+      hidden: strings(object(s.checklist).hidden, 300),
+      off: strings(object(s.checklist).off, 100),
+      completed: one(object(s.checklist).completed, COMPLETED, d.checklist.completed),
+    },
     calls: calls(s.calls),
     events: { off: keys(object(s.events).off), before: Math.round(number(object(s.events).before, 0, 30, d.events.before)) },
     loot: { rules: [...new Set(numbers(object(s.loot).rules, 1, 2 ** 32, 500).map(Math.round))], least: Math.round(number(object(s.loot).least, 0, 5, d.loot.least)) },

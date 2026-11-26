@@ -22,9 +22,9 @@ export const bare = () => near.odyle[0] < 0 && !shown().length && !(settings.ody
 export function ResourcesOverlay() {
   const now = minutes();
   return (
-    <section class="left-strip glass ui-num" aria-label="Resources">
+    <section class="left-strip glass ui-num" aria-label="Odyle and tickets">
       <Feet of={["odyle", "entries"]} class="left-feet" />
-      <Show when={bare()}><span>Resources</span></Show>
+      <Show when={bare()}><span>Odyle and tickets</span></Show>
       <span class="left-reset">resets in {wait(resets(now()).daily)}</span>
     </section>
   );

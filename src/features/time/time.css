@@ -1,14 +1,15 @@
-/* Events: one line each, the bell lit for those you are told of. */
+/* Events: one line each, with the game's picture, the bell lit for those you are told of. */
 .event-list { display: grid; gap: 4px; margin-bottom: 12px; }
 .event-row {
-  display: grid; grid-template-columns: 20px minmax(0, 1fr) 130px 52px; align-items: center; gap: 12px; min-height: 40px; padding: 0 14px;
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) 130px 52px 20px; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px;
   border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--text) 3%, transparent); color: var(--text-muted);
   font: inherit; text-align: left; cursor: pointer; transition: background var(--motion), color var(--motion);
 }
 .event-row:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
 .event-row[aria-pressed="true"] { color: var(--text); }
-.event-row[aria-pressed="true"] > .ui-icon { color: var(--accent); }
-.event-row:not([aria-pressed="true"]) > .ui-icon { opacity: .4; }
+.event-row[aria-pressed="true"] > .event-bell { color: var(--accent); }
+.event-row:not([aria-pressed="true"]) > :is(.event-bell, .event-pic) { opacity: .4; }
+.event-pic { width: 30px; height: 30px; }
 .event-name { overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .event-row[data-open] .event-when { color: var(--success-ink); font-weight: 600; }
 .event-row > :last-child { text-align: right; }

@@ -27,7 +27,8 @@ test("your own name goes before the known one", () => {
   assert.equal(nameOf(1, [{ id: 1, name: "Keys", kind: "", show: true }]), "Keys");
   assert.equal(nameOf(4, [{ id: 4, name: "", kind: "ascension", show: true }]), "Ascension Trial");
   assert.deepEqual([kindOf(1, []), kindOf(1, [{ id: 1, name: "", kind: "rift", show: true }]), kindOf(2, [])], ["shugo", "rift", ""]);
-  assert.equal(nameOf(8, chosen), "");
+  assert.equal(nameOf(8, chosen), "Dimensional Invasion");
+  assert.equal(nameOf(7, chosen), "");
 });
 
 test("resets are at 07:00 UTC, the weekly one on Wednesday", () => {

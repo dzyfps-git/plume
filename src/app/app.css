@@ -23,11 +23,12 @@ html, body, #root { height: 100%; overflow: hidden; user-select: none; }
 .ui-nav-item[data-last] { margin-top: auto; }
 /* The menu in groups, each with a colour of its own. */
 .nav-group { display: flex; flex: none; align-items: center; gap: 7px; margin: 12px 8px 4px; color: var(--text-muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-.nav-group::before { width: 6px; height: 6px; border-radius: 2px; background: var(--group); content: ""; }
 .nav-group[data-last] { margin-top: auto; padding-top: 12px; }
 .ui-nav[data-rail] .nav-group { height: 1px; margin: 8px 6px; overflow: hidden; background: var(--border); color: transparent; }
-.ui-nav[data-rail] .nav-group::before { display: none; }
-.ui-nav-item[aria-current] { box-shadow: inset 3px 0 0 var(--group, var(--accent)); }
+/* The current page in one colour, its own: a neutral ground and a bar the colour of its icon. Headings are only words. */
+.ui-nav-item[aria-current] { background: color-mix(in srgb, var(--text) 9%, transparent); }
+.ui-nav-item[aria-current]::before { background: var(--page, var(--accent)); }
+.nav-group { cursor: default; user-select: none; }
 .ui-nav-item .ui-icon { color: color-mix(in oklab, var(--icon-color, var(--text-muted)) 78%, var(--text)); }
 .palette { margin-top: 12vh; }
 .palette::backdrop { background: rgb(0 0 0 / 28%); }
@@ -54,7 +55,7 @@ html, body, #root { height: 100%; overflow: hidden; user-select: none; }
 .run-left { margin-bottom: var(--space-4); }
 .line .ui-error { color: var(--danger-ink); }
 .line { display: flex; align-items: center; gap: var(--space-4); min-height: 40px; padding: var(--space-1) var(--space-2); }
-.alert-more { margin: 0 0 var(--space-2) var(--space-4); }
+
 .slide { display: flex; align-items: center; gap: var(--space-3); width: 240px; }
 .slide > span { min-width: 56px; text-align: right; }
 .key { min-width: 150px; }
@@ -134,6 +135,8 @@ label.ui-button:has(:focus-visible) { outline: 2px solid var(--accent); outline-
 .screen-map[data-grid][style*="url("] { background-size: cover; }
 .screen-box { position: absolute; min-width: 0; padding: 2px 4px; overflow: hidden; border: 1px solid var(--accent); border-radius: 4px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); font-size: 10px; line-height: 1.2; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: grab; }
 .screen-box:active { cursor: grabbing; }
+.screen-map[data-look] { margin: 0; touch-action: auto; }
+.screen-map[data-look] .screen-box { cursor: default; }
 .packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-2); }
 .pack { display: grid; gap: 2px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-large); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .pack:hover { background: var(--surface-hover); }
@@ -160,3 +163,20 @@ label.ui-button:has(:focus-visible) { outline: 2px solid var(--accent); outline-
 .group-index .ui-chip { min-height: 26px; padding: 0 10px; font-size: 12px; }
 .shell-body { display: contents; }
 .ui-panel .group { scroll-margin-top: 12px; }
+
+/* Settings rows: room to breathe, a hairline between them, and the control kept near its words. */
+.group { max-width: 880px; }
+:is(.line, .ui-switch-row) { min-height: 52px; padding: 10px 14px; gap: 24px; }
+:is(.line, .ui-switch-row) > .ui-switch-text { gap: 3px; line-height: 1.35; }
+:is(.line, .ui-switch-row) > .ui-switch-text small { line-height: 1.4; }
+.group > :is(.line, .ui-switch-row, .alert-more) + :is(.line, .ui-switch-row) { border-top: 1px solid color-mix(in srgb, var(--text) 6%, transparent); border-radius: 0; }
+/* What belongs to the row above sits under it, indented, behind a line. */
+.alert-more { margin: 0 14px 10px 30px; padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.alert-more > :is(.line, .ui-switch-row) { min-height: 40px; padding: 6px 10px; }
+/* A chosen filter is plain to see: its colour behind it, a bar at its edge, and a ticked box. */
+.side-row:is([aria-pressed="true"], [aria-checked="true"]) { background: color-mix(in srgb, var(--tint, var(--accent)) 20%, transparent); box-shadow: inset 2px 0 0 var(--tint, var(--accent)); font-weight: 600; }
+.side-row:disabled { opacity: .4; cursor: default; }
+.side-check { position: relative; width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--tint, var(--text-muted)) 80%, transparent); border-radius: 4px; }
+.side-row[aria-checked="true"] .side-check { border-color: var(--tint, var(--accent)); background: var(--tint, var(--accent)); }
+.side-row[aria-checked="true"] .side-check::after { content: ""; position: absolute; left: 3.5px; top: 0.5px; width: 4px; height: 8px; border: solid #101014; border-width: 0 2px 2px 0; rotate: 45deg; }
+.side-row { grid-template-columns: 14px minmax(0, 1fr) auto; min-height: 34px; }

@@ -2,6 +2,7 @@ import { For, Show } from "solid-js";
 import { settings } from "../../store";
 import { clock } from "../../ui/format";
 import { ticking } from "../../ui/now";
+import { GameIcon } from "../../ui/Pic";
 import { resets, wait } from "../resources/logic";
 import { elapsed, serverTime, upcoming } from "./logic";
 import "../resources/resources.css";
@@ -14,7 +15,7 @@ export function TimeOverlay() {
     <section class="left-strip glass ui-num" aria-label="Time bar">
       <b>{serverTime(now())}</b>
       <For each={upcoming(now(), settings.events.off).slice(0, 2)}>
-        {(n) => <span>{n.event.name} <span class="ui-muted">{n.open ? "open" : wait(n.start - now())}</span></span>}
+        {(n) => <span><span class="thing" aria-hidden="true"><GameIcon name={n.event.icon}>{null}</GameIcon></span> {n.event.name} <span class="ui-muted">{n.open ? "open" : wait(n.start - now())}</span></span>}
       </For>
       <Show when={c().start}><span><span class="ui-icon" aria-hidden="true">{"\ue916"}</span> {clock(elapsed(c(), now()))}</span></Show>
       <Show when={c().end > now()}><span><span class="ui-icon" aria-hidden="true">{"\ue121"}</span> {clock(c().end - now())}</span></Show>

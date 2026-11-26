@@ -1,11 +1,12 @@
 import { createEffect, createMemo, createResource, createSignal, For, on, Show } from "solid-js";
 import { change, settings } from "../../store";
 import { LAYERS, type Layer } from "../../store/settings";
+import { GameIcon } from "../../ui/Pic";
 import { Waiting } from "../../ui/Waiting";
 import { live } from "../../live/store";
 import { MapCanvas, type Picked } from "./Canvas";
-import { dropFile, petFile, useMap, useMaps, useYou, type You } from "./data";
-import { dropsOf, far, FINDABLE, FLAT, height, isFound, keyOf, LAYER_COLOURS, LAYER_NAMES, metres, SIDE_NAMES, teleportNear, type MapInfo, type WorldMap } from "./logic";
+import { dropFile, itemFile, petFile, useMap, useMaps, useYou, type You } from "./data";
+import { dropsOf, far, FINDABLE, FLAT, height, isFound, keyOf, LAYER_COLOURS, LAYER_NAMES, markOf, metres, SIDE_NAMES, teleportNear, type MapInfo, type WorldMap } from "./logic";
 import { routePoint, tickFound, toggleTrack, Tracker } from "./Tracker";
 import "./map.css";
 
@@ -42,18 +43,30 @@ export function MapPage() {
     <div class="page map-page">
       <header class="page-head">
         <h1>Map</h1>
-        <Show when={you()}>{(y) => <YouSaid you={y()} map={map()} />}</Show>
-        <button class="ui-chip" aria-pressed={settings.world.follow} onClick={() => set("follow")(!settings.world.follow)}>Follow me</button>
-        <button class="ui-chip" aria-pressed={settings.world.hideFound} onClick={() => set("hideFound")(!settings.world.hideFound)}>Hide found</button>
+        <Show when={you()} fallback={<small class="ui-muted map-said">{settings.world.follow ? "Follow me waits for your place: change zone, teleport or dash, and it shows." : "Your place shows once the game says it."}</small>}>
+          {(y) => <YouSaid you={y()} map={map()} />}
+        </Show>
+        <button class="ui-chip" aria-pressed={settings.world.follow} onClick={() => set("follow")(!settings.world.follow)}>
+          <span class="ui-icon" aria-hidden="true">{"\ue707"}</span>
+          Follow me
+          <Show when={settings.world.follow}><i class="follow-light" data-on={you()?.known || undefined} aria-label={you()?.known ? "following" : "waiting for your place"} /></Show>
+        </button>
+        <button class="ui-chip" aria-pressed={settings.world.hideFound} onClick={() => set("hideFound")(!settings.world.hideFound)}>
+          <span class="ui-icon" aria-hidden="true">{"\ue73e"}</span>
+          Hide found
+        </button>
       </header>
       <Show when={maps() !== null} fallback={<NoFiles />}>
         <div class="map-layers ui-row" role="group" aria-label="Layers">
-          <For each={LAYERS.filter((l) => counts()[l])}>
+          {/* Every layer always, so the row keeps its size from one map to the next; one this map lacks is dimmed. */}
+          <For each={LAYERS}>
             {(l) => (
-              <button class="ui-chip" aria-pressed={settings.world.layers.includes(l)} onClick={() => change((s) => (s.world.layers = s.world.layers.includes(l) ? s.world.layers.filter((x) => x !== l) : [...s.world.layers, l]))}>
-                <span class="dot" style={{ background: LAYER_COLOURS[l] }} />
+              <button class="ui-chip" disabled={!counts()[l]} aria-pressed={settings.world.layers.includes(l)} onClick={() => change((s) => (s.world.layers = s.world.layers.includes(l) ? s.world.layers.filter((x) => x !== l) : [...s.world.layers, l]))}>
+                <Show when={markOf(l, map()?.side)} fallback={<span class="dot" style={{ background: LAYER_COLOURS[l] }} />}>
+                  {(name) => <span class="chip-pic" aria-hidden="true"><GameIcon name={name()}><span class="dot" style={{ background: LAYER_COLOURS[l] }} /></GameIcon></span>}
+                </Show>
                 {LAYER_NAMES[l]}
-                <small class="ui-num ui-muted">{counts()[l]}</small>
+                <small class="ui-num ui-muted">{counts()[l] ?? 0}</small>
               </button>
             )}
           </For>
@@ -137,7 +150,7 @@ export function MapPage() {
 function NoFiles() {
   return (
     <div class="ui-empty">
-      <span class="ui-icon" aria-hidden="true">{""}</span>
+      <span class="ui-icon" aria-hidden="true">{"\ue909"}</span>
       <p>The map files are not on this PC. The engine's tools/world.py writes them into Plume's world folder.</p>
     </div>
   );
@@ -160,18 +173,29 @@ function Card(props: { map: WorldMap; picked: Picked; you: You | null; close: ()
   const t = () => props.picked.thing;
   const s = () => props.picked.spot;
   const key = () => keyOf(props.map.id, t());
-  const [drops] = createResource(() => (t().npc ? dropFile().catch(() => null) : null));
-  const [pets] = createResource(() => (t().pets?.length ? petFile().catch(() => null) : null));
+  // A card stays open while other marks are picked, so the files load whatever the first mark was.
+  const [drops] = createResource(() => dropFile().catch(() => null));
+  const [pets] = createResource(() => petFile().catch(() => null));
   const here = () => (props.you?.known && props.you.map === props.map.id ? props.you : null);
   const found = () => isFound(settings.world.found, key(), s());
   const teleport = () => (t().layer === "teleport" ? null : teleportNear(props.map, s()));
-  const [gathered] = createResource(() => (t().items?.length ? dropFile().catch(() => null) : null));
+  const [items] = createResource(() => itemFile().catch(() => null));
+  const iconOf = (item: number) => items()?.items[String(item)]?.[2];
+  /** Its picture: the pet whose souls it gives, else what it gives, else its kind of mark. */
+  const pic = () => {
+    const pet = t().pets?.length ? pets()?.pets.find((x) => x.id === t().pets![0]) : undefined;
+    return (pet?.market && iconOf(pet.market)) || (t().items?.length && iconOf(t().items![0])) || markOf(t().layer, props.map.side);
+  };
   return (
     <section class="map-card ui-card" aria-label={t().name}>
       <div class="map-card-head">
-        <span class="dot" style={{ background: LAYER_COLOURS[t().layer] }} />
+        <span class="thing-pic map-card-pic" style={{ "--tint": LAYER_COLOURS[t().layer] }} aria-hidden="true">
+          <Show when={pic()} fallback={<span class="dot" style={{ background: LAYER_COLOURS[t().layer] }} />}>
+            {(name) => <GameIcon name={name()}><span class="dot" style={{ background: LAYER_COLOURS[t().layer] }} /></GameIcon>}
+          </Show>
+        </span>
         <b>{t().name}</b>
-        <button class="ui-icon-button" aria-label="Close" onClick={props.close}>{""}</button>
+        <button class="ui-icon-button" aria-label="Close" onClick={props.close}>{"\ue711"}</button>
       </div>
       <small class="ui-muted">
         {LAYER_NAMES[t().layer]}
@@ -182,14 +206,14 @@ function Card(props: { map: WorldMap; picked: Picked; you: You | null; close: ()
       <small>{[props.map.regions[s().region]?.name, props.map.zones[s().zone]].filter((x, i, all) => x && all.indexOf(x) === i).join(", ") || "Outside the regions"}</small>
       <Show when={here()}>{(y) => <small class="ui-num">{far(metres(s(), y()))} from you {FLAT.includes(t().layer) ? "" : height(s().z - y().z)}</small>}</Show>
       <Show when={teleport()}>{(tp) => <small>Nearest teleport: {tp().name}, {far(tp().away)}</small>}</Show>
-      <Show when={pets()}>{(p) => <small class="souls">Souls of {t().pets!.map((id) => p().pets.find((x) => x.id === id)?.name).filter(Boolean).join(", ")}</small>}</Show>
-      <Show when={gathered() && t().items?.length}>
-        <small>Gives {(t().items ?? []).map((i) => gathered()!.items[i]?.[1]).filter(Boolean).join(", ")}</small>
+      <Show when={t().pets?.length ? pets() : null}>{(p) => <small class="souls">Souls of {t().pets!.map((id) => p().pets.find((x) => x.id === id)?.name).filter(Boolean).join(", ")}</small>}</Show>
+      <Show when={drops() && t().items?.length}>
+        <small>Gives {(t().items ?? []).map((i) => drops()!.items[i]?.[1]).filter(Boolean).join(", ")}</small>
       </Show>
       <Show when={drops() && t().npc && dropsOf(drops()!, t().npc!).length}>
         <ul class="map-drops">
           <For each={dropsOf(drops()!, t().npc!).slice(0, 8)}>
-            {(d) => <li data-grade={d.grade}><span>{d.name}</span><span class="ui-num ui-muted">{d.chance < 0.01 ? d.chance.toFixed(4) : d.chance.toFixed(2)}%</span></li>}
+            {(d) => <li data-grade={d.grade}><span class="thing-pic" data-small aria-hidden="true"><Show when={iconOf(d.item)}>{(name) => <GameIcon name={name()}>{null}</GameIcon>}</Show></span><span>{d.name}</span><span class="ui-num ui-muted">{d.chance < 0.01 ? d.chance.toFixed(4) : d.chance.toFixed(2)}%</span></li>}
           </For>
         </ul>
       </Show>

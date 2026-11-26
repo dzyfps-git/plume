@@ -39,7 +39,7 @@ export function health(r: Reads): Light[] {
 }
 
 /** The three things that have to be there, in the order they are needed. */
-export function lights(engine: { status: Status; message?: string }, state: Pick<State, "live" | "devices"> | null, game: string): Light[] {
+export function lights(engine: { status: Status; message?: string }, state: Pick<State, "live" | "devices"> | null, game: string, you = true): Light[] {
   const running = engine.status === "running" && !!state;
   // The engine is what knows the driver. Its words about a missing one say where to get it.
   const missing = engine.status === "failed" && /install it from/i.test(engine.message ?? "");
@@ -62,6 +62,10 @@ export function lights(engine: { status: Status; message?: string }, state: Pick
   return [
     driver,
     program,
-    running && state.live ? { name: "Game", light: "good", about: "Connected." } : { name: "Game", light: "wait", about: `Start ${game} and enter the world.` },
+    running && state.live
+      ? you
+        ? { name: "Game", light: "good", about: "Connected." }
+        : { name: "Game", light: "wait", about: "Connected, waiting for your character: change zone, or go to character select and log back in." }
+      : { name: "Game", light: "wait", about: `Start ${game} and enter the world.` },
   ];
 }

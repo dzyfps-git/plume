@@ -12,8 +12,8 @@ export const KIND_NAMES: Record<Kind, string> = {
 /** The parts Odyle Energy is shown in. */
 export const ODYLE_NAMES: Record<Settings["odyle"]["parts"][number], string> = { energy: "Energy", charged: "Charged", cap: "Cap", runs: "Runs", time: "Time" };
 
-/** Those the engine knows for sure. The game gives the others a number and no name. */
-export const KNOWN: Record<number, Kind> = { 1: "shugo" };
+/** Those known for sure, as A2Tools and Questlog found them. The game gives the others a number and no name. */
+export const KNOWN: Record<number, Kind> = { 1: "shugo", 4: "nightmare", 8: "invasion", 101: "fissure", 80_000_001: "ascension" };
 
 const HOUR = 3_600_000;
 

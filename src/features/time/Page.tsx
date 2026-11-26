@@ -3,6 +3,7 @@ import { change, settings } from "../../store";
 import { clock, full } from "../../ui/format";
 import { Line, Slide } from "../../ui/Line";
 import { ticking } from "../../ui/now";
+import { GameIcon } from "../../ui/Pic";
 import { resets, wait } from "../resources/logic";
 import "../resources/resources.css";
 import "./time.css";
@@ -37,10 +38,11 @@ export function TimePage() {
           <For each={rows()}>
             {(n) => (
               <button class="event-row" aria-pressed={!off(n.event.id)} data-open={n.open || undefined} onClick={() => flip(n.event.id)}>
-                <span class="ui-icon" aria-hidden="true">{"\uea8f"}</span>
+                <span class="thing-pic event-pic" aria-hidden="true"><GameIcon name={n.event.icon}><span class="ui-icon">{"\uea8f"}</span></GameIcon></span>
                 <span class="event-name">{n.event.name}</span>
                 <span class="event-when ui-num">{n.open ? "Open now" : `in ${wait(n.start - now())}`}</span>
                 <span class="ui-num ui-muted">{serverTime(n.start)}</span>
+                <span class="ui-icon event-bell" aria-hidden="true">{"\uea8f"}</span>
               </button>
             )}
           </For>

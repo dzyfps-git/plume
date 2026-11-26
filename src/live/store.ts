@@ -21,6 +21,9 @@ const listeners = new Set<(h: Happened) => void>();
 
 /** True when the game is connected. */
 export const live = () => engine().status === "running" && !!state()?.live;
+/** The game talks, but has not yet said who you are: a zone change or a trip to character select makes it say. */
+export const waitingForYou = () => live() && !near.you?.name;
+export const WAIT_FOR_YOU = "Change zone, or go to character select and log back in, so Plume can read your game data.";
 
 /** Rows keep their place in the page by player, so a bar moves instead of being drawn again. */
 const showFight = (next: Fight) => setFight(reconcile(structuredClone(next), { key: "id" }));

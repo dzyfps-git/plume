@@ -92,7 +92,7 @@ test("the footer says what you chose and what is known", () => {
   const said = (which: Footer[], n: typeof near, e: typeof NO_ENTRIES) =>
     footer(which, n, { total: 1_500, own: [200, 88, 121] }, e, strip(e, n.odyle, chosen), { ...DEFAULTS, odyleRun: 80 }).map((f) => [f.name, f.icon ?? f.thing ?? "", f.value, f.bonus ?? "", f.more].join(" ").trim());
   assert.deepEqual(said(["ping", "total", "flight", "odyle", "entries", "kina", "points", "crit", "back"], near, entries), [
-    "Ping ping 40  ms", "Total  1.50K", "Odyle Energy odyle 120 +1,335 18 runs", "Shugo Festival keys shugo 5 +1", "Mine  2", "Kina today kina 182K", "Crit  44%", "Back  61%",
+    "Ping ping 40  ms", "Total  1.50K", "Odyle Energy odyle 120 +1,335 18 runs", "Shugo Festival keys shugo 5 +1", "Mine nightmare 2", "Kina today kina 182K", "Crit  44%", "Back  61%",
   ]);
   assert.deepEqual(said(["ping", "entries", "kina"], { ...near, ping: -1 }, NO_ENTRIES), []);
 });

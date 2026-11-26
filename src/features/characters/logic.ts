@@ -13,6 +13,8 @@ export interface Kept {
   duty: Entries["duty"];
   points: Entries["points"];
   kinah: number;
+  shop?: Entries["shop"];
+  crafts?: Entries["crafts"];
   /** The game's number for the map, 0 when not known. */
   map: number;
   /** Combat Power and item level as last said. 0 or missing when not known. */

@@ -23,3 +23,9 @@ test("each light says what is missing", () => {
   assert.equal(of({ status: "running" }, { live: false, devices: 0 }), "bad good wait");
   assert.equal(of({ status: "running" }, { live: true, devices: 2 }), "good good good");
 });
+
+test("connected but not yet knowing you waits, and says what to do", () => {
+  const game = lights({ status: "running" }, { live: true, devices: 2 }, "Game", false)[2];
+  assert.equal(game.light, "wait");
+  assert.match(game.about, /character select/);
+});

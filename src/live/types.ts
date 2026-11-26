@@ -299,6 +299,9 @@ export interface Entries {
   duty: [done: number, taken: number];
   points: [now: number, most: number];
   kinah: number;
+  /** Bought this week by the shop's item, and made by recipe. Missing from engines before 0.8. */
+  shop?: [id: number, bought: number][];
+  crafts?: [id: number, made: number][];
 }
 
 /** Something that just happened. */

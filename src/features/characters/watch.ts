@@ -33,7 +33,7 @@ export function followCharacters() {
       const you = near.you;
       if (sampling() || !you?.name) return;
       const e = entries();
-      const now = { odyle: [...near.odyle] as Kept["odyle"], counts: e.counts, duty: e.duty, points: e.points, kinah: e.kinah, map: place()?.map ?? 0 };
+      const now = { odyle: [...near.odyle] as Kept["odyle"], counts: e.counts, duty: e.duty, points: e.points, kinah: e.kinah, shop: e.shop ?? [], crafts: e.crafts ?? [], map: place()?.map ?? 0 };
       untrack(() => {
         const was = kept()[you.name];
         // A new character's entries arrive after its name: what is not said yet stays as it was.

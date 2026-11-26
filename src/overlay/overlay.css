@@ -59,3 +59,10 @@ html, body, #root { height: 100%; background: transparent; overflow: hidden; use
 .line { display: flex; align-items: center; gap: var(--space-4); min-height: 40px; padding: var(--space-1) var(--space-2); }
 .slide { display: flex; align-items: center; gap: var(--space-3); width: 240px; }
 .slide > span { min-width: 56px; text-align: right; }
+
+/* Said over the game while Plume waits for your character, as a toast at the top. */
+.game-toast { position: fixed; top: 64px; left: 50%; z-index: 5; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; width: min(400px, calc(100vw - 32px)); padding: 12px 12px 12px 16px; translate: -50% 0; border: 1px solid color-mix(in srgb, var(--grade-unique) 70%, transparent); border-radius: 10px; background: rgb(14 14 18 / 92%); box-shadow: 0 10px 30px rgb(0 0 0 / 45%); color: var(--text); animation: toast-in 240ms ease-out; }
+.game-toast > .ui-icon { margin-top: 2px; color: var(--grade-unique); font-size: 18px; }
+.game-toast b { display: block; color: var(--grade-unique); font-size: 15px; font-weight: 650; }
+.game-toast small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; }
+@keyframes toast-in { from { opacity: 0; translate: -50% -8px; } }
