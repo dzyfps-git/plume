@@ -1,12 +1,12 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { engineSend } from "../../api";
-import { fight, skills } from "../../live/store";
+import { fight, near, skills } from "../../live/store";
 import { change, hideNames, settings } from "../../store";
 import { MODES, VIEWS, type Mode, type View } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, short } from "../../ui/format";
 import { Thing } from "../../ui/icons";
-import { label, partyDps, power, ranked, VIEW_NAMES } from "./logic";
+import { label, partyDps, power, ranked, VIEW_NAMES, whose } from "./logic";
 import { Skills } from "./Skills";
 import { Waiting } from "../../ui/Waiting";
 import "./meter.css";
@@ -23,7 +23,7 @@ const MODE_NAMES: Record<Mode, string> = {
 export function MeterPage() {
   const [picked, setPicked] = createSignal<number>();
   const row = createMemo(() => fight.rows.find((r) => r.id === picked()) ?? fight.rows.find((r) => r.you) ?? fight.rows[0]);
-  const list = createMemo(() => ranked(fight, settings.meter.view));
+  const list = createMemo(() => ranked({ rows: whose(fight.rows, settings.meter.who, new Set(near.party.map((u) => u.id))), ms: fight.ms }, settings.meter.view));
   // The engine works out the skills of one player, and only while they are looked at.
   const watched = createMemo(() => row()?.id);
   createEffect(() => void engineSend({ cmd: "watch", id: watched() ?? null }).catch(console.error));
@@ -48,6 +48,11 @@ export function MeterPage() {
           onChange={(e) => change((s) => (s.meter.view = e.currentTarget.value as View))}
         >
           <For each={VIEWS}>{(view) => <option value={view}>{VIEW_NAMES[view]}</option>}</For>
+        </select>
+        <select class="ui-select" aria-label="Whose rows show" value={settings.meter.who} onChange={(e) => change((s) => (s.meter.who = e.currentTarget.value as typeof s.meter.who))}>
+          <option value="everyone">Everyone</option>
+          <option value="party">Your party</option>
+          <option value="me">You alone</option>
         </select>
         <button class="ui-button" onClick={() => void engineSend({ cmd: "reset" })}>
           <span class="ui-icon" aria-hidden="true">{""}</span>

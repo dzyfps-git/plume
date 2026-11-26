@@ -75,7 +75,7 @@ export function HistoryPage() {
         when={list().length}
         fallback={
           <div class="ui-empty">
-            <span class="ui-icon" aria-hidden="true">{""}</span>
+            <span class="ui-icon" aria-hidden="true">{"\ue81c"}</span>
             <p>{fights().length ? "No fight matches." : "Your boss and dummy fights are kept here. Only your own part of them is written down."}</p>
           </div>
         }

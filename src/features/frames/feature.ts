@@ -3,7 +3,7 @@ import { settings } from "../../store";
 import { place } from "../../store/settings";
 import type { Feature } from "../types";
 import { GROUP } from "./logic";
-import { FoeOverlay, ForceOverlay, PartyOverlay, TargetOverlay, YouOverlay } from "./Overlays";
+import { CardOverlay, FoeOverlay, ForceOverlay, PartyOverlay, TargetOverlay, YouOverlay } from "./Overlays";
 
 /** Room for the icons beside a card. */
 const BESIDE = () => settings.party.most * 28;
@@ -52,5 +52,14 @@ export const force: Feature = {
   overlay: {
     view: ForceOverlay, group: "Health", about: "The same for more than a party, in groups side by side, in a place of its own.", width: () => (settings.party.width + (settings.party.icons === "beside" ? BESIDE() : 0) + 12) * 2,
     place: { on: false, x: 0, y: 0.3, scale: 1 }, empty: () => near.party.length <= GROUP,
+  },
+};
+export const card: Feature = {
+  id: "card",
+  name: "Party card",
+  icon: "\ue716",
+  overlay: {
+    view: CardOverlay, group: "Health", about: "The party's average Combat Power, and each one's item level and Combat Power. For a dungeon lobby.", width: 240,
+    place: { on: false, x: 0.5, y: 0.2, scale: 1 }, empty: () => near.party.length < 2,
   },
 };

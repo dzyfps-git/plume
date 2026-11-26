@@ -4,7 +4,7 @@ import { demoFight, demoSkills } from "../../live/demo.ts";
 import { NO_ENTRIES, type Row } from "../../live/types.ts";
 import { DEFAULTS, VIEWS, type Footer, type Resource } from "../../store/settings.ts";
 import { strip } from "../resources/logic.ts";
-import { against, BEST, bursts, footer, gain, gap, odyleFoot, label, length, lines, partyDps, power, ranked, shown, signed, withBest } from "./logic.ts";
+import { against, BEST, bursts, footer, gain, gap, odyleFoot, label, length, lines, partyDps, power, ranked, shown, signed, whose, withBest } from "./logic.ts";
 
 const row = (id: number, damage: number, you = false) => ({ id, name: you ? "Me" : `P${id}`, damage, you }) as Row;
 const rows = [row(1, 100), row(2, 50), row(3, 25), row(4, 10, true)];
@@ -131,4 +131,12 @@ test("a burst is far above one's own average", () => {
   for (let s = 21; s <= 24; s++) at(s * 1000, 2_000 + (s - 20) * 400, s * 100);
   assert.deepEqual([...at(25_000, 4_000, 2_500)], [1]);
   assert.equal(at(1_000, 100, 100).size, 0);
+});
+
+test("whose rows show: everyone's, the party's with you, or yours alone", () => {
+  const rows = [{ id: 1, you: true }, { id: 2, you: false }, { id: 3, you: false }];
+  const party = new Set([1, 2]);
+  assert.deepEqual(whose(rows, "everyone", party).map((r) => r.id), [1, 2, 3]);
+  assert.deepEqual(whose(rows, "party", party).map((r) => r.id), [1, 2]);
+  assert.deepEqual(whose(rows, "me", party).map((r) => r.id), [1]);
 });

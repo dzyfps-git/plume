@@ -229,9 +229,19 @@ pub fn watch(app: AppHandle) {
     std::thread::spawn(move || {
         let mut shown = false;
         let mut seen = Instant::now();
+        // The game counts as new when it was not in front for as long as the overlays sleep.
+        let (mut gone, mut front_at) = (true, Instant::now());
         loop {
             let state = app.state::<Overlay>();
             let front = game_in_front();
+            if front {
+                if gone {
+                    crate::game_came(&app);
+                }
+                (gone, front_at) = (false, Instant::now());
+            } else if front_at.elapsed() > SLEEP {
+                gone = true;
+            }
             let wanted = state.editing.load(SeqCst) != NONE
                 || state.on.load(SeqCst) && (front || !state.only_in_game.load(SeqCst));
             if wanted && let Some(w) = overlay(&app) {

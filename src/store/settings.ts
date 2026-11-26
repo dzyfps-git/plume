@@ -5,7 +5,7 @@ import type { Clock } from "../features/time/logic.ts";
 
 export const VERSION = 1;
 export const MODES = ["bossTargets", "lastHitByMe", "mostRecent", "mostDamage", "allTargets"] as const;
-export const FPS = [30, 60, 120, 144, 0] as const;
+export const FPS = [15, 30, 60, 120, 144, 0] as const;
 export const STYLES = ["bar", "line", "cards", "gauge", "table"] as const;
 export const ACCENTS = ["", "ocean", "forest", "ember", "rose", "mono"] as const;
 /** What a key over the game can do. `pressed` in `src-tauri/src/main.rs` does it. */
@@ -48,6 +48,10 @@ export const TEXTS = [1, 1.15, 1.3] as const;
 export const LAYERS = ["trace", "cube", "gather", "monster", "boss", "npc", "teleport", "village", "sealed", "dungeon", "portal", "rift", "stronghold", "monolith", "quest"] as const;
 /** Levels a pet can reach. */
 export const GOALS = [1, 2, 3] as const;
+/** What you are doing, for layouts that come by themselves. */
+export const ACTIVITIES = ["solo", "party", "force", "pvp", "dummy"] as const;
+/** Our own looks for names you choose, over a bar. */
+export const NAME_STYLES = ["glow", "gold", "frost", "ember", "dawn", "shadow"] as const;
 
 export type Mode = (typeof MODES)[number];
 export type View = (typeof VIEWS)[number];
@@ -59,6 +63,17 @@ export type Action = (typeof ACTIONS)[number];
 export type Button = (typeof BUTTONS)[number];
 export type Tone = (typeof TONES)[number];
 export type Layer = (typeof LAYERS)[number];
+export type Activity = (typeof ACTIVITIES)[number];
+export type NameStyle = (typeof NAME_STYLES)[number];
+
+/** The overlays' places under a name, which may come by itself for an activity, a character, or both. */
+export interface Layout {
+  name: string;
+  places: Record<string, Place>;
+  /** Empty is any. */
+  when: Activity | "";
+  who: string;
+}
 
 /** Where an overlay sits: 0 is the left or top edge of the screen, 1 the right or bottom. */
 export interface Place {
@@ -236,6 +251,8 @@ export interface Meter {
   small: boolean;
   /** Lets every click through to the game, but for its buttons. */
   locked: boolean;
+  /** Whose rows show. */
+  who: "everyone" | "party" | "me";
   buttons: Button[];
   buttonsLocked: Button[];
   /** You first, and you when there is no fight. */
@@ -284,7 +301,13 @@ export interface Settings {
   voice: { on: boolean; volume: number; name: string; lead: number; mute: boolean };
   bosses: Record<string, BossPlan>;
   hotkeys: Record<Action, string>;
-  overlay: { on: boolean; onlyInGame: boolean; opacity: number; hideEmpty: boolean; /** Of all of them. */ size: number; snap: boolean };
+  overlay: {
+    on: boolean; onlyInGame: boolean; opacity: number; hideEmpty: boolean; /** Of all of them. */ size: number; snap: boolean;
+    /** Seconds that overlays shown in fights stay after one. */
+    linger: number;
+    /** What starts a fight for them: the game's word, your hits, or the party's. */
+    fightBy: "game" | "you" | "party";
+  };
   meter: Meter;
   look: Look;
   /** Colours of your own, by what they say and by class. */
@@ -292,7 +315,7 @@ export interface Settings {
   colors: Partial<Record<Exclude<Job, "">, string>>;
   /** When a fight is over, in seconds without a hit, and what is shown of which. */
   fights: { end: number; bossEnd: number; after: "keep" | "clear"; only: (typeof ONLY)[number]; keep: number };
-  training: { auto: boolean; seconds: number };
+  training: { auto: boolean; seconds: number; /** Damage a second to reach. 0 is none. */ goal: number };
   party: { columns: 1 | 2; width: number; height: number; icons: "on" | "beside" | "off"; most: number; order: "game" | "role" | "name"; you: boolean; health: "percent" | "number" | "both" | "off"; mark: boolean; power: boolean; low: number };
   cooldowns: { ready: boolean; dim: number; size: number };
   buffs: { as: "tiles" | "bars"; items: "with" | "apart" | "off"; skip: Named[] };
@@ -336,6 +359,19 @@ export interface Settings {
   startup: boolean;
   /** Closes the overlay window while the game is closed. */
   sleep: boolean;
+  /** Animations and moving bars. Off is still. */
+  motion: boolean;
+  /** Numbers change once a second while Plume takes much of the CPU. */
+  lighten: boolean;
+  /** What closing the main window does. */
+  close: "tray" | "quit";
+  /** The page that opens as the game starts. Empty is none. */
+  gameOpens: string;
+  layouts: Layout[];
+  /** Layouts change by themselves, as their activity and character say. */
+  layoutAuto: boolean;
+  /** Names you chose, and the look of each. */
+  names: Record<string, NameStyle>;
 }
 
 export const DEFAULTS: Settings = {
@@ -355,18 +391,18 @@ export const DEFAULTS: Settings = {
     // Empty, so that none takes a key you use.
     compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "", second: "", stopwatch: "",
   },
-  overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true },
+  overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true, linger: 0, fightBy: "game" },
   meter: {
     style: "bar", rows: 8, left: "share", right: "", full: false, icons: true, corner: "power", corners: "all", head: true, boss: true, clock: true, ghost: false,
     hideNames: false, view: "damage", edge: "bottom", footer: ["ping", "odyle", "entries"], footerLocked: true, footerSmall: ["ping", "odyle"],
     compact: true, small: false, locked: true, buttons: ["view", "clear", "history", "compact", "lock", "menu"], buttonsLocked: [],
-    top: false, always: false, gap: true, burst: true, dead: true, casts: false, buffShare: false,
+    top: false, always: false, gap: true, burst: true, dead: true, casts: false, buffShare: false, who: "everyone",
   },
   look: { theme: "glass", background: "", width: 280, height: 25, font: "house", size: 1, outline: "", thin: false, mark: 0, shade: 0, strong: false },
   tones: {},
   colors: {},
   fights: { end: 30, bossEnd: 45, after: "keep", only: "", keep: 0 },
-  training: { auto: true, seconds: 60 },
+  training: { auto: true, seconds: 60, goal: 0 },
   party: { columns: 1, width: 260, height: 32, icons: "on", most: 4, order: "game", you: true, health: "percent", mark: true, power: false, low: 25 },
   cooldowns: { ready: true, dim: 0.5, size: 36 },
   buffs: { as: "tiles", items: "with", skip: [] },
@@ -410,6 +446,13 @@ export const DEFAULTS: Settings = {
   loot: { rules: [], least: 0 },
   startup: false,
   sleep: true,
+  motion: true,
+  lighten: false,
+  close: "tray",
+  gameOpens: "",
+  layouts: [],
+  layoutAuto: true,
+  names: {},
 };
 
 const object = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -570,6 +613,8 @@ export function read(value: unknown): Settings {
       hideEmpty: flag(overlay.hideEmpty, d.overlay.hideEmpty),
       size: number(overlay.size, 0.6, 1.6, d.overlay.size),
       snap: flag(overlay.snap, d.overlay.snap),
+      linger: Math.round(number(overlay.linger, 0, 60, d.overlay.linger)),
+      fightBy: one(overlay.fightBy, ["game", "you", "party"] as const, d.overlay.fightBy),
     },
     meter: {
       style: one(meter.style, STYLES, m.style),
@@ -602,6 +647,7 @@ export function read(value: unknown): Settings {
       dead: flag(meter.dead, m.dead),
       casts: flag(meter.casts, m.casts),
       buffShare: flag(meter.buffShare, m.buffShare),
+      who: one(meter.who, ["everyone", "party", "me"] as const, m.who),
     },
     look: {
       theme: one(look.theme as Look["theme"], THEMES, d.look.theme),
@@ -625,7 +671,11 @@ export function read(value: unknown): Settings {
       only: one(fights.only as Settings["fights"]["only"], ONLY, d.fights.only),
       keep: one(fights.keep as number, KEEP as readonly number[], d.fights.keep),
     },
-    training: { auto: flag(training.auto, d.training.auto), seconds: one(training.seconds as number, RUNS as readonly number[], d.training.seconds) },
+    training: {
+      auto: flag(training.auto, d.training.auto),
+      seconds: one(training.seconds as number, RUNS as readonly number[], d.training.seconds),
+      goal: Math.round(number(training.goal, 0, 1e9, d.training.goal)),
+    },
     party: {
       columns: one(party.columns as 1 | 2, [1, 2] as const, d.party.columns),
       width: Math.round(number(party.width, 160, 420, d.party.width)),
@@ -693,6 +743,18 @@ export function read(value: unknown): Settings {
     clock: { start: time(object(s.clock).start), stopped: time(object(s.clock).stopped), end: time(object(s.clock).end) },
     startup: flag(s.startup, d.startup),
     sleep: flag(s.sleep, d.sleep),
+    motion: flag(s.motion, d.motion),
+    lighten: flag(s.lighten, d.lighten),
+    close: one(s.close, ["tray", "quit"] as const, d.close),
+    gameOpens: typeof s.gameOpens === "string" && /^[a-z]{0,20}$/.test(s.gameOpens) ? s.gameOpens : d.gameOpens,
+    layouts: list(s.layouts, 30).map((l) => ({
+      name: text(l.name, 40) || "Layout",
+      places: keyed(l.places, 80, (p) => (p && typeof p === "object" ? place(p, { on: false, x: 0.5, y: 0.5, scale: 1 }) : undefined)),
+      when: one<Layout["when"]>(l.when, ["", ...ACTIVITIES], ""),
+      who: text(l.who, 40),
+    })),
+    layoutAuto: flag(s.layoutAuto, d.layoutAuto),
+    names: keyed(s.names, 100, (v) => (NAME_STYLES.includes(v as NameStyle) ? (v as NameStyle) : undefined)),
   };
 }
 

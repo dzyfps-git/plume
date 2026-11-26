@@ -115,6 +115,30 @@ the Daevanion boards of eight classes; a node is taken next to one already taken
 read `skins.json`, `boards.json`, `recipes.json` and `names.json` from the `world` folder, which the engine's `tools/db.py`
 makes. History's "Your week" shows the last seven days: time fought, kills, damage and records.
 
+Home, first in the menu, shows whether live data is on, the next event, the daily reset, Odyle Energy, what is on over the
+game, and a way into every page.
+
+A layout is a named set of overlay places, saved from where they are now. It can be worn by hand, given as a code
+(`plume:` and the places in base64) and brought in from one. With "Change by themselves", a layout that names an activity
+(alone, a party, a Force, against players, a dummy), a character, or both, is worn when that fits; the closest fit wins,
+once each time what fits changes. The Overlays page also shows every overlay as a box on a picture of the screen, to drag,
+with a grid to snap to; your own screenshot can stand behind them, kept small on this PC.
+
+What starts a fight for the overlays shown in fights is the game's word, your own hits or the party's, and they can stay
+for up to a minute after one. The meter can show everyone, your party or you alone. Names you choose get a style of their
+own (glow, gold, frost, ember, dawn, shadow) on the meter and the party frames, while names show. A style pack changes the
+look of every overlay, the alerts' sounds and the pictures in one choice, and the last one can be put back. The party card
+shows the party's average Combat Power and each one's item level and Combat Power, for a dungeon lobby.
+
+A training run can have a goal in damage a second; runs can be named and put in groups, kept on this PC. Bars can move at
+15 frames a second, animations can be turned off, and Plume can go lighter by itself: while its own process takes more than
+6% of the CPU, numbers change once a second, until it takes less than 3%. Only Plume's own process is measured
+(`GetProcessTimes`), never another program's. Closing the window can quit Plume instead of keeping the overlays, and a page
+can open as the game starts, minimized so the game keeps the screen.
+
+Settings, About, copies the `world` and `icons` folders to a folder on the Desktop, with a note on where a friend puts them.
+They are made from public data and stay out of the installer.
+
 Timers and mechanics you set for a boss are keyed by the skill the boss used. Since the engine names each boss skill by
 its own number, plans saved before then under a family number (such as 1600000) no longer match and need setting again.
 

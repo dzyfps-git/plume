@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod cost;
 mod engine;
 mod hotkeys;
 mod startup;
@@ -9,7 +10,7 @@ mod windowing;
 use engine::Engine;
 use serde_json::{Value, json};
 use std::path::PathBuf;
-use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::{Arc, Mutex};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -24,7 +25,15 @@ struct Saved {
     settings: Mutex<Value>,
     /// The page the main window opens on, when a key asked for one.
     page: Mutex<String>,
+    /// It opens minimized, without taking the screen from the game.
+    quiet: AtomicBool,
 }
+
+/// Numbers change once a second, because Plume took much of the CPU.
+static LIGHT: AtomicBool = AtomicBool::new(false);
+/// Above this share of the CPU Plume makes itself lighter, below the other it is itself again. In percent.
+const HEAVY: f64 = 6.0;
+const EASY: f64 = 3.0;
 
 /// Everything a page needs to draw its first frame.
 #[tauri::command]
@@ -34,6 +43,7 @@ fn start_state(app: AppHandle, window: tauri::WebviewWindow, saved: State<Saved>
     now["settings"] = settings;
     if window.label() == windowing::MAIN {
         now["page"] = std::mem::take(&mut *saved.page.lock().unwrap_or_else(|p| p.into_inner())).into();
+        now["quiet"] = saved.quiet.swap(false, SeqCst).into();
     }
     now["editing"] = windowing::MODES[usize::from(app.state::<Overlay>().editing.load(SeqCst))].into();
     now
@@ -61,7 +71,10 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
     {
         eprintln!("{e}");
     }
-    let _ = engine.send(json!({ "cmd": "rate", "ms": settings["updateMs"].as_i64().unwrap_or(250) }));
+    if settings["lighten"] != true {
+        LIGHT.store(false, SeqCst);
+    }
+    let _ = engine.send(json!({ "cmd": "rate", "ms": rate(settings) }));
     // Only when it changed: a training run has a mode of its own until its page closes.
     if before["mode"] != settings["mode"] {
         let _ = engine.send(json!({ "cmd": "mode", "mode": settings["mode"].as_str().unwrap_or("bossTargets") }));
@@ -157,6 +170,33 @@ fn open_page(app: AppHandle, page: String) {
         *app.state::<Saved>().page.lock().unwrap_or_else(|p| p.into_inner()) = page;
     }
     windowing::show_main(&app);
+}
+
+/// How often the engine says its numbers: as set, or once a second while Plume is made lighter.
+fn rate(settings: &Value) -> i64 {
+    if LIGHT.load(SeqCst) { 1000 } else { settings["updateMs"].as_i64().unwrap_or(250) }
+}
+
+/// Plume's share of the CPU, and whether it made itself lighter.
+#[tauri::command]
+fn cost() -> Value {
+    json!({ "cpu": f64::from(cost::CPU.load(SeqCst)) / 10.0, "light": LIGHT.load(SeqCst) })
+}
+
+/// The game is there: the page you chose opens, minimized if the window was closed, so the game keeps the screen.
+pub(crate) fn game_came(app: &AppHandle) {
+    let page = app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner())["gameOpens"].as_str().unwrap_or_default().to_string();
+    if page.is_empty() {
+        return;
+    }
+    if app.get_webview_window(windowing::MAIN).is_some() {
+        let _ = app.emit("go", &page);
+        return;
+    }
+    let saved = app.state::<Saved>();
+    *saved.page.lock().unwrap_or_else(|p| p.into_inner()) = page;
+    saved.quiet.store(true, SeqCst);
+    windowing::show_main(app);
 }
 
 /// Opens the page for another screen, or closes it.
@@ -281,6 +321,37 @@ fn show_folder(folder: PathBuf) -> Result<(), String> {
     std::process::Command::new("explorer").arg(folder).spawn().map(drop).map_err(|e| e.to_string())
 }
 
+/// Plume's own data folder: where a friend puts the `world` and `icons` folders you give them.
+#[tauri::command(async)]
+fn open_data_folder(app: AppHandle) -> Result<(), String> {
+    show_folder(app.path().app_local_data_dir().map_err(|e| e.to_string())?)
+}
+
+/// Copies the maps, names and pictures, made from public data on this PC, into a folder on the Desktop to give a friend.
+/// Your settings, fights and characters stay here. Gives back how many files were copied.
+#[tauri::command(async)]
+fn share_data(app: AppHandle) -> Result<usize, String> {
+    let from = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
+    let to = app.path().desktop_dir().map_err(|e| e.to_string())?.join("Plume data for a friend");
+    let mut copied = 0;
+    for part in ["world", "icons"] {
+        let (source, target) = (from.join(part), to.join(part));
+        std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+        for entry in std::fs::read_dir(&source).map_err(|e| format!("{part}: {e}"))?.flatten() {
+            if entry.file_type().is_ok_and(|t| t.is_file()) {
+                std::fs::copy(entry.path(), target.join(entry.file_name())).map_err(|e| e.to_string())?;
+                copied += 1;
+            }
+        }
+    }
+    let note = "Put the folders world and icons into Plume's data folder: in Plume, Settings, About, \"Open the data folder\".
+                They are made from public data with their own terms (GPL-3.0, CC BY-NC 4.0): for you, not for sale or for others.
+";
+    std::fs::write(to.join("Read me.txt"), note).map_err(|e| e.to_string())?;
+    show_folder(to)?;
+    Ok(copied)
+}
+
 #[tauri::command(async)]
 fn open_engine_folder(app: AppHandle) -> Result<(), String> {
     show_folder(engine_folder(&app)?)
@@ -398,7 +469,10 @@ fn main() {
             pictures,
             picture,
             open_pictures_folder,
-            world_file
+            world_file,
+            cost,
+            open_data_folder,
+            share_data
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -409,7 +483,7 @@ fn main() {
             };
             let path = folder.join("settings.json");
             let settings = storage::load(&path).unwrap_or(Value::Null);
-            app.manage(Saved { path, settings: Mutex::new(settings.clone()), page: Mutex::default() });
+            app.manage(Saved { path, settings: Mutex::new(settings.clone()), page: Mutex::default(), quiet: AtomicBool::new(false) });
 
             let name = "plume-engine.exe";
             let mut places: Vec<PathBuf> = std::env::var_os("PLUME_ENGINE").map(PathBuf::from).into_iter().collect();
@@ -446,6 +520,16 @@ fn main() {
             if settings["second"]["open"] == true {
                 open_second(&handle);
             }
+            let light = handle.clone();
+            cost::watch(move |percent| {
+                let settings = light.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
+                let was = LIGHT.load(SeqCst);
+                let now = settings["lighten"] == true && if was { percent > EASY } else { percent > HEAVY };
+                if now != was {
+                    LIGHT.store(now, SeqCst);
+                    let _ = light.state::<Arc<Engine>>().send(json!({ "cmd": "rate", "ms": rate(&settings) }));
+                }
+            });
             windowing::point(handle.clone());
             windowing::watch(handle);
             Ok(())
@@ -462,6 +546,12 @@ fn main() {
             for command in [json!({ "cmd": "limit", "ms": 0 }), json!({ "cmd": "mode", "mode": mode }), json!({ "cmd": "watch" })] {
                 let _ = engine.send(command);
             }
+        }
+        // Unless you chose that closing it quits.
+        RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. }
+            if label == windowing::MAIN && app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner())["close"] == "quit" =>
+        {
+            app.exit(0);
         }
         RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. } if label == windowing::SECOND => {
             let (app, place) = (app.clone(), windowing::second_at(app));

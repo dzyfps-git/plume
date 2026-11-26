@@ -1,14 +1,14 @@
 import { createMemo, For, Show } from "solid-js";
 import { near } from "../../live/store";
 import type { Aura, Unit } from "../../live/types";
-import { hideNames, settings } from "../../store";
+import { hideNames, nameStyle, settings } from "../../store";
 import { ClassMark, classOf } from "../../ui/classes";
 import { short } from "../../ui/format";
 import { ticking } from "../../ui/now";
 import { buffs, debuffs, effects } from "../effects/logic";
 import { Tiles } from "../effects/Tile";
 import { power } from "../meter/logic";
-import { dead, groups, ordered, share, who } from "./logic";
+import { averagePower, dead, groups, ordered, share, who } from "./logic";
 import "./frames.css";
 
 function Frame(props: { of: Unit; name: string; auras: Aura[]; label: string; monster?: boolean }) {
@@ -74,7 +74,7 @@ function Member(props: { of: Unit; at: number; now: number }) {
       >
         <i />
         <Show when={set().mark}><ClassMark job={props.of.job} /></Show>
-        <span>{who(props.of, props.at, hideNames())}</span>
+        <span data-name={nameStyle(props.of.name)}>{who(props.of, props.at, hideNames())}</span>
         <Show when={set().power && !settings.discreet && props.of.power > 0}><small class="ui-num">{power(props.of.power)}</small></Show>
         <Show when={set().icons === "on"}>{tiles()}</Show>
         <b class="ui-num">{health(props.of)}</b>
@@ -108,6 +108,29 @@ export function ForceOverlay() {
           <div class="party glass">
             <small class="force-name">Group {i() + 1}</small>
             <For each={group}>{({ unit, at }) => <Member of={unit} at={at} now={now()} />}</For>
+          </div>
+        )}
+      </For>
+    </section>
+  );
+}
+
+/** The party at a glance, as in a dungeon lobby: its average Combat Power, and each one's item level and Combat Power. */
+export function CardOverlay() {
+  const all = createMemo(() => ordered(near.party, { order: settings.party.order, you: true }));
+  return (
+    <section class="party-card glass" aria-label="Party card">
+      <header>
+        <small class="ui-muted">Average Combat Power</small>
+        <b class="ui-num">{settings.discreet ? "" : power(averagePower(near.party)) || "Not known"}</b>
+      </header>
+      <For each={all()}>
+        {({ unit, at }) => (
+          <div class="party-card-row" style={{ "--class": classOf(unit.job).color }}>
+            <ClassMark job={unit.job} />
+            <span data-name={nameStyle(unit.name)}>{who(unit, at, hideNames())}</span>
+            <small class="ui-num ui-muted">{unit.level > 0 ? `IL ${unit.level}` : ""}</small>
+            <b class="ui-num">{!settings.discreet && unit.power > 0 ? power(unit.power) : ""}</b>
           </div>
         )}
       </For>

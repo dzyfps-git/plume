@@ -14,6 +14,8 @@ export interface Start {
   editing: Editing;
   /** The page to open on, or empty. */
   page?: string;
+  /** Opened as the game started: minimized, without taking the screen. */
+  quiet?: boolean;
   engine: { status: Status; message?: string };
   state: State | null;
   reads: Reads | null;
@@ -24,6 +26,11 @@ export interface Start {
 }
 
 export const startState = () => invoke<Start>("start_state");
+/** Plume's share of the CPU in percent, with all it started, and whether it made itself lighter. */
+export const cost = () => invoke<{ cpu: number; light: boolean }>("cost");
+export const openDataFolder = () => invoke<void>("open_data_folder");
+/** Copies the maps, names and pictures into a folder on the Desktop for a friend. How many files. */
+export const shareData = () => invoke<number>("share_data");
 /** Gives back the actions whose key could not be had. */
 export const saveSettings = (value: unknown) => invoke<string[]>("save_settings", { value });
 export const engineSend = (command: { cmd: string } & Record<string, unknown>) => invoke<void>("engine_send", { command });

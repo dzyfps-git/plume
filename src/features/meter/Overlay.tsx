@@ -1,7 +1,7 @@
 import { createContext, createEffect, createMemo, For, on, Show, useContext } from "solid-js";
 import { fight, near, over, sampling, skills } from "../../live/store";
 import type { Row } from "../../live/types";
-import { hideNames, settings } from "../../store";
+import { hideNames, nameStyle, settings } from "../../store";
 import { barEase, type Footer, type Meter } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, percent, short } from "../../ui/format";
@@ -14,7 +14,7 @@ import { followFights, fights } from "../history/store";
 import { Buttons } from "./Buttons";
 import { Feet } from "./Foot";
 import { bursting, casts, fallen, peek } from "./live";
-import { against, BEST, bestRow, gap, label, lines, partyDps, power, ranked, shown, signed, VIEW_NAMES, withBest, type Against, type Ranked } from "./logic";
+import { against, BEST, whose, bestRow, gap, label, lines, partyDps, power, ranked, shown, signed, VIEW_NAMES, withBest, type Against, type Ranked } from "./logic";
 import "./meter.css";
 
 /** How this one looks: yours, or one to choose from. */
@@ -78,7 +78,7 @@ function Whole(props: { gone: boolean; still: boolean }) {
   const view = () => m().view;
   const cards = () => m().style === "cards";
   const lone = () => (m().always && alone() ? [alone()!] : []);
-  const rows = () => (props.gone ? lone() : fight.rows.length ? fight.rows : lone());
+  const rows = () => (props.gone ? lone() : fight.rows.length ? whose(fight.rows, m().who, new Set(near.party.map((u) => u.id))) : lone());
   const you = () => rows().find((r) => r.you);
   const held = createMemo(() => (m().head || m().ghost ? against(fight, fights()) : undefined));
   const best = () => (m().ghost && view() === "damage" && you() ? held()?.best : undefined);
@@ -217,7 +217,7 @@ function MeterRow(props: { row: Row; at: Ranked & { rank: number; spot: number; 
         <span class="meter-ring"><ClassMark job={job()} /></span>
       </Show>
       <span class="meter-name">
-        <span>{ghost() ? "Your best" : label(props.row, hideNames(), props.at.rank)}</span>
+        <span data-name={ghost() ? undefined : nameStyle(props.row.name)}>{ghost() ? "Your best" : label(props.row, hideNames(), props.at.rank)}</span>
         <Show when={props.at.rank === 1 && props.many && m().view === "damage"}><Drawn name="crown" /></Show>
         <Corner of={props.row} />
       </span>
@@ -247,7 +247,7 @@ function Hero(props: { at: Ranked; first: boolean; held?: Against; gap?: number 
     <div class="meter-hero" style={{ "--class": classOf(row().job).color }} data-dead={(m().dead && fallen().has(row().id)) || undefined} data-burst={(m().burst && bursting().has(row().id)) || undefined}>
       <ClassMark job={row().job} />
       <span class="meter-name">
-        <span>{label(row(), hideNames(), 1)} <Show when={props.first && m().view === "damage"}><Drawn name="crown" /></Show></span>
+        <span data-name={nameStyle(row().name)}>{label(row(), hideNames(), 1)} <Show when={props.first && m().view === "damage"}><Drawn name="crown" /></Show></span>
         <Corner of={row()} />
       </span>
       <span class="hero-rate">

@@ -1,18 +1,20 @@
-import { For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
+import { unwrap } from "solid-js/store";
 import { ACTS } from "../features/meter/Buttons";
 import { VIEW_NAMES } from "../features/meter/logic";
 import { MeterOverlay } from "../features/meter/Overlay";
 import { ODYLE_NAMES } from "../features/resources/logic";
 import { change, settings } from "../store";
 import {
-  BUTTONS, FONTS, FOOTER, ODYLE, ODYLE_RUN, STYLES, THEMES, TONES, VIEWS,
-  type Button, type Footer, type Look, type Meter, type Settings, type Tone, type View,
+  BUTTONS, FONTS, FOOTER, NAME_STYLES, ODYLE, ODYLE_RUN, STYLES, THEMES, TONES, VIEWS,
+  type Button, type Footer, type Look, type Meter, type NameStyle, type Settings, type Tone, type View,
 } from "../store/settings";
 import { CLASSES } from "../ui/classes";
 import { Group } from "../ui/Group";
 import { Chips, Choices, Colour, Line, Slide } from "../ui/Line";
 import { RunLength } from "../ui/RunLength";
 import { Switch } from "../ui/Switch";
+import { PACKS } from "./packs";
 import { Preview } from "./Preview";
 import { Shell } from "./Shell";
 
@@ -154,6 +156,8 @@ export function MeterGroups(props: { still?: boolean }) {
         <Line name="Buttons while unlocked" wide><Chips name="Buttons while unlocked" all={BUTTONS} names={BUTTON_NAMES} value={m().buttons} set={meter("buttons")} /></Line>
         <Line name="Buttons while locked" wide><Chips name="Buttons while locked" all={BUTTONS} names={BUTTON_NAMES} value={m().buttonsLocked} set={meter("buttonsLocked")} /></Line>
       </Group>
+      <PackGroup />
+      <NameGroup />
       <Group name="Theme and colours">
         <Line name="Meter theme"><Choices name="Meter theme" all={THEMES.map((t) => [t, THEME_NAMES[t]] as const)} value={l().theme} set={look("theme")} /></Line>
         <Line name="Background colour"><Colour name="Background colour" value={l().background} own="var(--surface-base)" set={look("background")} /></Line>
@@ -201,5 +205,71 @@ export function LookPage() {
         </aside>
       </div>
     </Shell>
+  );
+}
+
+/** What was there before the last pack, to put back. */
+const [before, setBefore] = createSignal<Settings>();
+
+function PackGroup() {
+  const wear = (pack: (typeof PACKS)[number]) => {
+    setBefore(structuredClone(unwrap(settings)));
+    change(pack.wear);
+  };
+  const back = () => {
+    const was = before();
+    if (!was) return;
+    change((s) => Object.assign(s, { look: was.look, meter: was.meter, accent: was.accent, pictures: was.pictures, discreet: was.discreet, alerts: was.alerts }));
+    setBefore(undefined);
+  };
+  return (
+    <Group name="Style packs" about="One choice for the look of every overlay, the alerts' sounds and the pictures. Anything can be changed after.">
+      <div class="packs">
+        <For each={PACKS}>
+          {(p) => (
+            <button class="pack" onClick={() => wear(p)}>
+              <b>{p.name}</b>
+              <small class="ui-muted">{p.about}</small>
+            </button>
+          )}
+        </For>
+      </div>
+      <Show when={before()}><button class="ui-button" onClick={back}>Put back what was there</button></Show>
+    </Group>
+  );
+}
+
+const NAME_LOOKS: Record<NameStyle, string> = { glow: "Glow", gold: "Gold", frost: "Frost", ember: "Ember", dawn: "Dawn", shadow: "Shadow" };
+
+/** Looks of our own for names you choose: friends, your static, yourself. */
+function NameGroup() {
+  const [name, setName] = createSignal("");
+  const set = (who: string, look: NameStyle | "") =>
+    change((s) => {
+      const { [who]: _, ...rest } = s.names;
+      s.names = look ? { ...rest, [who]: look } : rest;
+    });
+  return (
+    <Group name="Name styles" about="On the meter and the party frames, while names show.">
+      <For each={Object.entries(settings.names)}>
+        {([who, look]) => (
+          <Line name={who}>
+            <span class="ui-row">
+              <span data-name={look}>{who}</span>
+              <select class="ui-select" aria-label={`Look of ${who}`} value={look} onChange={(e) => set(who, e.currentTarget.value as NameStyle | "")}>
+                <option value="">None</option>
+                <For each={NAME_STYLES}>{(n) => <option value={n}>{NAME_LOOKS[n]}</option>}</For>
+              </select>
+            </span>
+          </Line>
+        )}
+      </For>
+      <Line name="A name">
+        <span class="ui-row">
+          <input class="ui-input" aria-label="A name to style" placeholder="As the game writes it" maxLength={40} value={name()} onInput={(e) => setName(e.currentTarget.value)} />
+          <button class="ui-button" disabled={!name().trim()} onClick={() => (set(name().trim(), "glow"), setName(""))}>Add</button>
+        </span>
+      </Line>
+    </Group>
   );
 }

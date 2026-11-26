@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoNear } from "../../live/demo.ts";
-import { groups, ordered, share, who } from "./logic.ts";
+import { averagePower, groups, ordered, share, who } from "./logic.ts";
 
 test("health is a share, or nothing", () => {
   assert.deepEqual([share({ hp: 30, maxHp: 120 }), share({ hp: -1, maxHp: 9 }), share({ hp: 5, maxHp: 0 }), share({ hp: 9, maxHp: 6 })], [0.25, undefined, undefined, 1]);
@@ -20,4 +20,9 @@ test("the party in the order you want it", () => {
   assert.equal(ordered(party, { order: "name", you: true }).find(({ unit }) => unit.name === "Maren")!.at, 1);
   assert.deepEqual(groups([1, 2, 3, 4, 5]), [[1, 2, 3, 4], [5]]);
   assert.equal(who({ name: "Me", you: true }, 0, "all"), "You");
+});
+
+test("the party's average Combat Power counts only those whose is known", () => {
+  assert.equal(averagePower([{ power: 100_000 }, { power: 0 }, { power: 120_000 }]), 110_000);
+  assert.equal(averagePower([{ power: 0 }]), 0);
 });

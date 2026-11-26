@@ -2,6 +2,8 @@ import { createSignal } from "solid-js";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import { on, saveSettings } from "../api";
 import { barEase, read, type Settings } from "./settings";
+import "./still.css";
+import "./names.css";
 
 const [settings, setSettings] = createStore<Settings>(read(null));
 /** Actions whose key another app already has. */
@@ -20,6 +22,7 @@ function wear(overlay: boolean) {
   root.style.setProperty("--bar-time", `${settings.updateMs}ms`);
   root.style.setProperty("--bar-ease", barEase(settings.fps, settings.updateMs));
   root.style.setProperty("--tint", String(settings.overlay.opacity));
+  root.toggleAttribute("data-still", !settings.motion);
 }
 
 export async function useSettings(saved: unknown, overlay = false) {
@@ -44,6 +47,8 @@ async function keep() {
 
 /** Whose names are hidden: nobody's, others', or everyone's. */
 export const hideNames = (): boolean | "all" => (settings.discreet ? "all" : settings.meter.hideNames);
+/** The look you chose for a name, while names show: a hidden name keeps no look that could tell who it is. */
+export const nameStyle = (name: string) => (hideNames() || !name ? undefined : settings.names[name]);
 
 let timer = 0;
 /** Changes settings now, and writes them down once the changing stops. */

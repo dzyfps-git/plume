@@ -27,3 +27,9 @@ export function ordered(party: readonly Unit[], set: Pick<Settings["party"], "or
 export function groups<T>(all: readonly T[]): T[][] {
   return Array.from({ length: Math.ceil(all.length / GROUP) }, (_, i) => all.slice(i * GROUP, (i + 1) * GROUP));
 }
+
+/** The party's average Combat Power, of those whose is known. 0 when nobody's is. */
+export function averagePower(party: readonly Pick<Unit, "power">[]): number {
+  const known = party.filter((u) => u.power > 0);
+  return known.length ? Math.round(known.reduce((n, u) => n + u.power, 0) / known.length) : 0;
+}

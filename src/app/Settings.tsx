@@ -1,5 +1,6 @@
-import { createResource, createSignal, For, Show } from "solid-js";
-import { appVersion, backup, openEngineFolder, openPicturesFolder, openRecordingsFolder, restore } from "../api";
+import { createResource, createSignal, For, onCleanup, Show } from "solid-js";
+import { FEATURES } from "../features";
+import { appVersion, backup, cost, openDataFolder, shareData, openEngineFolder, openPicturesFolder, openRecordingsFolder, restore } from "../api";
 import { health } from "../live/health";
 import { engine, near, reads, state } from "../live/store";
 import { change, settings, taken } from "../store";
@@ -58,6 +59,7 @@ export function SettingsPage() {
 
 export function AppGroups() {
   const [version] = createResource(appVersion);
+  const [shared, setShared] = createSignal("");
   const engineText = () => {
     const { status, message } = engine();
     if (status === "running") return `Running, version ${state()?.version ?? ""}, listening on ${state()?.devices ?? 0} network devices.`;
@@ -86,7 +88,17 @@ export function AppGroups() {
       <Group name="Windows">
         <Switch name="Start with Windows" about="In the tray, with no window." on={settings.startup} set={(on) => change((s) => (s.startup = on))} />
         <Switch name="Sleep while the game is closed" about="Gives the overlays' memory back until the game is there again." on={settings.sleep} set={(on) => change((s) => (s.sleep = on))} />
+        <Line name="Closing this window">
+          <Choices name="Closing this window" all={[["tray", "Keeps the overlays, in the tray"], ["quit", "Quits Plume"]] as const} value={settings.close} set={(v) => change((s) => (s.close = v))} />
+        </Line>
+        <Line name="As the game starts" about="This page opens, minimized if the window was closed, so the game keeps the screen.">
+          <select class="ui-select" aria-label="Page that opens as the game starts" value={settings.gameOpens} onChange={(e) => change((s) => (s.gameOpens = e.currentTarget.value))}>
+            <option value="">Nothing opens</option>
+            <For each={FEATURES.filter((f) => f.page)}>{(f) => <option value={f.id}>{f.name}</option>}</For>
+          </select>
+        </Line>
       </Group>
+      <Performance />
       <Group name="Keys over the game">
         <For each={ACTIONS}>
           {(action) => (
@@ -171,6 +183,13 @@ export function AppGroups() {
           {NAME} {version()}. Not made or approved by NC. It sends nothing to the game and nothing to the internet. Other
           players' names stay in memory and are gone when it closes.
         </p>
+        <Line name="Maps, names and pictures" about="Made from public data on this PC and kept out of the installer. A friend puts the two folders you give them into their data folder.">
+          <div class="ui-row">
+            <button class="ui-button" onClick={() => void shareData().then((n) => setShared(`${n.toLocaleString("en-GB")} files copied to the Desktop.`), (e) => setShared(String(e)))}>Copy for a friend</button>
+            <button class="ui-button" onClick={() => void openDataFolder()}>Open the data folder</button>
+          </div>
+        </Line>
+        <Show when={shared()}><p class="ui-muted ui-small" role="status">{shared()}</p></Show>
       </Group>
     </>
   );
@@ -253,5 +272,24 @@ function Key(props: { value: string; name: string; set: (value: string) => void 
     >
       {listening() ? "Press the keys" : props.value || "No key"}
     </button>
+  );
+}
+
+/** What Plume costs, and what makes it cost less. */
+function Performance() {
+  const [now, setNow] = createSignal<{ cpu: number; light: boolean }>();
+  const look = () => void cost().then(setNow, () => setNow(undefined));
+  look();
+  const timer = setInterval(look, 5000);
+  onCleanup(() => clearInterval(timer));
+  return (
+    <Group name="Performance">
+      <Line name="What Plume takes now" about="Of the whole CPU, over the last five seconds: Plume's own process. Its windows run in WebView2 and the engine apart, which Task Manager shows.">
+        <span class="ui-num">{now() ? `${now()!.cpu.toFixed(1)}%${now()!.light ? ", made lighter" : ""}` : "Measuring"}</span>
+      </Line>
+      <Switch name="Animations" about="Off, nothing moves by itself: pages, overlays and bars change at once." on={settings.motion} set={(on) => change((s) => (s.motion = on))} />
+      <Switch name="Lighter by itself" about="While Plume's own process takes more than 6% of the CPU, numbers change once a second, until it takes less than 3%." on={settings.lighten} set={(on) => change((s) => (s.lighten = on))} />
+      <p class="ui-muted ui-small">Bar movement in frames a second and how often numbers change are under Overlays.</p>
+    </Group>
   );
 }

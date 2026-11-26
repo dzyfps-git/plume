@@ -16,6 +16,7 @@ import { Group } from "../ui/Group";
 import { SECOND_NAMES } from "../second/parts";
 import { Chips, Choices, Line, Slide } from "../ui/Line";
 import { Switch } from "../ui/Switch";
+import { LayoutGroup, ScreenMap } from "./Layouts";
 import { Preview } from "./Preview";
 import { Shell } from "./Shell";
 
@@ -25,11 +26,13 @@ export function OverlaysPage() {
       title="Overlays"
       action={
         <button class="ui-button" data-main aria-keyshortcuts={settings.hotkeys.edit} onClick={() => void editOverlays("move")}>
-          <span class="ui-icon" aria-hidden="true">{""}</span>
+          <span class="ui-icon" aria-hidden="true">{"\ue7c2"}</span>
           Move them
         </button>
       }
     >
+      <ScreenMap />
+      <LayoutGroup />
       <OverlayGroups />
     </Shell>
   );
@@ -52,6 +55,10 @@ export function OverlayGroups(props: { still?: boolean }) {
         <Line name="Bar movement" about="Frames a second. Higher is smoother and costs more.">
           <Choices name="Bar movement" all={FPS.map((n) => [n, n ? String(n) : "Screen"] as const)} value={settings.fps} set={(n) => change((s) => (s.fps = n))} />
         </Line>
+        <Line name="A fight, for overlays shown in fights" about="What starts one: the game's word, your own hits, or the party's.">
+          <Choices name="A fight starts with" all={[["game", "The game's word"], ["you", "Your hits"], ["party", "The party's hits"]] as const} value={over().fightBy} set={set("fightBy")} />
+        </Line>
+        <Line name="They stay after a fight"><Slide name="They stay after a fight" least={0} most={60} step={5} value={over().linger} text={over().linger ? `${over().linger} s` : "No"} set={set("linger")} /></Line>
         <Line name="Numbers change every" about="Shorter is more live and costs more.">
           <Slide name="Numbers change every" least={50} most={1000} step={50} value={settings.updateMs} text={`${settings.updateMs} ms`} set={(v) => change((s) => (s.updateMs = v))} />
         </Line>
@@ -105,7 +112,7 @@ function One(props: { of: Feature; still?: boolean }) {
       <div class="over-head">
         <Switch name={name()} about={props.of.overlay!.about} on={at().on} set={(on) => change((s) => (s.places = { ...s.places, [props.of.id]: { ...at(), on } }))} />
         <Show when={!props.still}>
-          <button class="ui-icon-button" aria-label={`Options of ${name()}`} aria-expanded={open()} onClick={() => setOpen(!open())}>{open() ? "" : ""}</button>
+          <button class="ui-icon-button" aria-label={`Options of ${name()}`} aria-expanded={open()} onClick={() => setOpen(!open())}>{open() ? "\ue70e" : "\ue70d"}</button>
         </Show>
       </div>
       <Show when={props.still}><Group name={name()}>{more()}</Group></Show>

@@ -50,3 +50,14 @@ export function snap(at: Spot, own: Box, screen: Box, others: readonly (Spot & B
     y: axis(at.y, own.height, screen.height, others.map((o) => [o.y, o.height])),
   };
 }
+
+/** Overlays' places as one line of text to give to someone, and back. What it holds is read like any settings. */
+export const toCode = (places: Record<string, unknown>) => `plume:${btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(places))))}`;
+export function fromCode(code: string): Record<string, never> | undefined {
+  try {
+    const v = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(code.trim().replace(/^plume:/, "")), (c) => c.charCodeAt(0)))) as unknown;
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, never>) : undefined;
+  } catch {
+    return undefined;
+  }
+}

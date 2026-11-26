@@ -7,7 +7,7 @@ import { MapPage } from "./Page";
 export const map: Feature = {
   id: "map",
   name: "Map",
-  icon: "",
+  icon: "\ue909",
   color: "#7fd6ff",
   page: MapPage,
   overlay: {
@@ -19,7 +19,7 @@ export const map: Feature = {
 export const tracker: Feature = {
   id: "tracker",
   name: "Tracker",
-  icon: "",
+  icon: "\ue707",
   color: "#7fd6ff",
   overlay: {
     view: TrackerOverlay, group: "World", about: "What you track on the map you are on, nearest first.", width: 260,

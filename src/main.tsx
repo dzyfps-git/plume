@@ -18,5 +18,7 @@ render(() => <App page={start.page} />, document.getElementById("root")!);
 window.House.start();
 await appWindow().show();
 performance.mark("ready");
-await appWindow().setFocus();
+// Opened as the game started: it waits in the taskbar, and the game keeps the screen.
+if (start.quiet) await appWindow().minimize();
+else await appWindow().setFocus();
 window.House.edge();

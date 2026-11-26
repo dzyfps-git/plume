@@ -4,11 +4,12 @@ import { FEATURES } from "../features";
 import { overlayName, type Feature } from "../features/types";
 import { demoFight, demoNear } from "../live/demo";
 import { fight, near, sample, sampling } from "../live/store";
-import { settings } from "../store";
+import { unwrap } from "solid-js/store";
+import { change, settings } from "../store";
 import { place, rule } from "../store/settings";
 import { Frame } from "./Frame";
 import { Panel } from "./Panel";
-import { allowed } from "./rules";
+import { activity, allowed, inFight, pick } from "./rules";
 import { canRedo, canUndo, move, redo, undo } from "./undo";
 import { followZones } from "./zones";
 
@@ -25,8 +26,38 @@ export function Overlay(props: { editing: () => Editing }) {
   let root!: HTMLDivElement;
   const all = createMemo(() => [...FIXED, ...FEATURES.flatMap((f) => f.more?.() ?? [])]);
   const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
+  // When the last fight was, as the overlays count one: the game's word, your hits or the party's.
+  const [lastAt, setLastAt] = createSignal(0);
+  const [now, setNow] = createSignal(Date.now());
+  const ticking = setInterval(() => setNow(Date.now()), 1000);
+  onCleanup(() => clearInterval(ticking));
+  // By the game's word it is when the fight ended; by hits, the last hit that was seen.
+  createEffect((was: boolean) => {
+    const by = settings.overlay.fightBy;
+    if (by === "game") {
+      if (was && !near.fighting) setLastAt(Date.now());
+      return near.fighting;
+    }
+    const ids = new Set(near.party.map((u) => u.id));
+    if (fight.rows.some((r) => (r.you || (by === "party" && ids.has(r.id))) && r.damage > 0)) setLastAt(Date.now());
+    return false;
+  }, false);
+  const fighting = () => inFight(settings.overlay.fightBy, near.fighting, lastAt(), now(), settings.overlay.linger);
   const shown = () =>
-    all().filter((f) => at(f).on && (moving() || (allowed(rule(settings.rules[f.id]), near) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
+    all().filter((f) => at(f).on && (moving() || (allowed(rule(settings.rules[f.id]), { ...near, fighting: fighting() }) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
+
+  // A layout of yours comes by itself, once each time what fits changes. Moving one by hand stays until then.
+  let worn = "";
+  createEffect(() => {
+    if (!settings.layoutAuto || moving()) return;
+    const fits = pick(settings.layouts, activity(near, fight.target.dummy), near.you?.name ?? "");
+    const key = fits ? `${fits.name}
+${fits.when}
+${fits.who}` : "";
+    if (!fits || key === worn) return;
+    worn = key;
+    untrack(() => change((s) => (s.places = structuredClone(unwrap(fits.places))), true));
+  });
   const hidden = () => all().filter((f) => !at(f).on);
   const turn = (f: Feature, on: boolean) => move((all) => ({ ...all, [f.id]: { ...at(f), on } }));
   const boxes = () =>
@@ -97,7 +128,7 @@ export function Overlay(props: { editing: () => Editing }) {
           <For each={hidden()}>
             {(f) => (
               <button class="ui-button" onClick={() => turn(f, true)}>
-                <span class="ui-icon" aria-hidden="true">{""}</span>
+                <span class="ui-icon" aria-hidden="true">{"\ue710"}</span>
                 {overlayName(f)}
               </button>
             )}

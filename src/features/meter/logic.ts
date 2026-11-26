@@ -21,6 +21,10 @@ export interface Ranked {
 }
 
 /** Rows by what the meter shows, the most first. Nobody's place but damage's changes the party's total. */
+/** Whose rows show: everyone's, the party's (you among them), or yours alone. */
+export const whose = <T extends Pick<Row, "you" | "id">>(rows: readonly T[], who: "everyone" | "party" | "me", party: ReadonlySet<number>): T[] =>
+  who === "everyone" ? [...rows] : rows.filter((r) => r.you || (who === "party" && party.has(r.id)));
+
 export function ranked(fight: Pick<Fight, "rows" | "ms">, view: View): Ranked[] {
   const seconds = Math.max(1, fight.ms / 1000);
   const of: Record<View, (r: Row) => number> = {

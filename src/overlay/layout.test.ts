@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { hold, MARGIN, snap, toPixels, toShare } from "./layout.ts";
+import { hold, MARGIN, snap, toPixels, toShare, fromCode, toCode } from "./layout.ts";
 
 const own = { width: 300, height: 200 };
 const screen = { width: 1920, height: 1080 };
@@ -36,4 +36,11 @@ test("a held edge stays put while the height changes", () => {
   assert.deepEqual(hold(at, grown, screen, "top", 200), { x: 100, y: 400 });
   assert.deepEqual(hold(at, grown, screen, "bottom", 200), { x: 100, y: 280 });
   assert.deepEqual(hold({ x: 0, y: 1 }, grown, screen, "top", 200), { x: MARGIN, y: 1080 - MARGIN - 320 });
+});
+
+test("a layout goes out as a code and comes back the same; anything else is nothing", () => {
+  const places = { meter: { on: true, x: 0.25, y: 1, scale: 1.2 }, "Odyle é": { on: false, x: 0, y: 0, scale: 1 } };
+  assert.deepEqual(fromCode(` ${toCode(places)} `), places);
+  assert.equal(fromCode("plume:not a code"), undefined);
+  assert.equal(fromCode(toCode([] as never)), undefined);
 });
