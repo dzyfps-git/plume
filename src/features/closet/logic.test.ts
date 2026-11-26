@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { heard, rows, type SkinFile } from "./logic.ts";
+import { gameGrade, heard, rows, type SkinFile } from "./logic.ts";
 
 const file: SkinFile = {
   made: "",
@@ -26,4 +26,8 @@ test("skins as chosen, in the game's order, searched by name or by where they co
   assert.deepEqual(rows(file, owned, "all", "Cape", "").map((r) => r.id), [3]);
   assert.deepEqual(rows(file, owned, "all", "", "gale").map((r) => r.id), [3]);
   assert.deepEqual(rows(file, owned, "all", "", "fire temple").map((r) => r.id), [2]);
+});
+
+test("NC's grade names are shown as the game names them", () => {
+  assert.deepEqual(["Common", "Rare", "Legend", "Unique", "Epic", "Special", "None"].map(gameGrade), ["common", "rare", "epic", "unique", "heroic", "special", "none"]);
 });

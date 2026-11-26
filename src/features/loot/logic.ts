@@ -1,5 +1,6 @@
 // What you gained, gathered and saw drop, by day from one daily reset to the next, and Dice Rolls.
 import type { LootEvent, RollEvent } from "../../live/types.ts";
+import { GRADES } from "../closet/logic.ts";
 
 /** Item names, grades and pictures, as the engine's `tools/items.py` writes them. */
 export interface ItemFile {
@@ -8,8 +9,8 @@ export interface ItemFile {
 }
 
 export const itemName = (file: ItemFile | null | undefined, id: number) => file?.items[id]?.[0] || `Item ${id}`;
-/** The grade's name, lower case, for its colour. Empty when not known. */
-export const gradeOf = (file: ItemFile | null | undefined, id: number) => (file?.items[id] ? file.grades[file.items[id][1]]?.toLowerCase() ?? "" : "");
+/** The grade as the game names it, for its colour. Empty when not known. The file's own names are NC's, one off. */
+export const gradeOf = (file: ItemFile | null | undefined, id: number) => (file?.items[id] ? (GRADES[file.items[id][1]] ?? "") : "");
 
 /** One day's loot. Counts by item number, and by monster code for kills. */
 export interface Day {

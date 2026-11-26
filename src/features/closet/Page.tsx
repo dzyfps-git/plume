@@ -2,12 +2,11 @@ import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { full } from "../../ui/format";
 import { GameIcon } from "../../ui/Pic";
 import { skinFile } from "../map/data";
-import { GRADES, rows, slotName, SLOTS, type Show as Shown, type Skin } from "./logic";
+import { GRADE_NAMES, GRADES, rows, slotName, SLOTS, type Show as Shown, type Skin } from "./logic";
 import { closet } from "./watch";
 import "./closet.css";
 
 const SHOW = [["missing", "Not yet"], ["have", "In the Closet"], ["all", "All"]] as const;
-const GRADE_NAMES = ["Common", "Rare", "Legend", "Unique", "Epic"];
 /** Cards drawn at most; a search or a slot narrows the rest. */
 const MOST = 240;
 

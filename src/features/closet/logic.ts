@@ -15,7 +15,14 @@ export interface Closet {
   told: number;
 }
 
-export const GRADES = ["common", "rare", "legend", "unique", "epic"] as const;
+/**
+ * Grades 0 to 5 as the game shows them. The data files keep NC's own names, which are one off from the game's:
+ * their Legend is the game's Epic, and their Epic is Heroic, on the Korean and Taiwanese servers only for now.
+ */
+export const GRADES = ["common", "rare", "epic", "unique", "heroic", "special"] as const;
+export const GRADE_NAMES = ["Common", "Rare", "Epic", "Unique", "Heroic", "Special"] as const;
+/** One of NC's grade names, as the game shows it, lower case. */
+export const gameGrade = (nc: string) => ({ Legend: "epic", Epic: "heroic" })[nc] ?? nc.toLowerCase();
 
 export const SLOTS = {
   Weapons: ["Greatsword", "Sword", "Dagger", "Bow", "Magicbook", "Orb", "Staff", "Mace"],

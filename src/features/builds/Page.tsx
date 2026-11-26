@@ -2,6 +2,7 @@ import { createMemo, createResource, createSignal, For, Index, Show } from "soli
 import { Pic } from "../../ui/Pic";
 import { boardFile, nameFile } from "../map/data";
 import { canTake, columnOf, letGo, middle, rowOf, SIDE, statWords, sums, type Board, type Build } from "./logic";
+import { gameGrade } from "../closet/logic";
 import "./builds.css";
 
 /** Your builds, on this PC. */
@@ -101,11 +102,11 @@ export function BuildsPage() {
                             <button
                               class="node"
                               style={{ "grid-row": rowOf(n[0]) + 1, "grid-column": columnOf(n[0]) + 1 }}
-                              data-grade={n[1].toLowerCase()}
+                              data-grade={gameGrade(n[1])}
                               data-taken={taken() || undefined}
                               data-can={can() || undefined}
                               aria-pressed={taken()}
-                              aria-label={`${what}, ${n[1] === "None" ? "always taken" : n[1].toLowerCase()}`}
+                              aria-label={`${what}, ${n[1] === "None" ? "always taken" : gameGrade(n[1])}`}
                               disabled={n[1] === "None"}
                               onClick={() => press(x(), n[0])}
                             >

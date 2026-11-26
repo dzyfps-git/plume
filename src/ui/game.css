@@ -1,11 +1,11 @@
 /* The game's colours, by what they mean: an item's grade, a side of the war, a pet's kind. One place, used everywhere. */
 :root {
   --grade-common: #c9cad1;
-  --grade-rare: #5fd896;
-  --grade-legend: #5aa8f5;
-  --grade-unique: #e9c15e;
-  --grade-epic: #f78a4f;
-  --grade-special: #c49bff;
+  --grade-rare: #62d45a;
+  --grade-epic: #4aa3f2;
+  --grade-unique: #efb23e;
+  --grade-heroic: #f78a4f;
+  --grade-special: #3ccfbf;
   --side-elyos: #56b4f7;
   --side-asmodian: #c77dff;
   --side-abyss: #f47b6c;
@@ -16,12 +16,12 @@
   --kind-special: #e9c15e;
 }
 
-/* An item's name in its grade's colour. Grade 0 to 5, as the game counts them, or by name. */
+/* An item's name in its grade's colour, as the game draws them. Grade 0 to 5, or by the game's name. */
 :is([data-grade="common"], [data-grade="0"]) { --grade: var(--grade-common); color: var(--grade); }
 :is([data-grade="rare"], [data-grade="1"]) { --grade: var(--grade-rare); color: var(--grade); }
-:is([data-grade="legend"], [data-grade="2"]) { --grade: var(--grade-legend); color: var(--grade); }
+:is([data-grade="epic"], [data-grade="2"]) { --grade: var(--grade-epic); color: var(--grade); }
 :is([data-grade="unique"], [data-grade="3"]) { --grade: var(--grade-unique); color: var(--grade); }
-:is([data-grade="epic"], [data-grade="4"]) { --grade: var(--grade-epic); color: var(--grade); }
+:is([data-grade="heroic"], [data-grade="4"]) { --grade: var(--grade-heroic); color: var(--grade); }
 :is([data-grade="special"], [data-grade="5"]) { --grade: var(--grade-special); color: var(--grade); }
 
 [data-side="elyos"] { --tint: var(--side-elyos); }

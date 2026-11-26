@@ -6,6 +6,7 @@ import { Choices, Line } from "../../ui/Line";
 import { Waiting } from "../../ui/Waiting";
 import { itemFile, nameFile } from "../map/data";
 import { anHour, gradeOf, itemName, kinahGained, rates } from "./logic";
+import { GRADE_NAMES } from "../closet/logic";
 import { days, rolls } from "./watch";
 import "./loot.css";
 
@@ -25,7 +26,7 @@ export function LootPage() {
       .sort((a, b) => Number(chosen(b.id)) - Number(chosen(a.id)) || b.n - a.n);
   const kept = createMemo(() => rates(days()));
   const who = (name: string) => (name && name === near.you?.name ? "You" : hideNames() ? "A player" : name || "You");
-  const grades = () => (file()?.grades ?? ["Common", "Rare", "Legend", "Unique", "Epic", "Special"]).map((g, i) => [i, g] as const);
+  const grades = () => GRADE_NAMES.map((g, i) => [i, g] as const);
 
   const Items = (props: { title: string; of: Record<string, number> }) => (
     <section class="block">
