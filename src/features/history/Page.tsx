@@ -1,6 +1,6 @@
 import { createMemo, createResource, createSignal, For, Match, Show, Switch } from "solid-js";
 import { dungeonFile } from "../map/data";
-import { exportFile } from "../../api";
+import { exportFile, openPage } from "../../api";
 import type { Saved } from "../../live/types";
 import { clock, day, full, short, time } from "../../ui/format";
 import { CLASSES } from "../../ui/classes";
@@ -11,14 +11,20 @@ import { Grade } from "../best/Grade";
 import { apart, beside, bestRun, fastest, records, splits, streak, streaks, type Streak } from "../best/logic";
 import { verdicts } from "../training/verdicts";
 import { Pic } from "../../ui/Pic";
-import { alike, bestOf, bests, byDay, characters, filtered, rdps, runs, session, tick, tries, type Filter, type Run } from "./logic";
+import { alike, bestOf, bests, byDay, characters, filtered, rdps, runs, session, tick, tries, week, type Filter, type Run } from "./logic";
 import { allGrades, allRuns, fights, followFights } from "./store";
 import "./history.css";
 
-const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"], ["runs", "Dungeon runs"], ["session", "Last session"], ["table", "Table"], ["records", "Records"]];
+const FILTERS: [Filter, string][] = [["all", "All"], ["bosses", "Bosses"], ["kills", "Kills"], ["dummies", "Dummies"], ["runs", "Dungeon runs"], ["session", "Last session"], ["week", "Your week"], ["table", "Table"], ["records", "Records"]];
 
 /** Whose fights to show. Empty is every character's. */
 const [mine, setMine] = createSignal("");
+
+/** Opens History with one character's fights. */
+export function showFightsOf(name: string) {
+  setMine(name);
+  void openPage("history");
+}
 
 export function HistoryPage() {
   followFights();
@@ -86,6 +92,9 @@ export function HistoryPage() {
           </Match>
           <Match when={filter() === "session"}>
             <div class="history-detail"><Session fights={list()} /></div>
+          </Match>
+          <Match when={filter() === "week"}>
+            <div class="history-detail"><Week fights={list()} /></div>
           </Match>
           <Match when={true}>
         <div class="history-panes">
@@ -166,6 +175,38 @@ function Table(props: { fights: Saved[]; best: Map<string, Saved>; open: (id: st
       </For>
       <Show when={props.fights.length > 300}><p class="ui-muted ui-small">The newest 300 of {props.fights.length}.</p></Show>
     </div>
+  );
+}
+
+/** Each of the last seven days as a bar of time fought, with its kills, damage and records. */
+function Week(props: { fights: Saved[] }) {
+  const days = createMemo(() => week(props.fights, Date.now()));
+  const most = () => Math.max(1, ...days().map((d) => d.ms));
+  const sum = (k: "ms" | "kills" | "damage" | "records") => days().reduce((n, d) => n + d[k], 0);
+  return (
+    <>
+      <div class="stats">
+        <div class="stat" data-hero><small>Time fought</small><b class="ui-num">{clock(sum("ms"))}</b></div>
+        <div class="stat"><small>Kills</small><b class="ui-num">{sum("kills")}</b></div>
+        <div class="stat"><small>Your damage</small><b class="ui-num">{short(sum("damage"))}</b></div>
+        <div class="stat"><small>Records</small><b class="ui-num">{sum("records")}</b></div>
+      </div>
+      <section class="block history-week">
+        <For each={days()}>
+          {(d) => (
+            <div class="ui-row-item" style={{ "--columns": "110px minmax(0, 1fr) 70px 80px 90px 90px" }}>
+              <span>{day(d.start + 3_600_000)}</span>
+              <span class="week-bar" style={{ "--part": d.ms / most() }} />
+              <span class="ui-num">{clock(d.ms)}</span>
+              <span class="ui-muted ui-num">{d.kills} {d.kills === 1 ? "kill" : "kills"}</span>
+              <span class="ui-muted ui-num">{short(d.damage)}</span>
+              <span class="ui-muted ui-num">{d.records ? `${d.records} ${d.records === 1 ? "record" : "records"}` : ""}</span>
+            </div>
+          )}
+        </For>
+        <p class="ui-muted ui-small">From one daily reset to the next. A record is a fight better than every one of its kind before it.</p>
+      </section>
+    </>
   );
 }
 

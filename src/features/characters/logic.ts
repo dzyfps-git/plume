@@ -15,6 +15,9 @@ export interface Kept {
   kinah: number;
   /** The game's number for the map, 0 when not known. */
   map: number;
+  /** Combat Power and item level as last said. 0 or missing when not known. */
+  power?: number;
+  level?: number;
 }
 
 const HOUR = 3_600_000;

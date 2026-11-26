@@ -2,7 +2,7 @@ import { batch, createSignal } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import { on, type Start } from "../api";
 import { settings } from "../store";
-import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type LootEvent, type RollEvent, type Near, type Pets, type Position, type Reads, type Skill, type State, type Status } from "./types";
+import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type LootEvent, type RollEvent, type Near, type Pets, type Position, type Skins, type Reads, type Skill, type State, type Status } from "./types";
 import { limit, worth } from "./worth";
 
 const [engine, setEngine] = createSignal<{ status: Status; message?: string }>({ status: "off" });
@@ -14,6 +14,7 @@ const [near, setNear] = createStore<Near>(structuredClone(NO_NEAR));
 const [entries, setEntries] = createSignal<Entries>(NO_ENTRIES);
 const [place, setPlace] = createSignal<Position | null>(null);
 const petListeners = new Set<(p: Pets) => void>();
+const skinListeners = new Set<(s: Skins) => void>();
 /** When each of your skills is back, as the game last said, and when it said it. */
 const [cooldowns, setCooldowns] = createSignal<ReadonlyMap<number, { end: number; at: number }>>(new Map());
 const listeners = new Set<(h: Happened) => void>();
@@ -69,6 +70,8 @@ export const tell = (h: Happened) => listeners.forEach((hear) => hear(h));
 export const onHappened = (hear: (h: Happened) => void) => void listeners.add(hear);
 /** Calls `hear` with what the game says of your pets. */
 export const onPets = (hear: (p: Pets) => void) => void petListeners.add(hear);
+/** Calls `hear` with what the game says of your Closet. */
+export const onSkins = (hear: (s: Skins) => void) => void skinListeners.add(hear);
 const lootListeners = new Set<(m: { t: "loot"; events: LootEvent[] } | { t: "rolls"; events: RollEvent[] }) => void>();
 /** Calls `hear` with loot and Dice Rolls as they come. */
 export const onLoot = (hear: (m: { t: "loot"; events: LootEvent[] } | { t: "rolls"; events: RollEvent[] }) => void) => void lootListeners.add(hear);
@@ -100,6 +103,7 @@ export async function follow(start: Start) {
     else if (message.t === "happened") tell(message);
     else if (message.t === "place") setPlace(message);
     else if (message.t === "pets") petListeners.forEach((hear) => hear(message));
+    else if (message.t === "skins") skinListeners.forEach((hear) => hear(message));
     else if (message.t === "loot" || message.t === "rolls") lootListeners.forEach((hear) => hear(message));
     else if (message.t === "cooldowns") setCooldowns((all) => new Map([...all, ...message.list.map(([skill, ms]) => [skill, { end: message.at + ms, at: message.at }] as const)]));
   });

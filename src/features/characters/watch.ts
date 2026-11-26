@@ -37,7 +37,7 @@ export function followCharacters() {
       untrack(() => {
         const was = kept()[you.name];
         // A new character's entries arrive after its name: what is not said yet stays as it was.
-        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), ...now, map: now.map || was?.map || 0 };
+        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), ...now, map: now.map || was?.map || 0, power: you.power || was?.power || 0, level: you.level || was?.level || 0 };
         const same = was && JSON.stringify({ ...was, at: 0 }) === JSON.stringify({ ...next, at: 0 });
         if (!same) save({ ...kept(), [you.name]: { ...next, at: Date.now() } });
       });

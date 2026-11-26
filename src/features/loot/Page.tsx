@@ -4,13 +4,14 @@ import { change, hideNames, settings } from "../../store";
 import { clock, day, full, time } from "../../ui/format";
 import { Choices, Line } from "../../ui/Line";
 import { Waiting } from "../../ui/Waiting";
-import { itemFile } from "../map/data";
+import { itemFile, nameFile } from "../map/data";
 import { anHour, gradeOf, itemName, kinahGained, rates } from "./logic";
 import { days, rolls } from "./watch";
 import "./loot.css";
 
 export function LootPage() {
   const [file] = createResource(() => itemFile().catch(() => null));
+  const [names] = createResource(() => nameFile().catch(() => null));
   const [at, setAt] = createSignal(0);
   const [query, setQuery] = createSignal("");
   const shown = () => days()[Math.min(at(), Math.max(0, days().length - 1))];
@@ -78,7 +79,7 @@ export function LootPage() {
           <For each={kept().slice(0, 100)}>
             {(r) => (
               <div class="ui-row-item loot-row">
-                <span data-grade={gradeOf(file(), r.item) || undefined}>{itemName(file(), r.item)} <span class="ui-muted">from monster {r.mob}</span></span>
+                <span data-grade={gradeOf(file(), r.item) || undefined}>{itemName(file(), r.item)} <span class="ui-muted">from {names()?.monsters[r.mob]?.[0] ?? `monster ${r.mob}`}</span></span>
                 <b class="ui-num">{((r.drops / r.kills) * 100).toFixed(1)}%</b>
                 <span class="ui-muted ui-num">{r.drops} of {r.kills}</span>
                 <span />

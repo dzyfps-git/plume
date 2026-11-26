@@ -1,0 +1,5 @@
+.closet-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-2); }
+.closet-list { display: grid; gap: 1px; }
+.closet-row { --columns: minmax(0, 1.2fr) 110px minmax(0, 1.6fr) 100px; }
+.closet-row[data-have] { opacity: 0.75; }
+.closet-from { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }

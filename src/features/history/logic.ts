@@ -1,12 +1,12 @@
 import type { Job, Saved } from "../../live/types.ts";
 
-export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session" | "table" | "records";
+export type Filter = "all" | "bosses" | "kills" | "dummies" | "runs" | "session" | "week" | "table" | "records";
 
 export function filtered(fights: readonly Saved[], filter: Filter, search: string): Saved[] {
   const words = search.trim().toLowerCase();
   return fights.filter(
     (f) =>
-      (filter === "all" || filter === "session" || filter === "table" || filter === "records" || (filter === "runs" ? !!f.run : filter === "dummies" ? f.dummy : !f.dummy && (filter === "bosses" || f.killed))) &&
+      (filter === "all" || filter === "session" || filter === "week" || filter === "table" || filter === "records" || (filter === "runs" ? !!f.run : filter === "dummies" ? f.dummy : !f.dummy && (filter === "bosses" || f.killed))) &&
       (!words || f.target.toLowerCase().includes(words)),
   );
 }
@@ -45,6 +45,39 @@ export function bests(fights: readonly Saved[]): Map<string, Saved> {
     if (!before || f.you.dps > before.you!.dps) best.set(kind(f), f);
   }
   return best;
+}
+
+export interface Day {
+  /** The daily reset it begins at. */
+  start: number;
+  ms: number;
+  fights: number;
+  kills: number;
+  damage: number;
+  /** Fights better than every one of their kind before them. */
+  records: number;
+}
+
+const DAY = 86_400_000;
+const RESET = 7 * 3_600_000;
+
+/** The last seven days, from one daily reset (07:00 UTC) to the next, oldest first. */
+export function week(fights: readonly Saved[], now: number): Day[] {
+  const today = Math.floor((now - RESET) / DAY) * DAY + RESET;
+  const days: Day[] = Array.from({ length: 7 }, (_, i) => ({ start: today - (6 - i) * DAY, ms: 0, fights: 0, kills: 0, damage: 0, records: 0 }));
+  const best = new Map<string, number>();
+  for (const f of [...fights].sort((a, b) => a.start - b.start)) {
+    const d = days[Math.floor((f.start - days[0].start) / DAY)];
+    const record = !!f.you && f.ms >= 15_000 && best.has(kind(f)) && f.you.dps > best.get(kind(f))!;
+    if (f.you && f.ms >= 15_000 && !(best.get(kind(f))! >= f.you.dps)) best.set(kind(f), f.you.dps);
+    if (!d) continue;
+    d.ms += f.ms;
+    d.fights++;
+    d.kills += Number(f.killed && !f.dummy);
+    d.damage += f.you?.damage ?? 0;
+    d.records += Number(record);
+  }
+  return days;
 }
 
 /** Fights that can be held against this one, newest first. */

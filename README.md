@@ -97,14 +97,23 @@ Boss calls and dungeon names come from the same folder: `calls.json` and `dungeo
 and says the boss's own line or what to do, as `src/features/calls/logic.ts` describes. Nothing is predicted. The
 action bars count down with the cooldowns the game sends, and with what was learned only until it does.
 
-The Characters page keeps each character you play, by name, on this PC: Odyle Energy, Kinah today, Abyss Points, duties
-and the entries you named on the Resources page, carried on from when it was last seen by what comes back by itself, in
+The Characters page keeps each character you play, by name, on this PC: Combat Power, item level, Odyle Energy, Kinah
+today, Abyss Points, duties and the entries you named on the Resources page, carried on from when it was last seen by what comes back by itself, in
 whole steps. The Time page has the events on the server's clock (UTC+9), as guides give them, a stopwatch, a countdown and
 odds of a try; the Time bar overlay shows them over the game.
 
 The Loot page keeps what you gain, gather, see drop for you and kill, by day from one daily reset to the next, on this
 PC; your drop rates over the days kept; Dice Rolls; and a diary of the days. The Loot overlay shows items as you gain them.
-Item names and grades come from `items.json` in the `world` folder, which the engine's `tools/items.py` makes.
+Item names and grades come from `items.json` in the `world` folder, which the engine's `tools/items.py` makes; with
+`pictures`, it also fetches the items' pictures into the `icons` folder.
+
+The Database page searches items, monsters, skills, effects, skins, pets and dungeons at once. An item says what it is made
+of, what it is part of, which monsters drop it and how often, and where it is gathered; a monster says what it drops and
+where it is, with a button that opens the map with it tracked. The Closet page holds every skin in the game, which of them
+are in your Closet as the game said at login, and where the rest come from. The Builds page keeps builds of your own on
+the Daevanion boards of eight classes; a node is taken next to one already taken, side by side, from the middle out. These
+read `skins.json`, `boards.json`, `recipes.json` and `names.json` from the `world` folder, which the engine's `tools/db.py`
+makes. History's "Your week" shows the last seven days: time fought, kills, damage and records.
 
 Timers and mechanics you set for a boss are keyed by the skill the boss used. Since the engine names each boss skill by
 its own number, plans saved before then under a family number (such as 1600000) no longer match and need setting again.

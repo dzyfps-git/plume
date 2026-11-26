@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { demoSaved } from "../../live/demo.ts";
 import type { Saved } from "../../live/types.ts";
-import { alike, bestOf, bests, byDay, characters, filtered, pace, path, rdps, runs, session, tick, tries } from "./logic.ts";
+import { alike, bestOf, bests, byDay, characters, filtered, pace, path, rdps, runs, session, tick, tries, week } from "./logic.ts";
 
 const fight = (id: string, more: Partial<Saved> & { dps?: number } = {}): Saved => ({
   id, target: "Warden", code: 7, start: 1, ms: 60_000, total: 0, maxHp: 0, killed: false, dummy: false, dungeon: 0, others: 0, players: 1,
@@ -102,4 +102,20 @@ test("rDPS is your own, with buffs counted", () => {
 test("only fights of one kind are compared", () => {
   const [a, b, c] = [demoSaved("a", { ms: 60_000 }), demoSaved("b", { ms: 90_000 }), demoSaved("c", { ms: 60_000, dummy: true })];
   assert.deepEqual(alike([a, b, c], a).map((f) => f.id), ["b"]);
+});
+
+test("your week: seven days from reset to reset, and a record only when a fight beats an earlier one of its kind", () => {
+  // Wednesday 25 November 2026, 12:00 UTC. Its day began at 07:00.
+  const now = Date.UTC(2026, 10, 25, 12);
+  const today = Date.UTC(2026, 10, 25, 7);
+  const days = week([
+    fight("a", { start: today - 8 * 86_400_000, dps: 5 }),
+    fight("b", { start: today - 86_400_000, dps: 3, killed: true }),
+    fight("c", { start: today + 60_000, dps: 6, killed: true }),
+    fight("d", { start: today - 60_000, dps: 9, ms: 5_000 }),
+  ], now);
+  assert.equal(days.length, 7);
+  assert.equal(days[6].start, today);
+  assert.deepEqual([days[5].fights, days[5].kills, days[5].records, days[5].ms], [2, 1, 0, 65_000], "a short fight is no record");
+  assert.deepEqual([days[6].fights, days[6].kills, days[6].records], [1, 1, 1]);
 });

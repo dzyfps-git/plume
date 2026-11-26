@@ -5,6 +5,9 @@ import type { Position } from "../../live/types";
 import type { PetFile } from "../pets/logic";
 import type { CallFile } from "../calls/logic";
 import type { ItemFile } from "../loot/logic";
+import type { SkinFile } from "../closet/logic";
+import type { BoardFile } from "../builds/logic";
+import type { NameFile, RecipeFile } from "../database/logic";
 import { guess, type Drops, type MapInfo, type WorldMap } from "./logic";
 
 /** Each file is read once a window. One that could not be read is tried again next time. */
@@ -26,6 +29,11 @@ export const dropFile = () => json<Drops>("drops");
 export const petFile = () => json<PetFile>("pets");
 export const callFile = () => json<CallFile>("calls");
 export const itemFile = () => json<ItemFile>("items");
+export const skinFile = () => json<SkinFile>("skins");
+export const boardFile = () => json<BoardFile>("boards");
+export const recipeFile = () => json<RecipeFile>("recipes");
+/** Names of skills, effects and monsters, by the game's numbers. */
+export const nameFile = () => json<NameFile>("names");
 /** A dungeon's name and how hard, by the game's number. */
 export const dungeonFile = () => json<Record<string, [string, string]>>("dungeons");
 export const pictureOf = (name: string) => once(`${name}.webp`, (b) => createImageBitmap(new Blob([b], { type: "image/webp" })));

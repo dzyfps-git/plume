@@ -2,7 +2,10 @@ import { For, Show } from "solid-js";
 import { settings } from "../../store";
 import { CLASSES } from "../../ui/classes";
 import { day, full, time } from "../../ui/format";
+import { Thing } from "../../ui/icons";
 import { Waiting } from "../../ui/Waiting";
+import { showFightsOf } from "../history/Page";
+import { power } from "../meter/logic";
 import { useMaps } from "../map/data";
 import { minutes } from "../resources/Overlay";
 import { resets, wait } from "../resources/logic";
@@ -33,6 +36,8 @@ export function CharactersPage() {
                   <h2>{k.name} <Show when={CLASSES[k.job as keyof typeof CLASSES]}>{(c) => <span class="ui-muted ui-small">{c().name}</span>}</Show></h2>
                   <small class="ui-muted">Seen {day(k.at, now()).toLowerCase()}, {time(k.at)}<Show when={mapName(k.map)}>{(m) => `, in ${m()}`}</Show></small>
                   <div class="stats">
+                    <Show when={k.power}><div class="stat"><small>Combat Power</small><b class="ui-num"><Thing of="power" />{power(k.power!)}</b></div></Show>
+                    <Show when={k.level}><div class="stat"><small>Item level</small><b class="ui-num">{full(k.level!)}</b></div></Show>
                     <Show when={e().value >= 0}>
                       <div class="stat" data-hero>
                         <small>Odyle Energy</small>
@@ -52,7 +57,10 @@ export function CharactersPage() {
                       </div>
                     )}
                   </For>
-                  <button class="ui-button" onClick={() => forget(k.name)}>Forget</button>
+                  <div class="ui-row">
+                    <button class="ui-button" onClick={() => showFightsOf(k.name)}>Fights</button>
+                    <button class="ui-button" onClick={() => forget(k.name)}>Forget</button>
+                  </div>
                 </section>
               );
             }}

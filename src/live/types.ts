@@ -324,6 +324,12 @@ export interface Position {
   at: number;
 }
 
+/** The skins in your Closet, as the game says them: all at login, then each one added. */
+export interface Skins {
+  what: "all" | "added";
+  ids: number[];
+}
+
 /** Your pets, as the game says them: all at login, then souls gained and levels reached. */
 export interface Pets {
   what: "all" | "souls" | "level";
@@ -382,6 +388,7 @@ export type Message =
   | ({ t: "entries" } & Entries)
   | ({ t: "place" } & Position)
   | ({ t: "pets" } & Pets)
+  | ({ t: "skins" } & Skins)
   | { t: "cooldowns"; /** Skill and ms left, when the game said it. */ list: [skill: number, ms: number][]; at: number }
   | { t: "loot"; events: LootEvent[] }
   | { t: "rolls"; events: RollEvent[] }

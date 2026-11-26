@@ -27,3 +27,4 @@
 .history-table .ui-row-item > :nth-child(n + 4) { text-align: right; }
 .history-table-head { color: var(--text-muted); }
 .chart figcaption { display: flex; justify-content: space-between; padding-top: 4px; color: var(--text-muted); font-size: 12px; }
+.week-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent) calc(var(--part) * 100%), color-mix(in srgb, var(--text) 10%, transparent) 0); }

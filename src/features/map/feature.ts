@@ -1,3 +1,4 @@
+import { followCloset } from "../closet/watch";
 import { followPets } from "../pets/watch";
 import type { Feature } from "../types";
 import { nowhere, TrackerMapOverlay, TrackerOverlay } from "./Overlay";
@@ -23,7 +24,7 @@ export const tracker: Feature = {
   overlay: {
     view: TrackerOverlay, group: "World", about: "What you track on the map you are on, nearest first.", width: 260,
     place: { on: false, x: 1, y: 0.5, scale: 1 }, empty: nowhere,
-    // Your pets come as the game says them, so they are kept here, where a window is always open.
-    beside: followPets,
+    // Your pets and Closet come as the game says them, so they are kept here, where a window is always open.
+    beside: () => (followPets(), followCloset()),
   },
 };
