@@ -1,68 +1,114 @@
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { full } from "../../ui/format";
-import { Choices } from "../../ui/Line";
+import { GameIcon } from "../../ui/Pic";
 import { skinFile } from "../map/data";
-import { GRADES, groups, rows, slotName, SLOTS, type Show as Shown } from "./logic";
+import { GRADES, rows, slotName, SLOTS, type Show as Shown, type Skin } from "./logic";
 import { closet } from "./watch";
-import "../loot/loot.css";
 import "./closet.css";
 
 const SHOW = [["missing", "Not yet"], ["have", "In the Closet"], ["all", "All"]] as const;
-/** Rows drawn at most; a search or a slot narrows the rest. */
-const MOST = 200;
+const GRADE_NAMES = ["Common", "Rare", "Legend", "Unique", "Epic"];
+/** Cards drawn at most; a search or a slot narrows the rest. */
+const MOST = 240;
 
 export function ClosetPage() {
   const [file] = createResource(() => skinFile().catch(() => null));
   const [show, setShow] = createSignal<Shown>("missing");
   const [slot, setSlot] = createSignal("");
+  const [grade, setGrade] = createSignal(-1);
   const [query, setQuery] = createSignal("");
   const owned = createMemo(() => new Set(closet().ids));
-  const list = createMemo(() => (file() ? rows(file()!, owned(), show(), slot(), query()) : []));
+  const skins = () => Object.entries(file()?.skins ?? {});
+  const list = createMemo(() => (file() ? rows(file()!, owned(), show(), slot(), query()).filter((r) => grade() < 0 || r.skin[2] === grade()) : []));
+  const count = (ok: (s: Skin) => boolean) => {
+    const of = skins().filter(([, s]) => ok(s));
+    return `${of.filter(([id]) => owned().has(Number(id))).length}/${of.length}`;
+  };
   const told = () =>
     closet().told
       ? `The game said your Closet on ${new Date(closet().told).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}, and each skin since.`
       : "The game says your Closet as you log in with live data on. Until then, every skin shows as not yet.";
 
   return (
-    <div class="page">
+    <div class="page closet-page">
       <header class="page-head">
         <h1>Closet</h1>
-        <input class="ui-input" type="search" placeholder="Search a skin or where it comes from" aria-label="Search a skin or where it comes from" value={query()} onInput={(e) => setQuery(e.currentTarget.value)} />
+        <small class="ui-muted closet-told">{told()}</small>
       </header>
       <Show when={file()} fallback={<div class="ui-empty"><p>{file.loading ? "Reading the skins." : "The skin file is not on this PC. The engine's tools/db.py writes it."}</p></div>}>
         {(f) => (
-          <>
-            <div class="stats">
-              <div class="stat" data-hero><small>In the Closet</small><b class="ui-num">{full(owned().size)} of {full(Object.keys(f().skins).length)}</b></div>
-              <For each={groups(f(), owned())}>{(g) => <div class="stat"><small>{g.name}</small><b class="ui-num">{full(g.have)} of {full(g.all)}</b></div>}</For>
-            </div>
-            <p class="ui-muted ui-small">{told()}</p>
-            <div class="closet-filters">
-              <Choices name="Show" all={SHOW} value={show()} set={setShow} />
-              <select class="ui-select" aria-label="Slot" value={slot()} onChange={(e) => setSlot(e.currentTarget.value)}>
-                <option value="">Every slot</option>
-                <For each={Object.entries(SLOTS)}>
-                  {([group, slots]) => <optgroup label={group}><For each={[...slots]}>{(s) => <option value={s}>{slotName(s)}</option>}</For></optgroup>}
-                </For>
-              </select>
-            </div>
-            <p class="ui-muted ui-small">{list().length > MOST ? `${MOST} of ${full(list().length)} shown: a search or a slot narrows them.` : `${list().length} shown.`}</p>
-            <div class="closet-list">
-              <For each={list().slice(0, MOST)}>
-                {(r) => (
-                  <div class="ui-row-item closet-row" data-have={r.have || undefined}>
-                    <span>
-                      <b data-grade={GRADES[r.skin[2]]}>{r.skin[0]}</b>
-                      <Show when={r.skin[1]}><small class="ui-muted"> or {r.skin[1]}</small></Show>
-                    </span>
-                    <small class="ui-muted">{slotName(r.skin[3])}</small>
-                    <small class="closet-from">{r.skin[5].slice(0, 3).join("; ")}{r.skin[5].length > 3 ? `; and ${r.skin[5].length - 3} more` : ""}</small>
-                    <small class="ui-num">{r.have ? "In the Closet" : ""}</small>
-                  </div>
+          <div class="closet-grid">
+            <aside class="side-filters" aria-label="Choose skins">
+              <h3>Show</h3>
+              <For each={SHOW}>
+                {([value, name]) => (
+                  <button class="side-row" role="radio" aria-checked={show() === value} onClick={() => setShow(value)}>
+                    <span class="side-radio" aria-hidden="true" />
+                    <span>{name}</span>
+                  </button>
                 )}
               </For>
-            </div>
-          </>
+              <h3>
+                Grade
+                <Show when={grade() >= 0 || slot()}><button class="side-reset" onClick={() => (setGrade(-1), setSlot(""))}>Reset</button></Show>
+              </h3>
+              <For each={GRADE_NAMES.map((name, i) => [name, i] as const).filter(([, i]) => skins().some(([, s]) => s[2] === i))}>
+                {([name, i]) => (
+                  <button class="side-row" style={{ "--tint": `var(--grade-${GRADES[i]})` }} aria-pressed={grade() === i} onClick={() => setGrade(grade() === i ? -1 : i)}>
+                    <span class="tint-dot" aria-hidden="true" />
+                    <span>{name}</span>
+                    <small class="ui-num">{count((s) => s[2] === i)}</small>
+                  </button>
+                )}
+              </For>
+              <For each={Object.entries(SLOTS)}>
+                {([group, slots]) => (
+                  <>
+                    <h3>{group} <small class="ui-num">{count((s) => (slots as readonly string[]).includes(s[3]))}</small></h3>
+                    <For each={[...slots]}>
+                      {(s) => (
+                        <button class="side-row" aria-pressed={slot() === s} onClick={() => setSlot(slot() === s ? "" : s)}>
+                          <span aria-hidden="true" />
+                          <span>{slotName(s)}</span>
+                          <small class="ui-num">{count((k) => k[3] === s)}</small>
+                        </button>
+                      )}
+                    </For>
+                  </>
+                )}
+              </For>
+            </aside>
+
+            <section class="closet-main">
+              <div class="closet-sum">
+                <b>In the Closet</b>
+                <b class="ui-num">{full(owned().size)}</b>
+                <span class="ui-muted ui-num">of {full(skins().length)}</span>
+                <i class="tint-bar" style={{ "--done": skins().length ? owned().size / skins().length : 0 }} />
+              </div>
+              <input class="ui-input" type="search" placeholder="Search a skin or where it comes from" aria-label="Search a skin or where it comes from" value={query()} onInput={(e) => setQuery(e.currentTarget.value)} />
+              <small class="ui-muted">{list().length > MOST ? `${MOST} of ${full(list().length)} shown: a search, a grade or a slot narrows them.` : `${full(list().length)} shown.`}</small>
+              <div class="skins">
+                <For each={list().slice(0, MOST)} fallback={<p class="ui-muted closet-none">No skin fits.</p>}>
+                  {(r) => (
+                    <article class="skin" data-have={r.have || undefined}>
+                      <span class="thing-pic" data-grade={GRADES[r.skin[2]]} aria-hidden="true">
+                        <Show when={r.skin[6]} fallback={<span class="ui-icon">{"\ue771"}</span>}>
+                          {(name) => <GameIcon name={name()}><span class="ui-icon">{"\ue771"}</span></GameIcon>}
+                        </Show>
+                      </span>
+                      <div class="skin-text">
+                        <b>{r.skin[0]}</b>
+                        <small><span data-grade={GRADES[r.skin[2]]}>{GRADE_NAMES[r.skin[2]]}</span> · {slotName(r.skin[3])}{r.skin[1] ? ` · or ${r.skin[1]}` : ""}</small>
+                        <small class="skin-from">{r.skin[5].slice(0, 2).join("; ")}{r.skin[5].length > 2 ? `; and ${r.skin[5].length - 2} more` : ""}</small>
+                      </div>
+                      <Show when={r.have}><span class="skin-have ui-icon" aria-label="In the Closet">{"\ue73e"}</span></Show>
+                    </article>
+                  )}
+                </For>
+              </div>
+            </section>
+          </div>
         )}
       </Show>
     </div>

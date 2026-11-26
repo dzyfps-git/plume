@@ -49,7 +49,7 @@ export function GameButton(props: { open: boolean }) {
       style={{ transform: `translate(${Math.round(at().x)}px, ${Math.round(at().y)}px)` }}
       onPointerDown={grab}
     >
-      <span class="ui-icon" aria-hidden="true">{""}</span>
+      <span class="ui-icon" aria-hidden="true">{"\ue9e9"}</span>
       {settings.hotkeys.quick ? <kbd>{settings.hotkeys.quick}</kbd> : undefined}
     </button>
   );

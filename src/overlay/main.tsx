@@ -6,6 +6,7 @@ import { useSettings } from "../store";
 import { followPaint } from "../ui/paint";
 import "../house/tokens.css";
 import "../house/bundle.css";
+import "../ui/game.css";
 import "./overlay.css";
 import { Overlay } from "./Overlay";
 

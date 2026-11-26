@@ -1,4 +1,4 @@
-import { onCleanup, Show, type JSX } from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show, type JSX } from "solid-js";
 import { AlertGroups } from "../features/alerts/Page";
 import { Voice } from "../features/alerts/Voice";
 import { query, setQuery } from "../ui/search";
@@ -9,6 +9,14 @@ import { AppGroups } from "./Settings";
 /** A page of settings, with a search over those of all pages. */
 export function Shell(props: { title: string; action?: JSX.Element; children: JSX.Element }) {
   onCleanup(() => setQuery(""));
+  let body!: HTMLDivElement;
+  // Its groups, as chips that open one and go to it.
+  const [groups, setGroups] = createSignal<HTMLDetailsElement[]>([]);
+  onMount(() => setGroups([...body.querySelectorAll<HTMLDetailsElement>("details.group")]));
+  const jump = (group: HTMLDetailsElement) => {
+    group.open = true;
+    group.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   return (
     <div class="page">
       <header class="page-head">
@@ -19,7 +27,12 @@ export function Shell(props: { title: string; action?: JSX.Element; children: JS
         </label>
         {props.action}
       </header>
-      <Show when={query()} fallback={props.children}>
+      <Show when={!query() && groups().length > 3}>
+        <nav class="group-index ui-row" aria-label="On this page">
+          <For each={groups()}>{(g) => <button class="ui-chip" onClick={() => jump(g)}>{g.querySelector(":scope > summary h2")?.textContent}</button>}</For>
+        </nav>
+      </Show>
+      <Show when={query()} fallback={<div ref={body} class="shell-body">{props.children}</div>}>
         <div class="found">
           <MeterGroups still />
           <OverlayGroups still />

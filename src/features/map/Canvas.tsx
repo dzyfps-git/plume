@@ -1,7 +1,7 @@
-import { createEffect, createSignal, onCleanup, onMount, untrack } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show, untrack } from "solid-js";
 import type { Layer } from "../../store/settings";
 import type { You } from "./data";
-import { FINDABLE, isFound, keyOf, LAYER_COLOURS, unpack, type Spot, type Thing, type WorldMap } from "./logic";
+import { FINDABLE, isFound, keyOf, LAYER_COLOURS, LAYER_NAMES, unpack, type Spot, type Thing, type WorldMap } from "./logic";
 
 export interface Picked {
   thing: Thing;
@@ -43,11 +43,18 @@ export function MapCanvas(props: MapProps) {
   const [view, setView] = createSignal({ x: 0, y: 0, scale: 0 });
   /** Where each drawn mark is, to find the one under the mouse. */
   let drawn: { x: number; y: number; thing: Thing; spot: Spot }[] = [];
+  /** The mark under the mouse, for its name. */
+  const [over, setOver] = createSignal<{ x: number; y: number; thing: Thing } | null>(null);
 
   const fit = () => {
     const [left, top, right, bottom] = props.map.bounds;
     const { width, height } = size();
     return Math.min(width / (right - left), height / (bottom - top)) || 1;
+  };
+  /** Closest in: three times the picture's own pixels, so it never turns to mush. */
+  const most = () => {
+    const [left, , right] = props.map.bounds;
+    return props.picture ? Math.max(fit() * 6, (props.picture.width / (right - left)) * 3) : fit() * 40;
   };
   const scale = () => (props.across ? size().width / props.across : view().scale || fit());
   const middle = () => {
@@ -78,7 +85,7 @@ export function MapCanvas(props: MapProps) {
     if (!at) return;
     untrack(() => {
       const s = at.across ? size().width / at.across : Math.max(scale(), fit() * 3);
-      setView({ x: at.x, y: at.y, scale: Math.min(s, fit() * 40) });
+      setView({ x: at.x, y: at.y, scale: Math.min(s, most()) });
     });
   });
 
@@ -112,7 +119,8 @@ export function MapCanvas(props: MapProps) {
     }
     const on = new Set(props.layers);
     drawn = [];
-    const dot = Math.max(2.5, Math.min(5, s * 3));
+    // Small when the whole map shows, so thousands do not run together; larger as you come in.
+    const dot = Math.min(5, 2.5 + (s / fit()) * 0.3);
     for (const thing of m.things) {
       const key = keyOf(m.id, thing);
       const tracked = props.tracked.has(key);
@@ -130,11 +138,10 @@ export function MapCanvas(props: MapProps) {
         pen.beginPath();
         pen.arc(p.x, p.y, r, 0, Math.PI * 2);
         pen.fill();
-        if (tracked) {
-          pen.strokeStyle = "#ffffff";
-          pen.lineWidth = 1.5;
-          pen.stroke();
-        }
+        // A dark rim keeps a mark clear on any ground; a tracked one gets a white one.
+        pen.strokeStyle = tracked ? "#ffffff" : "rgba(6, 8, 12, 0.8)";
+        pen.lineWidth = tracked ? 1.5 : dot > 4 ? 1.25 : 0.75;
+        pen.stroke();
         drawn.push({ x: p.x, y: p.y, thing, spot });
       }
     }
@@ -239,8 +246,24 @@ export function MapCanvas(props: MapProps) {
     canvas.setPointerCapture(e.pointerId);
     held = { x: e.clientX, y: e.clientY, from: middle(), moved: false };
   };
+  const near = (px: number, py: number) => {
+    let best: (typeof drawn)[number] | null = null;
+    let least = 12;
+    for (const d of drawn) {
+      const away = Math.hypot(d.x - px, d.y - py);
+      if (away < least) [best, least] = [d, away];
+    }
+    return best;
+  };
   const move = (e: PointerEvent) => {
-    if (!held) return;
+    if (!held) {
+      if (props.across) return;
+      const box = canvas.getBoundingClientRect();
+      const d = near(e.clientX - box.left, e.clientY - box.top);
+      setOver(d && { x: d.x, y: d.y, thing: d.thing });
+      return;
+    }
+    setOver(null);
     const [dx, dy] = [e.clientX - held.x, e.clientY - held.y];
     if (!held.moved && Math.hypot(dx, dy) < 4) return;
     if (!held.moved) props.onMoved?.();
@@ -254,12 +277,7 @@ export function MapCanvas(props: MapProps) {
     if (!click || !props.onPick) return;
     const box = canvas.getBoundingClientRect();
     const [px, py] = [e.clientX - box.left, e.clientY - box.top];
-    let best: (typeof drawn)[number] | null = null;
-    let least = 12;
-    for (const d of drawn) {
-      const away = Math.hypot(d.x - px, d.y - py);
-      if (away < least) [best, least] = [d, away];
-    }
+    const best = near(px, py);
     props.onPick(best && { thing: best.thing, spot: best.spot }, toMap(px, py));
   };
   const wheel = (e: WheelEvent) => {
@@ -268,23 +286,38 @@ export function MapCanvas(props: MapProps) {
     const box = canvas.getBoundingClientRect();
     const [px, py] = [e.clientX - box.left, e.clientY - box.top];
     const at = toMap(px, py);
-    const s = Math.min(fit() * 40, Math.max(fit() * 0.8, scale() * 1.25 ** (-e.deltaY / 100)));
+    const s = Math.min(most(), Math.max(fit() * 0.8, scale() * 1.25 ** (-e.deltaY / 100)));
     props.onMoved?.();
     // The point under the mouse stays under it.
     setView({ x: at.x - (px - size().width / 2) / s, y: at.y - (py - size().height / 2) / s, scale: s });
   };
 
   return (
-    <canvas
-      ref={canvas}
-      class="map-canvas"
-      role="img"
-      aria-label={`Map of ${props.map.name}`}
-      onPointerDown={down}
-      onPointerMove={move}
-      onPointerUp={up}
-      onPointerCancel={() => (held = null)}
-      onWheel={wheel}
-    />
+    <>
+      <canvas
+        ref={canvas}
+        class="map-canvas"
+        data-over={over() ? "" : undefined}
+        role="img"
+        aria-label={`Map of ${props.map.name}`}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={() => (held = null)}
+        onPointerLeave={() => setOver(null)}
+        onWheel={wheel}
+      />
+      <Show when={over()}>
+        {(o) => (
+          <div class="map-tip" style={{ left: `${o().x}px`, top: `${o().y}px` }} aria-hidden="true">
+            <b>{o().thing.name}</b>
+            <small>
+              <i class="tint-dot" style={{ "--tint": LAYER_COLOURS[o().thing.layer] }} /> {LAYER_NAMES[o().thing.layer]}
+              {o().thing.level ? ` · level ${o().thing.level}` : ""}
+            </small>
+          </div>
+        )}
+      </Show>
+    </>
   );
 }

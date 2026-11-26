@@ -5,6 +5,7 @@ import { Line, Slide } from "../../ui/Line";
 import { ticking } from "../../ui/now";
 import { resets, wait } from "../resources/logic";
 import "../resources/resources.css";
+import "./time.css";
 import { elapsed, EVENTS, next, odds, serverTime, toggle } from "./logic";
 
 export function TimePage() {
@@ -32,15 +33,18 @@ export function TimePage() {
       <section class="block">
         <h2>Events</h2>
         <p class="ui-muted ui-small">On the server's clock, as guides give them: NC has published none, and they differ on Monday. Turned on, they show on the Time bar and the alert An event begins says them.</p>
-        <For each={rows()}>
-          {(n) => (
-            <div class="ui-row-item event-row">
-              <button class="ui-chip" aria-pressed={!off(n.event.id)} onClick={() => flip(n.event.id)}>{n.event.name}</button>
-              <span class="ui-num" classList={{ "ui-muted": off(n.event.id) }}>{n.open ? "Open now" : `in ${wait(n.start - now())}`}</span>
-              <span class="ui-muted ui-num">{serverTime(n.start)}</span>
-            </div>
-          )}
-        </For>
+        <div class="event-list" role="group" aria-label="Events to be told of">
+          <For each={rows()}>
+            {(n) => (
+              <button class="event-row" aria-pressed={!off(n.event.id)} data-open={n.open || undefined} onClick={() => flip(n.event.id)}>
+                <span class="ui-icon" aria-hidden="true">{"\uea8f"}</span>
+                <span class="event-name">{n.event.name}</span>
+                <span class="event-when ui-num">{n.open ? "Open now" : `in ${wait(n.start - now())}`}</span>
+                <span class="ui-num ui-muted">{serverTime(n.start)}</span>
+              </button>
+            )}
+          </For>
+        </div>
         <Line name="Alert before" about="Minutes before an event begins.">
           <Slide name="Alert before" least={0} most={30} step={1} value={settings.events.before} text={settings.events.before ? `${settings.events.before} min` : "As it opens"} set={(v) => change((s) => (s.events.before = v))} />
         </Line>

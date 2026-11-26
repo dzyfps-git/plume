@@ -59,7 +59,7 @@ export function BuildsPage() {
         <Show when={file()}>
           {(f) => (
             <div class="ui-row">
-              <select class="ui-select" aria-label="Class of a new build" value={job()} onChange={(e) => setJob(e.currentTarget.value)}>
+              <select class="ui-select" aria-label="Class of a new build" value={job() || Object.keys(f().boards)[0]} onChange={(e) => setJob(e.currentTarget.value)}>
                 <For each={Object.keys(f().boards)}>{(j) => <option value={j}>{j}</option>}</For>
               </select>
               <button class="ui-button" onClick={make}>New build</button>

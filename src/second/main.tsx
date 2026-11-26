@@ -9,6 +9,7 @@ import { followMeter } from "../features/meter/live";
 import { follow } from "../live/store";
 import { useSettings } from "../store";
 import { followPaint } from "../ui/paint";
+import "../ui/game.css";
 import "./second.css";
 import { SecondScreen } from "./Second";
 

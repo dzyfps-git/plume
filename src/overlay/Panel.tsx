@@ -19,11 +19,11 @@ export function Panel(props: { all: readonly Feature[]; on: (f: Feature) => bool
   return (
     <div class="over-panel" role="dialog" aria-label="Overlay controls">
       <header>
-        <span class="ui-icon" aria-hidden="true">{""}</span>
+        <span class="ui-icon" aria-hidden="true">{"\ue9e9"}</span>
         <strong>Overlay controls</strong>
-        <button class="ui-icon-button" aria-label="Undo" aria-keyshortcuts="Control+Z" disabled={!canUndo()} onClick={undo}>{""}</button>
-        <button class="ui-icon-button" aria-label="Redo" aria-keyshortcuts="Control+Y" disabled={!canRedo()} onClick={redo}>{""}</button>
-        <button class="ui-icon-button" aria-label="Close" aria-keyshortcuts="Escape" onClick={props.done}>{""}</button>
+        <button class="ui-icon-button" aria-label="Undo" aria-keyshortcuts="Control+Z" disabled={!canUndo()} onClick={undo}>{"\ue7a7"}</button>
+        <button class="ui-icon-button" aria-label="Redo" aria-keyshortcuts="Control+Y" disabled={!canRedo()} onClick={redo}>{"\ue7a6"}</button>
+        <button class="ui-icon-button" aria-label="Close" aria-keyshortcuts="Escape" onClick={props.done}>{"\ue8bb"}</button>
       </header>
       <small class="over-hint">Drag any overlay to move it. Scroll on one to size it.</small>
 
@@ -74,7 +74,7 @@ export function Panel(props: { all: readonly Feature[]; on: (f: Feature) => bool
 
       <footer>
         <button class="ui-button" onClick={() => void openPage("overlays")}>
-          <span class="ui-icon" aria-hidden="true">{""}</span>
+          <span class="ui-icon" aria-hidden="true">{"\ue8a7"}</span>
           Open in the app
         </button>
         <button class="ui-button" onClick={reset}>Put all back</button>

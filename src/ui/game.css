@@ -1,0 +1,52 @@
+/* The game's colours, by what they mean: an item's grade, a side of the war, a pet's kind. One place, used everywhere. */
+:root {
+  --grade-common: #c9cad1;
+  --grade-rare: #5fd896;
+  --grade-legend: #5aa8f5;
+  --grade-unique: #e9c15e;
+  --grade-epic: #f78a4f;
+  --grade-special: #c49bff;
+  --side-elyos: #5fc6ef;
+  --side-asmodian: #a97dff;
+  --side-abyss: #f47b6c;
+  --kind-cogni: #5b9dff;
+  --kind-fera: #ff6b6b;
+  --kind-natura: #4fd18b;
+  --kind-varian: #a97dff;
+  --kind-special: #e9c15e;
+}
+
+/* An item's name in its grade's colour. Grade 0 to 5, as the game counts them, or by name. */
+:is([data-grade="common"], [data-grade="0"]) { --grade: var(--grade-common); color: var(--grade); }
+:is([data-grade="rare"], [data-grade="1"]) { --grade: var(--grade-rare); color: var(--grade); }
+:is([data-grade="legend"], [data-grade="2"]) { --grade: var(--grade-legend); color: var(--grade); }
+:is([data-grade="unique"], [data-grade="3"]) { --grade: var(--grade-unique); color: var(--grade); }
+:is([data-grade="epic"], [data-grade="4"]) { --grade: var(--grade-epic); color: var(--grade); }
+:is([data-grade="special"], [data-grade="5"]) { --grade: var(--grade-special); color: var(--grade); }
+
+[data-side="elyos"] { --tint: var(--side-elyos); }
+[data-side="asmodian"] { --tint: var(--side-asmodian); }
+[data-side="abyss"] { --tint: var(--side-abyss); }
+[data-kind="cogni"] { --tint: var(--kind-cogni); }
+[data-kind="fera"] { --tint: var(--kind-fera); }
+[data-kind="natura"] { --tint: var(--kind-natura); }
+[data-kind="varian"] { --tint: var(--kind-varian); }
+[data-kind="special"] { --tint: var(--kind-special); }
+
+/* A small dot in the colour of what it stands beside. */
+.tint-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tint, var(--text-muted)); box-shadow: 0 0 6px color-mix(in srgb, var(--tint, transparent) 55%, transparent); vertical-align: 1px; }
+.tint-text { color: color-mix(in oklab, var(--tint, var(--text)) 82%, var(--text)); }
+
+/* An item's or a pet's picture in a frame of its grade or kind, as the game draws them. */
+.thing-pic {
+  --edge: var(--grade, var(--tint, var(--border-strong)));
+  position: relative; display: grid; flex: none; place-items: center; width: 40px; height: 40px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--edge) 70%, transparent);
+  border-radius: 8px; background: linear-gradient(160deg, color-mix(in srgb, var(--edge) 30%, #15151a), #121216 75%); color: var(--text) !important; font-size: 15px; font-weight: 600;
+}
+.thing-pic > :is(img, canvas, .sharp) { width: 100%; height: 100%; object-fit: contain; }
+.thing-pic .ui-icon { color: color-mix(in oklab, var(--edge) 75%, var(--text)); font-size: 18px; font-weight: 400; }
+.thing-pic[data-small] { width: 28px; height: 28px; border-radius: 6px; font-size: 12px; }
+.thing-pic[data-small] .ui-icon { font-size: 14px; }
+
+/* A bar of progress in the colour of what it counts. */
+.tint-bar { height: 5px; border-radius: 3px; background: linear-gradient(90deg, var(--tint, var(--accent)) calc(var(--done) * 100%), color-mix(in srgb, var(--text) 10%, transparent) 0); }

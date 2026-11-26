@@ -1,8 +1,8 @@
 // The skins in your Closet, against all of the game's, and where the rest come from.
 import type { Skins } from "../../live/types.ts";
 
-/** Name, the Asmodian name when it differs, grade 0 to 4, slot, the game's order, where it comes from. */
-export type Skin = [name: string, other: string, grade: number, slot: string, order: number, from: string[]];
+/** Name, the Asmodian name when it differs, grade 0 to 4, slot, the game's order, where it comes from, and its picture when known. */
+export type Skin = [name: string, other: string, grade: number, slot: string, order: number, from: string[], picture?: string];
 
 export interface SkinFile {
   made: string;
@@ -51,12 +51,4 @@ export function rows(file: SkinFile, owned: ReadonlySet<number>, show: Show, slo
       (!words || r.skin[0].toLowerCase().includes(words) || r.skin[1].toLowerCase().includes(words) || r.skin[5].some((f) => f.toLowerCase().includes(words))),
     )
     .sort((a, b) => a.skin[4] - b.skin[4] || a.id - b.id);
-}
-
-/** How many of each group you have, and of how many. */
-export function groups(file: SkinFile, owned: ReadonlySet<number>): { name: string; have: number; all: number }[] {
-  return Object.entries(SLOTS).map(([name, slots]) => {
-    const all = Object.entries(file.skins).filter(([, s]) => (slots as readonly string[]).includes(s[3]));
-    return { name, have: all.filter(([id]) => owned.has(Number(id))).length, all: all.length };
-  });
 }

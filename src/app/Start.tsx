@@ -19,15 +19,15 @@ export function FirstStart() {
       <Styles />
       <div class="first-tips">
         <div>
-          <span class="ui-icon" aria-hidden="true">{""}</span>
+          <span class="ui-icon" aria-hidden="true">{"\ue9e9"}</span>
           <p><b>{key()}</b> over the game opens the overlay controls: turn overlays on and off, and drag any of them anywhere.</p>
         </div>
         <div>
-          <span class="ui-icon" aria-hidden="true">{""}</span>
+          <span class="ui-icon" aria-hidden="true">{"\ue7c2"}</span>
           <p>While the mouse pointer shows, each overlay has a handle on its top edge. Drag it to move the overlay, or right-click it for its menu.</p>
         </div>
         <div>
-          <span class="ui-icon" aria-hidden="true">{""}</span>
+          <span class="ui-icon" aria-hidden="true">{"\ue8bb"}</span>
           <p>The first time you close this window, {NAME} asks whether it keeps running in the tray or quits.</p>
         </div>
       </div>

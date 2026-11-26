@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groups, heard, rows, type SkinFile } from "./logic.ts";
+import { heard, rows, type SkinFile } from "./logic.ts";
 
 const file: SkinFile = {
   made: "",
@@ -26,5 +26,4 @@ test("skins as chosen, in the game's order, searched by name or by where they co
   assert.deepEqual(rows(file, owned, "all", "Cape", "").map((r) => r.id), [3]);
   assert.deepEqual(rows(file, owned, "all", "", "gale").map((r) => r.id), [3]);
   assert.deepEqual(rows(file, owned, "all", "", "fire temple").map((r) => r.id), [2]);
-  assert.deepEqual(groups(file, owned), [{ name: "Weapons", have: 0, all: 1 }, { name: "Armour", have: 1, all: 2 }, { name: "Accessories", have: 0, all: 0 }]);
 });

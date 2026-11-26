@@ -1,10 +1,4 @@
 .loot-feed { display: grid; gap: 2px; padding: 6px 10px; font-size: 13px; }
 .loot-feed .loot-item[data-chosen] { font-weight: 700; text-shadow: 0 0 8px currentColor; }
-[data-grade="common"] { color: #dcdcdc; }
-[data-grade="rare"] { color: #5fdc95; }
-[data-grade="legend"] { color: #59a8ff; }
-[data-grade="unique"] { color: #ffcc55; }
-[data-grade="epic"] { color: #ff8a4c; }
-[data-grade="special"] { color: #c49bff; }
 .loot-row { --columns: minmax(0, 1fr) 90px 90px auto; }
 .roll-row { --columns: minmax(0, 1fr) minmax(0, 1.4fr) 120px; }

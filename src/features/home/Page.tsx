@@ -1,5 +1,7 @@
-import { createSignal, For, onCleanup, Show } from "solid-js";
-import { openPage } from "../../api";
+import { createResource, createSignal, For, onCleanup, Show } from "solid-js";
+import { openPage, worldFile } from "../../api";
+import { NAV_GROUPS } from "../../app/menu";
+import { GameIcon } from "../../ui/Pic";
 import { GAME } from "../../app/brand";
 import { lights } from "../../live/health";
 import { engine, live, near, state } from "../../live/store";
@@ -32,13 +34,24 @@ export function HomePage() {
   const event = () => upcoming(now(), settings.events.off)[0];
   const odyle = () => (last() ? energy(last()!, settings.odyle.member, now()) : undefined);
   const pages = () => [...FEATURES.filter((f) => f.page && f.id !== "home"), ...MORE];
+  // The map you were last on, or Verteron, behind the greeting. A dungeon has no picture, so Verteron stands in.
+  const [ground] = createResource(
+    () => last()?.map || 1010,
+    (id) => worldFile(`map_${id}.webp`).catch(() => worldFile("map_1010.webp")).then((b) => URL.createObjectURL(new Blob([b], { type: "image/webp" })), () => ""),
+  );
+  onCleanup(() => ground() && URL.revokeObjectURL(ground()!));
 
   return (
     <div class="page">
-      <header class="page-head">
-        <h1>{greeting(new Date(now()).getHours())}{name() ? `, ${name()}` : ""}</h1>
+      <header class="home-hero">
+        <Show when={ground()}>{(url) => <img class="home-ground" src={url()} alt="" />}</Show>
+        <Show when={last()?.job}>{(job) => <span class="home-art" aria-hidden="true"><GameIcon name={`art_${job()}`}>{null}</GameIcon></span>}</Show>
+        <div class="home-hello">
+          <h1>{greeting(new Date(now()).getHours())}{name() ? `, ${name()}` : ""}</h1>
+          <small>{live() ? `${GAME} is connected, and Plume reads it.` : `Plume reads ${GAME} once all three below are green.`}</small>
+        </div>
       </header>
-      <Show when={!live()} fallback={<p class="home-live">{GAME} is connected, and Plume reads it.</p>}>
+      <Show when={!live()}>
         <ul class="lights" aria-label="What is ready">
           <For each={lights(engine(), state(), GAME)}>{(l) => <li data-light={l.light}>{l.name}<small>{l.about}</small></li>}</For>
         </ul>
@@ -54,13 +67,22 @@ export function HomePage() {
         <div class="stat"><small>Overlays on</small><b class="ui-num">{overlays()}</b><small>{settings.layoutAuto && settings.layouts.length ? `${settings.layouts.length} layouts, changing by themselves` : ""}</small></div>
         <div class="stat"><small>Alerts on</small><b class="ui-num">{alerts()}</b></div>
       </div>
-      <nav class="home-tiles" aria-label="Every page">
-        <For each={pages()}>
-          {(p) => (
-            <button class="home-tile" onClick={() => void openPage(p.id)}>
-              <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": p.color }}>{p.icon}</span>
-              <span>{p.name}</span>
-            </button>
+      <nav class="home-groups" aria-label="Every page">
+        <For each={NAV_GROUPS}>
+          {(g) => (
+            <section class="home-group" style={{ "--group": g.color }}>
+              <h3><span class="tint-dot" style={{ "--tint": g.color }} aria-hidden="true" />{g.name}</h3>
+              <div class="home-tiles">
+                <For each={g.ids.map((id) => pages().find((p) => p.id === id)).filter((p) => p !== undefined)}>
+                  {(p) => (
+                    <button class="home-tile" onClick={() => void openPage(p.id)}>
+                      <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": p.color }}>{p.icon}</span>
+                      <span>{p.name}</span>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </section>
           )}
         </For>
       </nav>

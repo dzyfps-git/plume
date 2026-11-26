@@ -69,10 +69,10 @@ export function MapPage() {
             <For each={["asmodian", "elyos", "abyss"] as MapInfo["side"][]}>
               {(side) => (
                 <>
-                  <h3>{SIDE_NAMES[side]}</h3>
+                  <h3 class="tint-text" data-side={side}><span class="tint-dot" aria-hidden="true" />{SIDE_NAMES[side]}</h3>
                   <For each={maps()?.maps.filter((m) => m.side === side)}>
                     {(m) => (
-                      <button class="tracker-row" aria-current={(settings.world.map === m.id) || undefined} onClick={() => choose(m.id)}>
+                      <button class="tracker-row" data-side={side} aria-current={(settings.world.map === m.id) || undefined} onClick={() => choose(m.id)}>
                         <span>{m.name}</span>
                         <small class="ui-num ui-muted">{m.marks ? m.marks.toLocaleString("en-GB") : "picture"}</small>
                       </button>

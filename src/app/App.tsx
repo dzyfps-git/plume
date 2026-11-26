@@ -5,6 +5,7 @@ import { FEATURES } from "../features";
 import { engine, live } from "../live/store";
 import { settings } from "../store";
 import { GAME, NAME } from "./brand";
+import { NAV_GROUPS } from "./menu";
 import { LookPage } from "./Look";
 import { OverlaysPage } from "./Overlays";
 import { Palette } from "./Palette";
@@ -19,19 +20,24 @@ export interface Page {
   view: Component;
 }
 
-const PAGES: Page[] = [
+const ALL: Page[] = [
   ...FEATURES.flatMap(({ id, name, icon, color, page }) => (page ? [{ id, name, icon, color, view: page }] : [])),
   { id: "look", name: "Meter look", icon: "\ue790", color: "#e58cff", view: LookPage },
   { id: "overlays", name: "Overlays", icon: "", color: "#8f9bff", view: OverlaysPage },
   { id: "settings", name: "Settings", icon: "", color: "#a9b4c8", view: SettingsPage },
 ];
 
+const groupOf = (id: string) => NAV_GROUPS.find((g) => (g.ids as readonly string[]).includes(id));
+const PAGES: Page[] = [...ALL.filter((p) => !groupOf(p.id)), ...NAV_GROUPS.flatMap((g) => g.ids.flatMap((id) => ALL.filter((p) => p.id === id)))];
+
 export function App(props: { page?: string }) {
   const [page, setPage] = createSignal(PAGES[0]);
   const [folded, setFolded] = createSignal(false);
   const [palette, setPalette] = createSignal(false);
   const [asking, setAsking] = createSignal(false);
-  const go = (next: Page) => next !== page() && window.House.morph(() => setPage(next), "page");
+  let panel!: HTMLElement;
+  // A new page starts at its top.
+  const go = (next: Page) => next !== page() && (setPage(next), (panel.scrollTop = 0));
 
   /** A page that the overlay or a key asked for. */
   const open = (id: string) => {
@@ -98,10 +104,14 @@ export function App(props: { page?: string }) {
         </button>
         <For each={PAGES}>
           {(p, i) => (
+            <>
+            <Show when={groupOf(p.id) && groupOf(p.id)!.ids[0] === p.id}>
+              <span class="nav-group" data-last={p.id === "look" || undefined} style={{ "--group": groupOf(p.id)!.color }}>{groupOf(p.id)!.name}</span>
+            </Show>
             <button
               class="ui-nav-item"
-              data-last={p.id === "look" || undefined}
               aria-current={page() === p ? "page" : undefined}
+              style={{ "--group": groupOf(p.id)?.color }}
               aria-keyshortcuts={`Control+${i() + 1}`}
               data-tip={folded() ? p.name : undefined}
               onClick={() => go(p)}
@@ -109,11 +119,12 @@ export function App(props: { page?: string }) {
               <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": p.color }}>{p.icon}</span>
               <span>{p.name}</span>
             </button>
+            </>
           )}
         </For>
       </nav>
       <main class="ui-main">
-        <section class="ui-panel scroll" data-active>
+        <section ref={panel} class="ui-panel scroll" data-active>
           <Show when={settings.started} fallback={<FirstStart />}><Dynamic component={page().view} /></Show>
         </section>
       </main>

@@ -9,6 +9,7 @@ import { follow } from "./live/store";
 import { useSettings } from "./store";
 import { followPaint } from "./ui/paint";
 import "./app/app.css";
+import "./ui/game.css";
 
 const start = await startState();
 await useSettings(start.settings);
