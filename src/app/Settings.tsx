@@ -19,7 +19,7 @@ const ACTION_NAMES: Record<Action, string> = {
   edit: "Move overlays",
   reset: "Start the fight again",
   view: "Next meter view",
-  quick: "Panel over the game",
+  quick: "Overlay controls",
   compact: "Meter as one bar",
   lock: "Lock or unlock the meter",
   peek: "Look closer, while held",

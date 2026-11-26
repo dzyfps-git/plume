@@ -4,7 +4,7 @@ import { FEATURES } from "../features";
 import { overlayName, widthOf, type Feature } from "../features/types";
 import { fromCode, MARGIN, snap, toCode, toPixels, toShare } from "../overlay/layout";
 import { change, settings } from "../store";
-import { ACTIVITIES, place, type Layout, type Place } from "../store/settings";
+import { ACTIVITIES, place, sizeOfAll, type Layout, type Place } from "../store/settings";
 import { Group } from "../ui/Group";
 import { Line } from "../ui/Line";
 import { Switch } from "../ui/Switch";
@@ -69,7 +69,7 @@ export function ScreenMap() {
   const all = () => FEATURES.filter((f) => f.overlay);
   const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
   const size = (f: Feature) => {
-    const k = at(f).scale * settings.overlay.size;
+    const k = at(f).scale * sizeOfAll(settings.overlay);
     return { width: widthOf(f.overlay!) * k, height: (at(f).height ?? 120) * k };
   };
   const spot = (f: Feature) => toPixels(at(f), size(f), SCREEN);

@@ -46,6 +46,7 @@ fn start_state(app: AppHandle, window: tauri::WebviewWindow, saved: State<Saved>
         now["quiet"] = saved.quiet.swap(false, SeqCst).into();
     }
     now["editing"] = windowing::MODES[usize::from(app.state::<Overlay>().editing.load(SeqCst))].into();
+    now["pointer"] = app.state::<Overlay>().pointer.load(SeqCst).into();
     now
 }
 
@@ -287,7 +288,17 @@ fn open_sounds_folder(app: AppHandle) -> Result<(), String> {
 }
 
 fn pictures_folder(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("icons"))
+    data(app, "icons")
+}
+
+/// `world` or `icons` in the data folder, or else beside Plume, where a full installer puts them.
+fn data(app: &AppHandle, part: &str) -> Result<PathBuf, String> {
+    let own = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join(part);
+    let filled = |d: &PathBuf| d.read_dir().is_ok_and(|mut files| files.next().is_some());
+    if filled(&own) {
+        return Ok(own);
+    }
+    Ok(app.path().resource_dir().map(|d| d.join(part)).ok().filter(filled).unwrap_or(own))
 }
 
 #[tauri::command(async)]
@@ -303,8 +314,7 @@ fn picture(app: AppHandle, name: String) -> Result<tauri::ipc::Response, String>
 /// Maps, pets and drops, made by the engine's `tools/world.py`.
 #[tauri::command(async)]
 fn world_file(app: AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
-    let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("world");
-    storage::world(&folder, &name).map(tauri::ipc::Response::new)
+    storage::world(&data(&app, "world")?, &name).map(tauri::ipc::Response::new)
 }
 
 #[tauri::command(async)]
@@ -331,11 +341,10 @@ fn open_data_folder(app: AppHandle) -> Result<(), String> {
 /// Your settings, fights and characters stay here. Gives back how many files were copied.
 #[tauri::command(async)]
 fn share_data(app: AppHandle) -> Result<usize, String> {
-    let from = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     let to = app.path().desktop_dir().map_err(|e| e.to_string())?.join("Plume data for a friend");
     let mut copied = 0;
     for part in ["world", "icons"] {
-        let (source, target) = (from.join(part), to.join(part));
+        let (source, target) = (data(&app, part)?, to.join(part));
         std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
         for entry in std::fs::read_dir(&source).map_err(|e| format!("{part}: {e}"))?.flatten() {
             if entry.file_type().is_ok_and(|t| t.is_file()) {
@@ -547,9 +556,12 @@ fn main() {
                 let _ = engine.send(command);
             }
         }
-        // Unless you chose that closing it quits.
+        // Unless you chose that closing it quits. Before you chose, the page asks.
         RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. }
-            if label == windowing::MAIN && app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner())["close"] == "quit" =>
+            if label == windowing::MAIN && {
+                let s = app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
+                s["close"] == "quit" && s["closeAsked"] == true
+            } =>
         {
             app.exit(0);
         }

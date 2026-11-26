@@ -92,6 +92,13 @@
 .peek-skill { position: relative; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px 0 2px; overflow: hidden; border-radius: 6px; isolation: isolate; }
 .peek-skill i { position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--class) 34%, transparent); transform: scaleX(var(--length)); transform-origin: left; }
 .peek-skill span:not(.pic) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Your skills while you fight alone: as tall as a row. */
+.meter-skills { display: grid; gap: 2px; padding: 2px 4px 4px; }
+.meter-skills-wait { margin: 0; padding: 6px; color: color-mix(in srgb, var(--text) 72%, transparent); font-size: 12px; }
+.meter-skill { position: relative; display: flex; align-items: center; gap: 8px; height: var(--high); padding: 0 8px 0 3px; overflow: hidden; border-radius: 6px; font-size: calc(13px * var(--size)); isolation: isolate; }
+.meter-skill i { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, color-mix(in srgb, var(--class) 55%, transparent), color-mix(in srgb, var(--class) 30%, transparent)); transform: scaleX(var(--length)); transform-origin: left; transition: transform .3s; }
+.meter-skill span:not(.pic) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meter-skill small { min-width: 42px; color: color-mix(in srgb, var(--text) 72%, transparent); text-align: right; }
 
 /* A figure that changed, for a moment. */
 .foot-item { position: relative; }

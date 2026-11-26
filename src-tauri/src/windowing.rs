@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::Win32::Foundation::POINT;
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow};
-use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetForegroundWindow, GetWindowTextW};
+use windows::Win32::UI::WindowsAndMessaging::{CURSOR_SHOWING, CURSORINFO, GetCursorInfo, GetCursorPos, GetForegroundWindow, GetWindowTextW};
 
 pub const MAIN: &str = "main";
 pub const OVERLAY: &str = "overlay";
@@ -32,6 +32,8 @@ pub struct Overlay {
     pub sleep: AtomicBool,
     /// One of `MODES`.
     pub editing: AtomicU8,
+    /// The mouse pointer shows. While the game hides it to turn the camera, nothing of the overlay takes the mouse.
+    pub pointer: AtomicBool,
     place: Mutex<(i32, i32, i32, i32)>,
     /// What takes the mouse, in points of the screen from the window's corner: left, top, right, bottom.
     pub zones: Mutex<Vec<[i32; 4]>>,
@@ -197,8 +199,12 @@ pub fn point(app: AppHandle) {
                 continue;
             }
             let (left, top, ..) = *state.place.lock().unwrap_or_else(|p| p.into_inner());
+            let shown = pointer_shown();
+            if state.pointer.swap(shown, SeqCst) != shown {
+                let _ = app.emit_to(OVERLAY, "pointer", shown);
+            }
             let mut at = POINT::default();
-            let inside = unsafe { GetCursorPos(&mut at) }.is_ok() && within(&zones, at.x - left, at.y - top);
+            let inside = shown && unsafe { GetCursorPos(&mut at) }.is_ok() && within(&zones, at.x - left, at.y - top);
             if inside != taking && let Some(w) = window {
                 taking = inside;
                 let _ = w.set_ignore_cursor_events(!inside);
@@ -206,6 +212,15 @@ pub fn point(app: AppHandle) {
             std::thread::sleep(POINT_LOOK);
         }
     });
+}
+
+/// Whether Windows shows a mouse pointer. Asks Windows only, never the game. True when it cannot tell.
+fn pointer_shown() -> bool {
+    let mut info = CURSORINFO { cbSize: size_of::<CURSORINFO>() as u32, ..Default::default() };
+    if unsafe { GetCursorInfo(&mut info) }.is_err() {
+        return true;
+    }
+    info.flags.0 & CURSOR_SHOWING.0 != 0 && !info.hCursor.is_invalid()
 }
 
 fn within(zones: &[[i32; 4]], x: i32, y: i32) -> bool {

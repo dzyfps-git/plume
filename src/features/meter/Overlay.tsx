@@ -13,7 +13,7 @@ import { hp } from "../boss/logic";
 import { followFights, fights } from "../history/store";
 import { Buttons } from "./Buttons";
 import { Feet } from "./Foot";
-import { bursting, casts, fallen, peek } from "./live";
+import { bursting, casts, fallen, peek, solo } from "./live";
 import { against, BEST, whose, bestRow, gap, label, lines, partyDps, power, ranked, shown, signed, VIEW_NAMES, withBest, type Against, type Ranked } from "./logic";
 import "./meter.css";
 
@@ -96,6 +96,8 @@ function Whole(props: { gone: boolean; still: boolean }) {
   const pull = () => <Show when={m().head && !cards() && !props.gone && held()}>{(h) => <Pull of={h()} />}</Show>;
   const line = (row: Row) => <Show when={spots().get(row.id)}>{(at) => <MeterRow row={row} at={at()} most={most()} many={all().length > 1} gap={row.you && m().gap ? gap(all()) : undefined} />}</Show>;
   const feet = createMemo(footers);
+  // Alone, your skills stand where the rows would.
+  const mySkills = () => !props.still && !props.gone && solo() && (view() === "damage" || view().endsWith("dps"));
   const figures = () => (
     <>
       <Show when={m().clock && !props.gone}><span class="ui-num">{clock(fight.ms)}</span></Show>
@@ -123,7 +125,8 @@ function Whole(props: { gone: boolean; still: boolean }) {
       <Show when={cards() && all().find(({ row }) => row.you)}>
         {(at) => <Hero at={at()} first={rows().length > 1 && ranked({ rows: rows(), ms: fight.ms }, view())[0]?.row.you} held={m().head ? held() : undefined} gap={m().gap ? gap(all()) : undefined} />}
       </Show>
-      <Show when={list().length}>
+      <Show when={mySkills()}><SoloSkills /></Show>
+      <Show when={!mySkills() && list().length}>
         <div class="meter-rows" style={{ "--count": list().length, "--more": strip() ? 1 : 0, "--yours": cards() ? list().length - 1 : yours() }}>
           <For each={still()}>{line}</For>
           {line(bestRow)}
@@ -257,6 +260,31 @@ function Hero(props: { at: Ranked; first: boolean; held?: Against; gap?: number 
           <Show when={props.held} fallback={<small class="ui-num">{props.at.share.toFixed(1)}%</small>}>{(h) => <Pull of={h()} />}</Show>
         </span>
       </span>
+    </div>
+  );
+}
+
+/** Your skills, biggest first, while you fight alone. */
+function SoloSkills() {
+  const m = look;
+  const mine = () => fight.rows.find((r) => r.you);
+  const list = createMemo(() => (skills().id === mine()?.id ? lines(skills().skills).slice(0, m().rows) : []));
+  const most = () => Math.max(1, list()[0]?.damage ?? 1);
+  const seconds = () => Math.max(1, fight.ms / 1000);
+  return (
+    <div class="meter-skills ui-num" role="table" aria-label="Your skills" style={{ "--class": classOf(mine()?.job ?? "").color }}>
+      <For each={list()} fallback={<p class="meter-skills-wait">Reading your skills.</p>}>
+        {(s) => (
+          <div class="meter-skill" role="row" style={{ "--length": s.damage / most() }}>
+            <i />
+            <Pic skill={s.code} name={s.name || "Skill"} />
+            <span role="cell">{s.name || `Skill ${s.code}`}</span>
+            <b role="cell">{short(s.damage / seconds())}</b>
+            <small role="cell">{percent(s.share, 1)}</small>
+            <small role="cell">{short(s.damage)}</small>
+          </div>
+        )}
+      </For>
     </div>
   );
 }

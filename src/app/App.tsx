@@ -9,7 +9,7 @@ import { LookPage } from "./Look";
 import { OverlaysPage } from "./Overlays";
 import { Palette } from "./Palette";
 import { SettingsPage } from "./Settings";
-import { FirstStart } from "./Start";
+import { CloseAsk, FirstStart } from "./Start";
 
 export interface Page {
   id: string;
@@ -30,6 +30,7 @@ export function App(props: { page?: string }) {
   const [page, setPage] = createSignal(PAGES[0]);
   const [folded, setFolded] = createSignal(false);
   const [palette, setPalette] = createSignal(false);
+  const [asking, setAsking] = createSignal(false);
   const go = (next: Page) => next !== page() && window.House.morph(() => setPage(next), "page");
 
   /** A page that the overlay or a key asked for. */
@@ -41,7 +42,16 @@ export function App(props: { page?: string }) {
   onMount(() => {
     if (props.page) open(props.page);
     const heard = on("go", open);
-    onCleanup(() => void heard.then((stop) => stop()));
+    // Closing it the first time asks what closing it does.
+    const closing = appWindow().onCloseRequested((e) => {
+      if (settings.closeAsked) return;
+      e.preventDefault();
+      setAsking(true);
+    });
+    onCleanup(() => {
+      void heard.then((stop) => stop());
+      void closing.then((stop) => stop());
+    });
   });
 
   const keys = (e: KeyboardEvent) => {
@@ -79,7 +89,7 @@ export function App(props: { page?: string }) {
         <span class="status" data-state={status()[1]} role="status">{status()[0]}</span>
         <button class="ui-icon-button caption" aria-label="Minimize" onClick={() => void appWindow().minimize()}>{""}</button>
         <button class="ui-icon-button caption" aria-label="Maximize" onClick={() => void appWindow().toggleMaximize()}>{""}</button>
-        <button class="ui-icon-button caption" aria-label="Close. Overlays stay on" onClick={() => void appWindow().close()}>{""}</button>
+        <button class="ui-icon-button caption" aria-label={settings.closeAsked && settings.close === "quit" ? "Quit" : "Close"} onClick={() => void appWindow().close()}>{""}</button>
       </header>
       <nav class="ui-nav" data-rail={folded() || undefined} aria-label="Pages">
         <button class="ui-nav-item" aria-label={folded() ? "Open the menu" : undefined} onClick={() => setFolded(!folded())}>
@@ -104,10 +114,10 @@ export function App(props: { page?: string }) {
       </nav>
       <main class="ui-main">
         <section class="ui-panel scroll" data-active>
-          <Dynamic component={page().view} />
+          <Show when={settings.started} fallback={<FirstStart />}><Dynamic component={page().view} /></Show>
         </section>
       </main>
-      <Show when={!settings.started}><FirstStart /></Show>
+      <Show when={asking()}><CloseAsk close={() => setAsking(false)} /></Show>
       <Show when={palette()}>
         <Palette pages={PAGES} go={go} close={() => setPalette(false)} />
       </Show>

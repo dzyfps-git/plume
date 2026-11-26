@@ -50,6 +50,12 @@ export const hideNames = (): boolean | "all" => (settings.discreet ? "all" : set
 /** The look you chose for a name, while names show: a hidden name keeps no look that could tell who it is. */
 export const nameStyle = (name: string) => (hideNames() || !name ? undefined : settings.names[name]);
 
+/** Writes the settings down now, not once the changing stops. */
+export function keepNow() {
+  clearTimeout(timer);
+  return keep();
+}
+
 let timer = 0;
 /** Changes settings now, and writes them down once the changing stops. */
 export function change(edit: (s: Settings) => void, overlay = false) {

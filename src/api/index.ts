@@ -12,6 +12,8 @@ export type Editing = "" | "move" | "quick";
 export interface Start {
   settings: unknown;
   editing: Editing;
+  /** The mouse pointer shows over the game. */
+  pointer: boolean;
   /** The page to open on, or empty. */
   page?: string;
   /** Opened as the game started: minimized, without taking the screen. */
@@ -75,6 +77,7 @@ interface Events {
   /** The key to look closer was pressed, or is still held. */
   peek: null;
   go: string;
+  pointer: boolean;
 }
 
 export const on = <K extends keyof Events>(event: K, heard: (value: Events[K]) => void) =>

@@ -49,7 +49,12 @@ export function OverlayGroups(props: { still?: boolean }) {
         <Switch name="Only over the game" about="Hidden while another window is in front." on={over().onlyInGame} set={set("onlyInGame")} />
         <Switch name="Hide when there is nothing to show" on={over().hideEmpty} set={set("hideEmpty")} />
         <Line name="Size of all"><Slide name="Size of all" least={0.6} most={1.6} step={0.05} value={over().size} text={`${Math.round(over().size * 100)}%`} set={set("size")} /></Line>
+        <Line name="Game UI size" about="As set in the game, so that overlays grow and shrink with it.">
+          <Choices name="Game UI size" all={[1, 2, 3, 4, 5].map((n) => [n, String(n)] as const)} value={over().game} set={set("game")} />
+        </Line>
         <Switch name="Snap while moving" about="To the screen's edges and to each other." on={over().snap} set={set("snap")} />
+        <Switch name="Handles while you play" about="Drag an overlay by its top edge while the mouse pointer shows. Right-click it for its menu." on={over().grips} set={set("grips")} />
+        <Switch name="Button over the game" about={`Opens the overlay controls. So does ${settings.hotkeys.quick || "a key you set in Settings"}.`} on={over().button} set={set("button")} />
         <Switch name="Care for an OLED screen" about="Overlays fade after a minute without a fight, and move two points every few minutes." on={settings.oled} set={(on) => change((s) => (s.oled = on))} />
         <Switch name="Names and Combat Power hidden" about={`Yours too, for pictures and streams. ${settings.hotkeys.discreet || "No key"}`} on={settings.discreet} set={(on) => change((s) => (s.discreet = on))} />
         <Line name="Bar movement" about="Frames a second. Higher is smoother and costs more.">

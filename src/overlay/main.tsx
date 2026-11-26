@@ -11,8 +11,10 @@ import { Overlay } from "./Overlay";
 
 const start = await startState();
 const [editing, setEditing] = createSignal<Editing>(start.editing);
+const [pointer, setPointer] = createSignal(start.pointer);
 await useSettings(start.settings, true);
 await follow(start);
 followPaint();
 await on("edit", setEditing);
-render(() => <Overlay editing={editing} />, document.getElementById("root")!);
+await on("pointer", setPointer);
+render(() => <Overlay editing={editing} pointer={pointer} />, document.getElementById("root")!);

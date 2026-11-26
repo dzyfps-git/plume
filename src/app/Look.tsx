@@ -96,6 +96,7 @@ export function MeterGroups(props: { still?: boolean }) {
         <Switch name="Bursts" about="A light on rows that are far above their own average." on={m().burst} set={meter("burst")} />
         <Switch name="The dead" about="Grey, with how long since." on={m().dead} set={meter("dead")} />
         <Switch name="Your last casts" about="As pictures under your row." on={m().casts} set={meter("casts")} />
+        <Switch name="Your skills when alone" about="While nobody else fights, as in a daily dungeon: each skill's damage a second, share and total." on={m().solo} set={meter("solo")} />
         <Switch name="What buffs added" about="A pale part of the bar: damage that others' buffs gave. Full bars only." on={m().buffShare} set={meter("buffShare")} />
         <Switch name="Your best as a row" about="Where your best fight of this target would be by now." on={m().ghost} set={meter("ghost")} />
         <Switch name="Your pull" about="Which try it is, and how it goes against your best." on={m().head} set={meter("head")} />

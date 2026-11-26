@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { barEase, DEFAULTS, place, read } from "./settings.ts";
+import { barEase, DEFAULTS, place, read, sizeOfAll } from "./settings.ts";
+
+test("the old key for the overlay controls moves to Alt+E once, and a key you chose stays", () => {
+  assert.equal(read({ version: 1, hotkeys: { quick: "Ctrl+Alt+F8" } }).hotkeys.quick, "Alt+E");
+  assert.equal(read({ version: 2, hotkeys: { quick: "Ctrl+Alt+F8" } }).hotkeys.quick, "Ctrl+Alt+F8");
+  assert.equal(read({ version: 1, hotkeys: { quick: "Ctrl+Q" } }).hotkeys.quick, "Ctrl+Q");
+});
+
+test("overlays grow with the game's UI size, 3 being as made", () => {
+  const at = (game: number) => sizeOfAll(read({ overlay: { size: 1, game } }).overlay);
+  assert.equal(at(3), 1);
+  assert.ok(at(1) < at(2) && at(4) < at(5) && Math.abs(at(5) - 1.2) < 1e-9);
+  assert.equal(read({ overlay: { game: 9 } }).overlay.game, 5);
+});
 
 test("nothing, and nonsense, give the defaults", () => {
   for (const v of [null, undefined, 3, "x", [], {}, { meter: 5, hotkeys: [], fps: 61, updateMs: "fast", mode: "?" }]) {

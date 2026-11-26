@@ -3,7 +3,8 @@
 import type { Job } from "../live/types.ts";
 import type { Clock } from "../features/time/logic.ts";
 
-export const VERSION = 1;
+/** 2: the overlay controls moved to Alt+E. */
+export const VERSION = 2;
 export const MODES = ["bossTargets", "lastHitByMe", "mostRecent", "mostDamage", "allTargets"] as const;
 export const FPS = [15, 30, 60, 120, 144, 0] as const;
 export const STYLES = ["bar", "line", "cards", "gauge", "table"] as const;
@@ -253,6 +254,8 @@ export interface Meter {
   locked: boolean;
   /** Whose rows show. */
   who: "everyone" | "party" | "me";
+  /** Your skills instead of the rows, while you fight alone. */
+  solo: boolean;
   buttons: Button[];
   buttonsLocked: Button[];
   /** You first, and you when there is no fight. */
@@ -307,6 +310,13 @@ export interface Settings {
     linger: number;
     /** What starts a fight for them: the game's word, your hits, or the party's. */
     fightBy: "game" | "you" | "party";
+    /** Each one has a handle to drag it by, and a menu on a right click, while the mouse pointer shows over the game. */
+    grips: boolean;
+    /** A button over the game that opens the overlay controls, and where it is, in shares of the screen. */
+    button: boolean;
+    buttonAt: { x: number; y: number };
+    /** The game's own UI size, 1 to 5, that overlays grow and shrink with. */
+    game: number;
   };
   meter: Meter;
   look: Look;
@@ -365,6 +375,8 @@ export interface Settings {
   lighten: boolean;
   /** What closing the main window does. */
   close: "tray" | "quit";
+  /** You were asked once what closing it does. */
+  closeAsked: boolean;
   /** The page that opens as the game starts. Empty is none. */
   gameOpens: string;
   layouts: Layout[];
@@ -387,16 +399,16 @@ export const DEFAULTS: Settings = {
   voice: { on: false, volume: 0.8, name: "", lead: 5, mute: false },
   bosses: {},
   hotkeys: {
-    overlay: "Ctrl+Alt+F9", edit: "Ctrl+Alt+F10", reset: "Ctrl+Alt+F11", view: "Ctrl+Alt+F12", quick: "Ctrl+Alt+F8",
+    overlay: "Ctrl+Alt+F9", edit: "Ctrl+Alt+F10", reset: "Ctrl+Alt+F11", view: "Ctrl+Alt+F12", quick: "Alt+E",
     // Empty, so that none takes a key you use.
     compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "", second: "", stopwatch: "",
   },
-  overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true, linger: 0, fightBy: "game" },
+  overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true, linger: 0, fightBy: "game", grips: true, button: true, buttonAt: { x: 0.62, y: 0.004 }, game: 3 },
   meter: {
     style: "bar", rows: 8, left: "share", right: "", full: false, icons: true, corner: "power", corners: "all", head: true, boss: true, clock: true, ghost: false,
     hideNames: false, view: "damage", edge: "bottom", footer: ["ping", "odyle", "entries"], footerLocked: true, footerSmall: ["ping", "odyle"],
     compact: true, small: false, locked: true, buttons: ["view", "clear", "history", "compact", "lock", "menu"], buttonsLocked: [],
-    top: false, always: false, gap: true, burst: true, dead: true, casts: false, buffShare: false, who: "everyone",
+    top: false, always: false, gap: true, burst: true, dead: true, casts: false, buffShare: false, who: "everyone", solo: true,
   },
   look: { theme: "glass", background: "", width: 280, height: 25, font: "house", size: 1, outline: "", thin: false, mark: 0, shade: 0, strong: false },
   tones: {},
@@ -449,6 +461,7 @@ export const DEFAULTS: Settings = {
   motion: true,
   lighten: false,
   close: "tray",
+  closeAsked: false,
   gameOpens: "",
   layouts: [],
   layoutAuto: true,
@@ -604,7 +617,8 @@ export function read(value: unknown): Settings {
     },
     bosses: Object.fromEntries(Object.entries(object(s.bosses)).map(([code, b]) => [code, plan(b)])),
     hotkeys: Object.fromEntries(
-      ACTIONS.map((a) => [a, typeof hotkeys[a] === "string" ? hotkeys[a] : d.hotkeys[a]]),
+      // Before version 2 the overlay controls had a key nobody found.
+      ACTIONS.map((a) => [a, a === "quick" && number(s.version, 0, 99, 0) < 2 && hotkeys[a] === "Ctrl+Alt+F8" ? d.hotkeys[a] : typeof hotkeys[a] === "string" ? hotkeys[a] : d.hotkeys[a]]),
     ) as Settings["hotkeys"],
     overlay: {
       on: flag(overlay.on, d.overlay.on),
@@ -615,6 +629,10 @@ export function read(value: unknown): Settings {
       snap: flag(overlay.snap, d.overlay.snap),
       linger: Math.round(number(overlay.linger, 0, 60, d.overlay.linger)),
       fightBy: one(overlay.fightBy, ["game", "you", "party"] as const, d.overlay.fightBy),
+      grips: flag(overlay.grips, d.overlay.grips),
+      button: flag(overlay.button, d.overlay.button),
+      buttonAt: { x: number(object(overlay.buttonAt).x, 0, 1, d.overlay.buttonAt.x), y: number(object(overlay.buttonAt).y, 0, 1, d.overlay.buttonAt.y) },
+      game: Math.round(number(overlay.game, 1, 5, d.overlay.game)),
     },
     meter: {
       style: one(meter.style, STYLES, m.style),
@@ -648,6 +666,7 @@ export function read(value: unknown): Settings {
       casts: flag(meter.casts, m.casts),
       buffShare: flag(meter.buffShare, m.buffShare),
       who: one(meter.who, ["everyone", "party", "me"] as const, m.who),
+      solo: flag(meter.solo, m.solo),
     },
     look: {
       theme: one(look.theme as Look["theme"], THEMES, d.look.theme),
@@ -746,6 +765,7 @@ export function read(value: unknown): Settings {
     motion: flag(s.motion, d.motion),
     lighten: flag(s.lighten, d.lighten),
     close: one(s.close, ["tray", "quit"] as const, d.close),
+    closeAsked: flag(s.closeAsked, d.closeAsked),
     gameOpens: typeof s.gameOpens === "string" && /^[a-z]{0,20}$/.test(s.gameOpens) ? s.gameOpens : d.gameOpens,
     layouts: list(s.layouts, 30).map((l) => ({
       name: text(l.name, 40) || "Layout",
@@ -759,5 +779,8 @@ export function read(value: unknown): Settings {
 }
 
 /** The easing that moves a bar over `ms` at `fps` frames a second. */
+/** How large overlays are: your size for all, grown or shrunk with the game's own UI size, 3 being as made. */
+export const sizeOfAll = (o: Settings["overlay"]) => o.size * (0.8 + (o.game - 1) * 0.1);
+
 export const barEase = (fps: number, ms: number) =>
   fps === 0 ? "linear" : `steps(${Math.max(1, Math.round((fps * ms) / 1000))}, jump-end)`;

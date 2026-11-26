@@ -7,6 +7,7 @@ import { fight, near, sample, sampling } from "../live/store";
 import { unwrap } from "solid-js/store";
 import { change, settings } from "../store";
 import { place, rule } from "../store/settings";
+import { GameButton } from "./Button";
 import { Frame } from "./Frame";
 import { Panel } from "./Panel";
 import { activity, allowed, inFight, pick } from "./rules";
@@ -21,8 +22,9 @@ const DRIFT_EVERY = 180_000;
 const DRIFT = [[0, 0], [2, 0], [2, 2], [0, 2], [-2, 0], [-2, -2], [0, -2]] as const;
 
 /** Every overlay, on one clear page over the game. */
-export function Overlay(props: { editing: () => Editing }) {
-  const moving = () => props.editing() === "move";
+export function Overlay(props: { editing: () => Editing; pointer: () => boolean }) {
+  // With the overlay controls open, overlays can be moved too.
+  const moving = () => props.editing() !== "";
   let root!: HTMLDivElement;
   const all = createMemo(() => [...FIXED, ...FEATURES.flatMap((f) => f.more?.() ?? [])]);
   const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
@@ -113,12 +115,16 @@ ${fits.who}` : "";
   onCleanup(() => removeEventListener("keydown", keys));
 
   return (
-    <div ref={root} class="screen" data-editing={props.editing() || undefined} data-idle={idle() || undefined} style={{ translate: `${shift()[0]}px ${shift()[1]}px` }}>
-      <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} others={boxes} />}</For>
+    <div
+      ref={root} class="screen" data-editing={props.editing() || undefined} data-idle={idle() || undefined} data-pointer={props.pointer() || undefined}
+      style={{ translate: `${shift()[0]}px ${shift()[1]}px` }} onContextMenu={(e) => e.preventDefault()}
+    >
+      <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} pointer={props.pointer()} others={boxes} />}</For>
+      <Show when={settings.overlay.button}><GameButton open={props.editing() === "quick"} /></Show>
       <Show when={props.editing() === "quick"}>
         <Panel all={all()} on={(f) => at(f).on} turn={turn} done={done} />
       </Show>
-      <Show when={moving()}>
+      <Show when={props.editing() === "move"}>
         <div class="edit-bar ui-bar">
           <small>
             Drag to move. Scroll to scale. Alt drags freely. What they show is a sample.

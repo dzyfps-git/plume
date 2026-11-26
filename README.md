@@ -134,10 +134,22 @@ A training run can have a goal in damage a second; runs can be named and put in 
 15 frames a second, animations can be turned off, and Plume can go lighter by itself: while its own process takes more than
 6% of the CPU, numbers change once a second, until it takes less than 3%. Only Plume's own process is measured
 (`GetProcessTimes`), never another program's. Closing the window can quit Plume instead of keeping the overlays, and a page
-can open as the game starts, minimized so the game keeps the screen.
+can open as the game starts, minimized so the game keeps the screen. The first time the window closes, Plume asks which.
+
+Alt+E, or a small button over the game that can be dragged anywhere, opens the overlay controls: every overlay to turn on
+or off, their size, background, how often numbers change, the game's own UI size (1 to 5, 3 being as made) that they grow
+and shrink with, and what counts as a fight. While they are open, any overlay can be dragged and scrolled to size. While
+you play, each overlay has a handle on its top edge to drag it by, with its menu (lock, size, hide, its settings) on a
+right click. Handles and buttons take the mouse only while Windows shows a pointer, never while the game hides it to turn
+the camera; Plume asks Windows, not the game. Up to 0.7.0 the controls had Ctrl+Alt+F8; settings from then move to Alt+E
+once.
+
+While you fight alone, as in a daily dungeon, the meter shows your skills instead of the rows: each one's damage a second,
+share and total. The first start is a page with the meter's looks at full size and how to move overlays.
 
 Settings, About, copies the `world` and `icons` folders to a folder on the Desktop, with a note on where a friend puts them.
-They are made from public data and stay out of the installer.
+They are made from public data and stay out of this repository and its installer. When Plume's data folder has none, it
+reads them, and the engine, from beside `Plume.exe`, where a private build can put them.
 
 Timers and mechanics you set for a boss are keyed by the skill the boss used. Since the engine names each boss skill by
 its own number, plans saved before then under a family number (such as 1600000) no longer match and need setting again.

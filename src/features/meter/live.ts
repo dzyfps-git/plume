@@ -20,6 +20,9 @@ const casts = () => (sampling() && !cast().length ? SAMPLE : cast());
 /** Players far above their own average, when each of the party died, what you cast last, and whether the meter is opened to its details. */
 export { bursting, casts, fallen, peek };
 
+/** You fight alone, and want your skills shown then: nobody else hit anything. */
+export const solo = () => settings.meter.solo && !sampling() && fight.rows.length > 0 && fight.rows.every((r) => r.you);
+
 let following = false;
 export function followMeter() {
   if (following) return;
@@ -36,7 +39,7 @@ export function followMeter() {
     onHappened((h) => h.what === "cast" && !sampling() && setCasts((all) => [...all, { skill: h.skill, name: h.name, at: h.at }].slice(-CASTS)));
 
     // Your skills are worked out only while they are looked at. What another page watched is watched again after.
-    const watched = createMemo(() => (peek() ? fight.rows.find((r) => r.you)?.id : undefined));
+    const watched = createMemo(() => (peek() || solo() ? fight.rows.find((r) => r.you)?.id : undefined));
     createEffect(() => {
       const id = watched();
       if (id === undefined) return;
