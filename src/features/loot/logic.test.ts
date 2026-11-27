@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { LootEvent } from "../../live/types.ts";
-import { anHour, count, dayOf, emptyDay, kinahGained, kinahSaid, rates, rolled } from "./logic.ts";
+import { anHour, count, dayOf, emptyDay, kinahGained, kinahSaid, rates, redact, rolled } from "./logic.ts";
 
 const place = { map: 0, dungeon: 0, content: 0, contentState: 0 };
 // 25 November 2026, 08:00 UTC: the day began at 07:00.
@@ -39,4 +39,25 @@ test("a Dice Roll is put together from what was said", () => {
   assert.equal(all.length, 1);
   assert.deepEqual(all[0].rolls, [{ name: "", roll: 4000, you: true }, { name: "Vel", roll: 900, you: false }]);
   assert.deepEqual([all[0].passed, all[0].winner, all[0].ends], [["Pell"], "Me", 35_001]);
+});
+
+test("a kill that gave a stack counts once, and a relaunch gains only what grew", () => {
+  let d = emptyDay(dayOf(t));
+  d = count(d, { at: t, atPlace: place, kind: "kill", entity: 9, mob: 5, byYou: true, byParty: false });
+  d = count(d, { at: t + 1, atPlace: place, kind: "drops", drops: [{ source: 9, mob: 5, item: 8, count: 3, owner: "you" }] });
+  assert.deepEqual(rates([d]), [{ mob: 5, item: 8, drops: 1, kills: 1 }], "one kill in one, not 300%");
+  // 100 then 200 seen, then Plume starts again and first hears 1,200: 100 was gained, not 1,100.
+  const seen = kinahSaid(kinahSaid(d, 100, true), 200);
+  const again = kinahSaid(seen, 1200, true);
+  assert.equal(kinahGained(again), 100);
+  assert.equal(kinahGained(kinahSaid(again, 1500)), 400);
+});
+
+test("a roll past its end takes no later result, and names are not kept", () => {
+  let all = rolled([], { at: 1, roll: { type: "open", rollId: "a", itemId: 7, count: 1, endsAt: 100 } });
+  all = rolled(all, { at: 500, roll: { type: "roll", itemId: 7, player: { serverId: 1, name: "Vel" }, roll: 900 } });
+  assert.equal(all.length, 2, "a new roll, not the closed one");
+  assert.deepEqual(all.find((r) => r.id === "a")!.rolls, []);
+  const kept = redact({ id: "b", item: 7, count: 1, at: 1, ends: 0, rolls: [{ name: "Vel", roll: 9, you: false }, { name: "", roll: 5, you: true }], passed: ["Pell"], winner: "Vel" });
+  assert.deepEqual([kept.rolls.map((x) => x.name), kept.passed, kept.winner], [["Player 1", ""], ["Player 2"], "Player 1"]);
 });

@@ -5,9 +5,12 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering::SeqCst};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
-use windows::Win32::Foundation::POINT;
+use std::sync::atomic::AtomicIsize;
+use windows::Win32::Foundation::{HWND, POINT};
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow};
-use windows::Win32::UI::WindowsAndMessaging::{CURSOR_SHOWING, CURSORINFO, GetCursorInfo, GetCursorPos, GetForegroundWindow, GetWindowTextW};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CURSOR_SHOWING, CURSORINFO, GetCursorInfo, GetCursorPos, GetForegroundWindow, GetWindowTextW, IsWindow,
+};
 
 pub const MAIN: &str = "main";
 pub const OVERLAY: &str = "overlay";
@@ -79,9 +82,12 @@ pub fn second(app: &AppHandle, at: Option<Rect>, full: bool) -> bool {
         .iter()
         .map(|m| [m.position().x, m.position().y, m.size().width as i32, m.size().height as i32])
         .collect();
+    // The overlay knows the game's screen. Without it, the game's own window says, wherever it is.
     let game = *state.place.lock().unwrap_or_else(|p| p.into_inner());
     let game = if game.2 > 0 {
         (game.0, game.1)
+    } else if let Some(screen) = game_window().and_then(screen_of) {
+        (screen.0, screen.1)
     } else {
         app.primary_monitor().ok().flatten().map_or((0, 0), |m| (m.position().x, m.position().y))
     };
@@ -162,6 +168,9 @@ pub fn edit(app: &AppHandle, mode: u8) {
             place(app, &w);
             let _ = w.show();
             let _ = w.set_focus();
+        } else if !(state.on.load(SeqCst) && (game_in_front() || !state.only_in_game.load(SeqCst))) {
+            // Shown for editing, and not wanted now: the watcher only hides what it showed itself.
+            let _ = w.hide();
         }
     }
     let _ = app.emit("edit", MODES[usize::from(mode)]);
@@ -169,13 +178,7 @@ pub fn edit(app: &AppHandle, mode: u8) {
 
 /// Covers the screen of the window in front: the game's when it plays, yours while you edit.
 fn place(app: &AppHandle, w: &WebviewWindow) {
-    let mut info = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
-    let found = unsafe { GetMonitorInfoW(MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTOPRIMARY), &mut info) };
-    if !found.as_bool() {
-        return;
-    }
-    let r = info.rcMonitor;
-    let now = (r.left, r.top, r.right - r.left, r.bottom - r.top);
+    let Some(now) = screen_of(unsafe { GetForegroundWindow() }) else { return };
     let state = app.state::<Overlay>();
     let mut last = state.place.lock().unwrap_or_else(|p| p.into_inner());
     if *last != now {
@@ -183,6 +186,29 @@ fn place(app: &AppHandle, w: &WebviewWindow) {
         let _ = w.set_position(PhysicalPosition::new(now.0, now.1));
         let _ = w.set_size(PhysicalSize::new(now.2 as u32, now.3 as u32));
     }
+}
+
+/// The screen a window is on: left, top, width and height.
+fn screen_of(window: HWND) -> Option<(i32, i32, i32, i32)> {
+    let mut info = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
+    let found = unsafe { GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTOPRIMARY), &mut info) };
+    let r = info.rcMonitor;
+    found.as_bool().then_some((r.left, r.top, r.right - r.left, r.bottom - r.top))
+}
+
+/// The game's window as last seen in front. Other programs' windows are never searched: see scripts/safety.test.mjs.
+static GAME_WINDOW: AtomicIsize = AtomicIsize::new(0);
+
+/// The game's window, in front or not, while the one last seen in front is still there and still the game's.
+fn game_window() -> Option<HWND> {
+    let w = HWND(GAME_WINDOW.load(SeqCst) as *mut _);
+    (!w.is_invalid() && unsafe { IsWindow(Some(w)) }.as_bool() && is_game(&title(w))).then_some(w)
+}
+
+fn title(w: HWND) -> String {
+    let mut text = [0u16; 64];
+    let n = unsafe { GetWindowTextW(w, &mut text) };
+    String::from_utf16_lossy(&text[..n.max(0) as usize])
 }
 
 /// Gives the mouse to the overlay while the pointer is on something of it that takes clicks, and back to the game after.
@@ -229,9 +255,12 @@ fn within(zones: &[[i32; 4]], x: i32, y: i32) -> bool {
 
 /// The title Windows keeps for the window in front. Nothing is asked of the game itself.
 fn game_in_front() -> bool {
-    let mut text = [0u16; 64];
-    let n = unsafe { GetWindowTextW(GetForegroundWindow(), &mut text) };
-    is_game(&String::from_utf16_lossy(&text[..n.max(0) as usize]))
+    let w = unsafe { GetForegroundWindow() };
+    let game = is_game(&title(w));
+    if game {
+        GAME_WINDOW.store(w.0 as isize, SeqCst);
+    }
+    game
 }
 
 fn is_game(title: &str) -> bool {
@@ -254,7 +283,8 @@ pub fn watch(app: AppHandle) {
                     crate::game_came(&app);
                 }
                 (gone, front_at) = (false, Instant::now());
-            } else if front_at.elapsed() > SLEEP {
+            } else if front_at.elapsed() > SLEEP && !app.state::<Arc<Engine>>().live() {
+                // While the engine hears the game, it is the same session: you were only in another window.
                 gone = true;
             }
             let wanted = state.editing.load(SeqCst) != NONE
@@ -271,6 +301,10 @@ pub fn watch(app: AppHandle) {
                 }
             } else if !wanted && shown && let Some(w) = app.get_webview_window(OVERLAY) {
                 let _ = w.hide();
+            } else if !wanted && app.state::<Arc<Engine>>().live() && app.get_webview_window(OVERLAY).is_none() {
+                // The overlay page also keeps what the game says: loot, your characters, your Closet. While the game is heard
+                // it runs, hidden, even with the overlays off.
+                let _ = overlay(&app);
             }
             shown = wanted;
             if wanted || front || app.state::<Arc<Engine>>().live() {

@@ -6,10 +6,10 @@ import { NAV_GROUPS } from "../../app/menu";
 import { lights } from "../../live/health";
 import { engine, fight, live, near, state, waitingForYou } from "../../live/store";
 import { activity, pick } from "../../overlay/rules";
-import { settings } from "../../store";
+import { hideNames, settings } from "../../store";
 import { place } from "../../store/settings";
 import { GameIcon } from "../../ui/Pic";
-import { FEATURES } from "../index";
+import { FEATURES, overlays as everyOverlay } from "../index";
 import { energy } from "../characters/logic";
 import { kept } from "../characters/watch";
 import { resets, wait } from "../resources/logic";
@@ -53,8 +53,8 @@ export function HomePage() {
   const timer = setInterval(() => setNow(Date.now()), 30_000);
   onCleanup(() => clearInterval(timer));
   const last = () => Object.values(kept()).sort((a, b) => b.at - a.at)[0];
-  const name = () => near.you?.name || last()?.name || "";
-  const overlays = () => FEATURES.filter((f) => f.overlay && place(settings.places[f.id], f.overlay.place).on).length;
+  const name = () => (hideNames() === "all" ? "" : near.you?.name || last()?.name || "");
+  const overlays = () => everyOverlay().filter((f) => place(settings.places[f.id], f.overlay!.place).on).length;
   const alerts = () => Object.values(settings.alerts).filter((a) => a.on).length;
   const event = () => upcoming(now(), settings.events.off)[0];
   const odyle = () => (last() ? energy(last()!, settings.odyle.member, now()) : undefined);
@@ -114,7 +114,7 @@ export function HomePage() {
             <div><small>Weekly reset</small><b class="ui-num">{wait(resets(now()).weekly)}</b></div>
             <Show when={odyle() && odyle()!.value >= 0}>
               <div>
-                <small>Odyle Energy, {last()!.name}</small>
+                <small>Odyle Energy{name() ? `, ${last()!.name}` : ""}</small>
                 <b class="ui-num" classList={{ lost: !odyle()!.full }}>{odyle()!.value} / {odyle()!.most}</b>
                 <small>{odyle()!.full ? `full in ${wait(odyle()!.full)}` : "Full: going to waste"}</small>
               </div>

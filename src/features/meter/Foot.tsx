@@ -1,5 +1,6 @@
 import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
 import { entries, fight, live, near } from "../../live/store";
+import { NO_FIGHT } from "../../live/types";
 import { settings } from "../../store";
 import type { Footer } from "../../store/settings";
 import { Drawn, PingBars, Thing, type ThingName } from "../../ui/icons";
@@ -38,18 +39,20 @@ export function Ringed(props: { id: string; of: ThingName; n: number; now: numbe
   );
 }
 
-const items = (which: readonly Footer[]) =>
-  footer(which, near, fight, entries(), strip(entries(), near.odyle, settings.resources, settings.odyleRun), { odyle: settings.odyle, odyleRun: settings.odyleRun, pingAs: settings.pingAs, runMs: runMs() }).filter((f) => f.tone !== "muted" || live());
+/** `cleared`: the fight is over and its numbers go, so nothing of it is said. */
+const items = (which: readonly Footer[], cleared = false) =>
+  footer(which, near, cleared ? NO_FIGHT : fight, entries(), strip(entries(), near.odyle, settings.resources, settings.odyleRun), { odyle: settings.odyle, odyleRun: settings.odyleRun, pingAs: settings.pingAs, runMs: runMs() }).filter((f) => f.tone !== "muted" || live());
 
 /** Figures you chose. Odyle Energy and entries can stand elsewhere. */
-export function Feet(props: { of: readonly Footer[]; class: string }) {
+export function Feet(props: { of: readonly Footer[]; class: string; cleared?: boolean }) {
   followFights();
   const now = minutes();
+  const all = () => items(props.of, props.cleared);
   return (
-    <Show when={items(props.of).length}>
+    <Show when={all().length}>
       <div class={`${props.class} ui-num`}>
         {/* By name: a figure that changed stays where it is, and pops. */}
-        <For each={items(props.of).map((f) => f.key)}>{(key) => <Show when={items(props.of).find((f) => f.key === key)}>{(f) => <FootItem of={f()} now={now()} />}</Show>}</For>
+        <For each={all().map((f) => f.key)}>{(key) => <Show when={all().find((f) => f.key === key)}>{(f) => <FootItem of={f()} now={now()} />}</Show>}</For>
       </div>
     </Show>
   );
@@ -60,6 +63,7 @@ const FootItem = (props: { of: Foot; now: number }) => (
     <Show when={props.of.icon === "ping"}><PingBars ping={near.ping} /></Show>
     <Show when={props.of.icon === "flight"}><Drawn name="wing" /></Show>
     <Show when={props.of.thing}>{(thing) => <Ringed id={props.of.key} of={thing()} n={props.of.n ?? -1} now={props.now} />}</Show>
+    <Show when={props.of.tag}>{(tag) => <small class="foot-tag">{tag()}</small>}</Show>
     <Show when={!props.of.icon && !props.of.thing}><small>{props.of.name}</small></Show>
     <Show when={props.of.value}><b>{props.of.value}</b></Show>
     <Show when={props.of.bonus}><span class="bonus">{props.of.bonus}</span></Show>

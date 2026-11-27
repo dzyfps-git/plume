@@ -122,15 +122,17 @@ export interface Against {
   change?: number;
 }
 
-/** This fight against your kept ones of the same target, with the same class. One that was just kept is this one. */
+/** This fight against your kept ones of the same target, with the same class. `self` is the id this fight was kept as, if it was. */
 export function against(
   fight: { ms: number; target: Pick<Fight["target"], "code" | "name">; rows: readonly Pick<Row, "you" | "job" | "damage" | "dps">[] },
   kept: readonly Saved[],
+  self = "",
 ): Against | undefined {
   const you = fight.rows.find((r) => r.you);
   const { code, name } = fight.target;
   if (!you || (!code && !name)) return undefined;
-  const same = kept.filter((f) => (code ? f.code === code : f.target === name) && f.you && f.you.damage !== you.damage && !(you.job && f.you.job && f.you.job !== you.job));
+  // Another fight with the same damage is another fight: only this one's own id leaves it out.
+  const same = kept.filter((f) => (code ? f.code === code : f.target === name) && f.you && f.id !== self && !(you.job && f.you.job && f.you.job !== you.job));
   const best = Math.max(0, ...same.filter((f) => f.ms >= PROOF).map((f) => f.you!.dps));
   return { pull: same.length + 1, ...(best > 0 && { best, ...(fight.ms >= PROOF && { change: you.dps / best - 1 }) }) };
 }
@@ -138,7 +140,7 @@ export function against(
 /** How much better a kept fight was than the best of the others, as a part of it. Nothing when it was not. */
 export function gain(fight: Saved, kept: readonly Saved[]): number | undefined {
   const { ms, code, target: name, you } = fight;
-  const change = you ? against({ ms, target: { code, name }, rows: [{ ...you, you: true }] }, kept.filter((f) => f.id !== fight.id))?.change : undefined;
+  const change = you ? against({ ms, target: { code, name }, rows: [{ ...you, you: true }] }, kept, fight.id)?.change : undefined;
   return change !== undefined && change > 0 ? change : undefined;
 }
 
@@ -157,6 +159,8 @@ export interface Foot {
   more: string;
   /** The value as a number, when a change of it is worth a word. */
   n?: number;
+  /** A short name beside the picture: tickets and keys share pictures, so the picture alone cannot tell them apart. */
+  tag?: string;
   tone?: "ending" | "best" | "muted";
 }
 
@@ -199,7 +203,7 @@ export function footer(
     total: () => (fight.total > 0 ? [{ key: "total", name: "Total", value: short(fight.total), more: "" }] : []),
     flight: () => (near.flight ? [{ key: "flight", name: "Flight", icon: "flight", value: String(Math.round(near.flight.now)), more: "s" }] : []),
     odyle: () => [odyleFoot(near.odyle, set)],
-    entries: () => tickets.filter((t) => t.key !== "odyle").map((t) => ({ key: t.key, name: t.name, ...(t.kind && { thing: t.kind }), value: t.value, bonus: t.more, more: "", n: t.n })),
+    entries: () => tickets.filter((t) => t.key !== "odyle").map((t) => ({ key: t.key, name: t.name, ...(t.kind && { thing: t.kind, tag: t.name.split(" ")[0] }), value: t.value, bonus: t.more, more: "", n: t.n })),
     kina: () => (entries.kinah >= 0 ? [{ key: "kina", name: "Kina today", thing: "kina", value: short(entries.kinah), more: "" }] : []),
     points: () => (entries.points[0] >= 0 ? [{ key: "points", name: "Abyss Points this week", thing: "points", value: short(entries.points[0]), more: "" }] : []),
     crit: () => chip("crit", "Crit", fight.own[1]),

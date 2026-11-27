@@ -18,6 +18,8 @@ const LONGEST_WAIT: Duration = Duration::from_secs(30);
 const STEADY: Duration = Duration::from_secs(60);
 /// Whole fights of this session, kept in memory only.
 const SESSION: usize = 200;
+/// How long an engine told to stop has before it is ended.
+const GRACE: Duration = Duration::from_millis(1500);
 const COMMANDS: [&str; 8] = ["mode", "rate", "limit", "watch", "credit", "train", "record", "reset"];
 
 type Tell = dyn Fn(&str, &Value) + Send + Sync;
@@ -28,6 +30,9 @@ struct Inner {
     /// The last of each setting, said again to an engine that starts later.
     settings: Vec<(String, Value)>,
     input: Option<ChildStdin>,
+    /// The engine that runs now, and how many were started: one told to stop that is still there after a while is ended.
+    child: Option<Child>,
+    runs: u64,
     status: Value,
     state: Value,
     reads: Value,
@@ -56,6 +61,8 @@ impl Engine {
                 running: false,
                 settings: Vec::new(),
                 input: None,
+                child: None,
+                runs: 0,
                 status: json!({ "status": "off" }),
                 state: Value::Null,
                 reads: Value::Null,
@@ -91,8 +98,8 @@ impl Engine {
         std::thread::spawn(move || engine.keep());
     }
 
-    /// Turns live data on or off.
-    pub fn want(&self, on: bool) {
+    /// Turns live data on or off. An engine that does not stop when asked is ended after a while.
+    pub fn want(self: &Arc<Self>, on: bool) {
         let mut i = self.lock();
         if i.wanted == on {
             return;
@@ -100,17 +107,38 @@ impl Engine {
         i.wanted = on;
         if !on && let Some(mut input) = i.input.take() {
             let _ = writeln!(input, r#"{{"cmd":"stop"}}"#);
+            let (engine, run) = (self.clone(), i.runs);
+            std::thread::spawn(move || {
+                std::thread::sleep(GRACE);
+                engine.end(Some(run));
+            });
         }
         self.change.notify_all();
     }
 
-    /// Turns it off and waits a moment, so the fights still open are kept.
-    pub fn finish(&self) {
+    /// Ends the engine that runs, or only the one started as `run`, and waits until it is gone.
+    fn end(&self, run: Option<u64>) {
+        let child = {
+            let mut i = self.lock();
+            if run.is_some_and(|r| r != i.runs) {
+                return;
+            }
+            i.child.take()
+        };
+        if let Some(mut child) = child {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+
+    /// Turns it off and waits a moment, so the fights still open are kept. Then it is ended.
+    pub fn finish(self: &Arc<Self>) {
         self.want(false);
-        let until = Instant::now() + Duration::from_millis(1500);
+        let until = Instant::now() + GRACE;
         while self.lock().running && Instant::now() < until {
             std::thread::sleep(Duration::from_millis(10));
         }
+        self.end(None);
     }
 
     /// Passes a command on. A setting is kept for an engine that starts later.
@@ -226,20 +254,26 @@ impl Engine {
             if i.wanted {
                 i.input = Some(input);
             }
+            i.runs += 1;
+            i.child = Some(child);
         }
         for line in BufReader::new(out).lines().map_while(Result::ok) {
             let Ok(message) = serde_json::from_str::<Value>(&line) else { continue };
             if message["t"] == "state" && message["protocol"].as_i64() != Some(PROTOCOL) {
                 self.lock().input = None;
-                let _ = child.kill();
-                let _ = child.wait();
+                self.end(None);
                 self.say("failed", "The engine and Plume do not fit together. Update both.");
                 return None;
             }
             self.hear(message);
         }
-        self.lock().input = None;
-        let code = child.wait().ok().and_then(|s| s.code());
+        let child = {
+            let mut i = self.lock();
+            i.input = None;
+            i.child.take()
+        };
+        // None when it was ended for not stopping.
+        let code = child.and_then(|mut c| c.wait().ok()).and_then(|s| s.code());
         let words = fault.join().ok().flatten().unwrap_or_default();
         if self.lock().wanted && code != Some(AGAIN) {
             self.say("failed", if words.is_empty() { "The engine stopped. Starting it again." } else { &words });
@@ -272,7 +306,8 @@ impl Engine {
                 {
                     eprintln!("{e}");
                 }
-                return (self.tell)("saved", &json!({ "id": message["id"] }));
+                // With its target, so a page can tell the fight it shows from one kept just before.
+                return (self.tell)("saved", &json!({ "id": message["id"], "code": message["code"] }));
             }
             _ => {}
         }

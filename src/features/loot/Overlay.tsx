@@ -1,7 +1,7 @@
 import { createResource, For, Show } from "solid-js";
 import { settings } from "../../store";
 import { full } from "../../ui/format";
-import { signal } from "../alerts/signal";
+import { alert } from "../alerts/Overlay";
 import { itemFile } from "../map/data";
 import { gradeOf, itemName, type ItemFile } from "./logic";
 import { followLoot, fresh } from "./watch";
@@ -13,7 +13,8 @@ const items = () => itemFile().catch(() => null);
 export function followFeed() {
   followLoot((item) => {
     if (!settings.loot.rules.includes(item) || !settings.alerts.loot.on) return;
-    void items().then((file) => signal(settings.alerts.loot, itemName(file, item)));
+    // Through the Callouts, so "Show it large" is honoured as for every other alert.
+    void items().then((file) => alert({ id: "loot", text: itemName(file, item) }));
   });
 }
 

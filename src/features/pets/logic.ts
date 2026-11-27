@@ -1,6 +1,4 @@
 // Pets as the engine's `tools/world.py` writes them, and your progress with them.
-import type { Pets } from "../../live/types.ts";
-import type { PetsKept } from "../../store/settings.ts";
 
 export const KINDS = ["cogni", "fera", "natura", "varian", "special"] as const;
 export type Kind = (typeof KINDS)[number];
@@ -42,39 +40,6 @@ export interface PetFile {
 export const NEEDED = [5, 25, 75] as const;
 /** Pets you need for the crystals. */
 export const CRYSTALS = 170;
-
-/** What the game said, put into what is kept. */
-export function hear(kept: Pick<PetsKept, "levels" | "souls">, said: Pets): Pick<PetsKept, "levels" | "souls"> {
-  if (said.what === "all") {
-    const by = (list: [number, number][], most: number) =>
-      Object.fromEntries(list.filter(([, n]) => n > 0).map(([pet, n]) => [String(pet), Math.min(most, n)]));
-    return { levels: by(said.levels, 3), souls: by(said.souls, 100_000) };
-  }
-  const levels = { ...kept.levels };
-  const souls = { ...kept.souls };
-  if (said.what === "souls") {
-    for (const [pet, n] of said.souls) {
-      const id = String(pet);
-      let have = (souls[id] ?? 0) + n;
-      let level = levels[id] ?? 0;
-      // A level comes by itself once there are souls enough. Those past it stay.
-      while (level < 3 && have >= NEEDED[level]) have -= NEEDED[level++];
-      levels[id] = level;
-      souls[id] = have;
-    }
-  } else {
-    for (const [pet, to] of said.levels) {
-      const id = String(pet);
-      let level = levels[id] ?? 0;
-      let have = souls[id] ?? 0;
-      while (level < Math.min(3, to)) have = Math.max(0, have - NEEDED[level++]);
-      levels[id] = level;
-      souls[id] = have;
-    }
-  }
-  const clean = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).filter(([, n]) => n > 0));
-  return { levels: clean(levels), souls: clean(souls) };
-}
 
 /** Souls still to get, for a pet at `level` with `souls`, to reach `goal`. Special pets take none. */
 export function toGo(pet: Pet, level: number, souls: number, goal: number) {

@@ -1,7 +1,7 @@
 import { createEffect, createRoot, createSignal, untrack } from "solid-js";
-import { entries, onLoot, sampling } from "../../live/store";
+import { entries, near, onLoot, sampling } from "../../live/store";
 import type { LootEvent } from "../../live/types";
-import { count, dayOf, emptyDay, kinahSaid, rolled, type Day, type Roll } from "./logic";
+import { count, dayOf, emptyDay, kinahSaid, redact, rolled, type Day, type Roll } from "./logic";
 
 /** On this PC, yours alone: the days kept, newest first, and the Dice Rolls. */
 const DAYS = "loot-days";
@@ -16,20 +16,22 @@ function read<T>(key: string, empty: T): T {
   }
 }
 const [days, setDays] = createSignal<Day[]>(read(DAYS, []));
-const [rolls, setRolls] = createSignal<Roll[]>(read(ROLLS, []));
+// Rolls kept before names were left out lose them now.
+const [rolls, setRolls] = createSignal<Roll[]>(read<Roll[]>(ROLLS, []).map(redact));
 export { days, rolls };
 // The other window's.
 addEventListener("storage", (e) => {
   if (e.key === DAYS) setDays(read(DAYS, []));
-  if (e.key === ROLLS) setRolls(read(ROLLS, []));
+  if (e.key === ROLLS) setRolls(read<Roll[]>(ROLLS, []).map(redact));
 });
 
 function keep(change: (d: Day) => Day, at: number) {
   const start = dayOf(at);
   const all = days();
-  const today = all[0]?.start === start ? all[0] : emptyDay(start);
+  // The day of the event, which is not always the newest: one can come late, after the reset.
+  const today = all.find((d) => d.start === start) ?? emptyDay(start);
   const next = change(today);
-  if (next === today && all[0] === today) return;
+  if (next === today && all.includes(today)) return;
   const list = [next, ...all.filter((d) => d.start !== start)].sort((a, b) => b.start - a.start).slice(0, MOST_DAYS);
   setDays(list);
   localStorage.setItem(DAYS, JSON.stringify(list));
@@ -57,7 +59,8 @@ export function followLoot(chosen?: (item: number) => void) {
       let all = rolls();
       for (const e of m.events) all = rolled(all, e);
       setRolls(all);
-      localStorage.setItem(ROLLS, JSON.stringify(all));
+      // Names are never written down: other players are numbers in what is kept.
+      localStorage.setItem(ROLLS, JSON.stringify(all.map(redact)));
       return;
     }
     for (const e of m.events) {
@@ -66,10 +69,17 @@ export function followLoot(chosen?: (item: number) => void) {
       if (e.kind === "items") for (const i of e.items) if ((i.gained ?? (i.change === "new" ? i.total : 0)) > 0) chosen?.(i.item);
     }
   });
-  createRoot(() =>
+  createRoot(() => {
+    // Each launch and each character starts again from what the game says first: only what grows while seen is gained.
+    let who: string | undefined;
     createEffect(() => {
-      const kinah = entries().kinah;
-      if (!sampling()) untrack(() => keep((d) => kinahSaid(d, kinah), Date.now()));
-    }),
-  );
+      const [kinah, name] = [entries().kinah, near.you?.name ?? ""];
+      if (sampling() || kinah < 0) return;
+      untrack(() => {
+        const fresh = who !== name;
+        who = name;
+        keep((d) => kinahSaid(d, kinah, fresh), Date.now());
+      });
+    });
+  });
 }

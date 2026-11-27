@@ -1,9 +1,9 @@
 // The Checklist: every character as a column, and a row for each thing that is kept, used up or done.
 import type { Kind, Resource } from "../../store/settings.ts";
 import { full } from "../../ui/format.ts";
-import { carried, energy, type Kept } from "../characters/logic.ts";
+import { carried, energy, resetsBetween, type Kept } from "../characters/logic.ts";
 import { power } from "../meter/logic.ts";
-import { capOf, KIND_NAMES, kindOf, wait } from "./logic.ts";
+import { capOf, KIND_NAMES, kindOf, nameOf, wait } from "./logic.ts";
 
 export const GROUPS = ["character", "energy", "entries", "keys", "corridors", "today", "week", "dungeons"] as const;
 export type Group = (typeof GROUPS)[number];
@@ -75,27 +75,40 @@ interface Def {
 
 const count = (k: Kept, id: number) => k.counts.find(([at]) => at === id);
 const plus = (n: number) => (n > 0 ? `+${full(n)}` : undefined);
+const RESET = "Reset since last seen";
 const DAILY_DUTIES = "";
 
 /** The rows, with a cell for each character. A row no character has is left out. */
 export function checklist(chars: readonly Kept[], chosen: readonly Resource[], member: boolean, now: number, mapName: (id: number) => string): Row[] {
   const ids = [...new Set(chars.flatMap((k) => k.counts.map(([id]) => id)))].sort((a, b) => a - b);
   const named = (id: number) => chosen.find((r) => r.id === id)?.name;
-  const ofKind = (kind: Kind): Def => ({
-    key: kind, group: KEYS.includes(kind) ? "keys" : "entries", name: KIND_NAMES[kind], icon: KIND_ICONS[kind], sum: true,
-    cell: (k) => {
-      const found = k.counts.find(([id]) => kindOf(id, chosen) === kind);
-      if (!found) return undefined;
-      const most = capOf(kind, member);
-      const n = carried(kind, found[1], k.at, now, member);
-      return { n, most, more: plus(found[2]), lost: !!most && n >= most };
-    },
-  });
+  // What was done counts only in the day or week it was seen in: after a reset it is to do again.
+  const day = (k: Kept) => resetsBetween(k.at, now).day > 0;
+  const week = (k: Kept) => resetsBetween(k.at, now).week > 0;
+  // A row for each of the game's numbers of a kind: two numbers you gave one kind are two rows, each with its own name.
+  const ofKind = (kind: Kind): Def[] => {
+    const all = ids.filter((id) => kindOf(id, chosen) === kind);
+    return (all.length ? all : [0]).map((at) => ({
+      key: all.length > 1 ? `${kind}:${at}` : kind, group: KEYS.includes(kind) ? "keys" : "entries", name: (at && nameOf(at, chosen)) || KIND_NAMES[kind], icon: KIND_ICONS[kind], sum: true,
+      cell: (k) => {
+        const found = count(k, at);
+        if (!found) return undefined;
+        const most = capOf(kind, member);
+        const n = carried(kind, found[1], k.at, now, member);
+        return { n, most, more: plus(found[2]), lost: !!most && n >= most };
+      },
+    }));
+  };
   const defs: Def[] = [
     { key: "kinah", group: "character", name: "Kinah today", icon: "Icon_Currency_Coin_GoldNonbinding", sum: true, cell: (k) => (k.kinah >= 0 ? { n: k.kinah } : undefined) },
     {
       key: "points", group: "character", name: "Abyss Points this week", icon: "Icon_abysspoint", sum: true,
-      cell: (k) => (k.points[0] >= 0 ? { n: k.points[0], most: k.points[1] > 0 ? k.points[1] : undefined, done: k.points[1] > 0 && k.points[0] >= k.points[1] } : undefined),
+      cell: (k) => {
+        if (k.points[0] < 0) return undefined;
+        const most = k.points[1] > 0 ? k.points[1] : undefined;
+        if (week(k)) return { n: 0, most, note: RESET };
+        return { n: k.points[0], most, done: !!most && k.points[0] >= most };
+      },
     },
     { key: "place", group: "character", name: "Location", glyph: "", cell: (k) => (mapName(k.map) ? { n: 0, text: mapName(k.map) } : undefined) },
     { key: "power", group: "character", name: "Combat Power", icon: "profile_power_icon_pc", cell: (k) => (k.power ? { n: k.power, text: power(k.power) } : undefined) },
@@ -108,19 +121,26 @@ export function checklist(chars: readonly Kept[], chosen: readonly Resource[], m
         return { n: e.value, most: e.most, more: plus(k.odyle[1]), note: e.full ? `full in ${wait(e.full)}` : "Full", lost: !e.full };
       },
     },
-    ...ENTRIES.map(ofKind),
-    ...KEYS.map(ofKind),
+    ...ENTRIES.flatMap(ofKind),
+    ...KEYS.flatMap(ofKind),
     ...Object.entries(CORRIDORS).map(([id, name]): Def => ({
       key: `corridor:${id}`, group: "corridors", name, icon: "UT_Marker_AbyssPortal", sum: true,
       cell: (k) => { const c = count(k, Number(id)); return c && { n: c[1], more: plus(c[2]) }; },
     })),
     {
       key: "duty", group: "today", name: "Daily Duties", glyph: DAILY_DUTIES,
-      cell: (k) => (k.duty[0] >= 0 ? { n: k.duty[0], most: k.duty[1], done: k.duty[1] > 0 && k.duty[0] >= k.duty[1] } : undefined),
+      cell: (k) => {
+        if (k.duty[0] < 0) return undefined;
+        if (day(k)) return { n: 0, most: k.duty[1], note: RESET };
+        return { n: k.duty[0], most: k.duty[1], done: k.duty[1] > 0 && k.duty[0] >= k.duty[1] };
+      },
     },
-    ...SHOP.map(([id, name, icon]): Def => ({ key: `shop:${id}`, group: "week", name, icon, cell: (k) => { const b = k.shop?.find(([at]) => at === id); return b && { n: b[1] }; } })),
+    ...SHOP.map(([id, name, icon]): Def => ({
+      key: `shop:${id}`, group: "week", name, icon, cell: (k) => { const b = k.shop?.find(([at]) => at === id); return b && (week(k) ? { n: 0, note: RESET } : { n: b[1] }); },
+    })),
     ...CRAFTS.map(([id, name, most]): Def => ({
-      key: `craft:${id}`, group: "week", name, icon: "Icon_Item_Odenergy_A_001", cell: (k) => { const c = k.crafts?.find(([at]) => at === id); return c && { n: c[1], most, done: c[1] >= most }; },
+      key: `craft:${id}`, group: "week", name, icon: "Icon_Item_Odenergy_A_001",
+      cell: (k) => { const c = k.crafts?.find(([at]) => at === id); return c && (week(k) ? { n: 0, most, note: RESET } : { n: c[1], most, done: c[1] >= most }); },
     })),
     // What the game counts with no name known: dungeon rewards, then the rest, named by you or by number.
     ...ids.filter((id) => !kindOf(id, chosen) && !CORRIDORS[id]).map((id): Def => ({

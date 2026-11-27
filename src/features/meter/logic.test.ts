@@ -43,10 +43,14 @@ test("Combat Power is short, and nothing when not known", () => {
 
 test("a fight is held against your kept ones of the same target", () => {
   const now = { ms: 60_000, target: { code: 5, name: "Boss" }, rows: [{ ...rows[3], dps: 104 }] } as never;
-  const kept = (code: number, ms: number, dps: number, damage = 1) => ({ code, ms, target: "Boss", you: { dps, damage } }) as never;
+  const kept = (code: number, ms: number, dps: number, id = "", damage = 1) => ({ id, code, ms, target: "Boss", you: { dps, damage } }) as never;
   assert.deepEqual(against(now, []), { pull: 1 });
-  const a = against(now, [kept(5, 60_000, 100), kept(5, 5_000, 900), kept(6, 60_000, 800), kept(5, 60_000, 300, 10)])!;
+  // This fight, kept as "x", is left out by its id.
+  const a = against(now, [kept(5, 60_000, 100), kept(5, 5_000, 900), kept(6, 60_000, 800), kept(5, 60_000, 300, "x")], "x")!;
   assert.deepEqual([a.pull, a.best, signed(a.change!)], [3, 100, "+4%"]);
+  // Another pull with the same damage but its own id still counts.
+  const tie = against(now, [kept(5, 60_000, 100, "a", 10), kept(5, 70_000, 90, "b", 10)])!;
+  assert.deepEqual([tie.pull, tie.best], [3, 100]);
   assert.equal(against({ ...(now as object), rows: [] } as never, []), undefined);
   assert.equal(signed(-0.123), "-12%");
 });
@@ -56,6 +60,9 @@ test("a kept fight is a new best when none before it was better", () => {
   const all = [kept("a", 100), kept("b", 120), kept("c", 900, { ms: 5_000 }), kept("d", 900, { you: { dps: 900, damage: 1, job: "cleric" } })];
   assert.equal(signed(gain(kept("new", 132), [...all, kept("new", 132)])!), "+10%");
   assert.deepEqual([gain(kept("new", 110), all), gain(kept("new", 110), []), gain(kept("new", 110, { you: null }), all)], [undefined, undefined, undefined]);
+  // A slower fight with the same damage as an older one is no record: 120,000 in 70 s against 120,000 in 60 s.
+  const same = (id: string, damage: number, ms: number) => ({ id, ms, code: 5, target: "Boss", you: { dps: damage / (ms / 1000), damage, job: "assassin" } }) as never;
+  assert.equal(gain(same("new", 120_000, 70_000), [same("a", 120_000, 60_000), same("b", 90_000, 60_000)]), undefined);
 });
 
 test("the made-up fight adds up", () => {

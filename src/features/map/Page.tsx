@@ -37,6 +37,8 @@ export function MapPage() {
     return out;
   });
   const choose = (n: number) => change((s) => (s.world.map = n));
+  // As the canvas follows: only while you are on the map it shows.
+  const following = () => !!you()?.known && you()!.map === id();
   const set = <K extends "follow" | "hideFound">(key: K) => (on: boolean) => change((s) => (s.world[key] = on));
 
   return (
@@ -49,7 +51,7 @@ export function MapPage() {
         <button class="ui-chip" aria-pressed={settings.world.follow} onClick={() => set("follow")(!settings.world.follow)}>
           <span class="ui-icon" aria-hidden="true">{"\ue707"}</span>
           Follow me
-          <Show when={settings.world.follow}><i class="follow-light" data-on={you()?.known || undefined} aria-label={you()?.known ? "following" : "waiting for your place"} /></Show>
+          <Show when={settings.world.follow}><i class="follow-light" data-on={following() || undefined} aria-label={following() ? "following" : "waiting for your place on this map"} /></Show>
         </button>
         <button class="ui-chip" aria-pressed={settings.world.hideFound} onClick={() => set("hideFound")(!settings.world.hideFound)}>
           <span class="ui-icon" aria-hidden="true">{"\ue73e"}</span>
@@ -136,7 +138,7 @@ export function MapPage() {
             </Show>
           </div>
           <Show when={map()}>
-            {(m) => <Tracker map={m()} you={you()} pick={(p) => (setPicked(p), change((s) => (s.world.follow = false)))} look={(at) => setLook(at)} drawing={drawing()} setDrawing={setDrawing} route={route()} setRoute={setRoute} />}
+            {(m) => <Tracker map={m()} you={you()} pick={(p) => (setPicked(p), change((s) => (s.world.follow = false)))} look={(at) => (setLook(at), settings.world.follow && change((s) => (s.world.follow = false)))} drawing={drawing()} setDrawing={setDrawing} route={route()} setRoute={setRoute} />}
           </Show>
         </div>
       </Show>

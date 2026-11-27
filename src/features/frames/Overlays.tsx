@@ -100,7 +100,8 @@ export function PartyOverlay() {
 /** A Force in its groups, side by side. */
 export function ForceOverlay() {
   const now = ticking();
-  const all = createMemo(() => groups(ordered(near.party, { ...settings.party, order: "game" })));
+  // Split as the game groups everyone, then your row is left out of yours: nobody moves to another group.
+  const all = createMemo(() => groups(ordered(near.party, { order: "game", you: true })).map((g) => g.filter(({ unit }) => settings.party.you || !unit.you)));
   return (
     <section class="force" aria-label="Force frames" style={style()}>
       <For each={all()}>

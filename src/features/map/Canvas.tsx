@@ -344,7 +344,7 @@ export function MapCanvas(props: MapProps) {
       />
       <Show when={over()}>
         {(o) => (
-          <div class="map-tip" style={{ left: `${o().x}px`, top: `${o().y}px` }} aria-hidden="true">
+          <div class="map-tip" data-below={o().y < 90 || undefined} data-edge={o().x < 120 ? "left" : o().x > size().width - 120 ? "right" : undefined} style={{ left: `${o().x}px`, top: `${o().y}px` }} aria-hidden="true">
             <b>{o().thing.name}</b>
             <small>
               <i class="tint-dot" style={{ "--tint": LAYER_COLOURS[o().thing.layer] }} /> {LAYER_NAMES[o().thing.layer]}

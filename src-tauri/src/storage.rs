@@ -155,9 +155,13 @@ impl Fights {
     pub fn save(&self, fight: &Value) -> Result<(), String> {
         let id = fight["id"].as_str().unwrap_or_default();
         let path = self.file(id)?;
-        save(&path, fight)?;
-        if let Some(all) = self.briefs().as_mut() {
-            all.insert(id.into(), brief(fight.clone()));
+        // The file and the list change together, so a delete in between cannot leave a fight listed that is not there.
+        {
+            let mut briefs = self.briefs();
+            save(&path, fight)?;
+            if let Some(all) = briefs.as_mut() {
+                all.insert(id.into(), brief(fight.clone()));
+            }
         }
         // A fight is written again as it grows, and the last is the whole of it.
         let _ = fs::remove_file(path.with_extension("bak"));
@@ -180,8 +184,9 @@ impl Fights {
     }
 
     pub fn delete(&self, id: &str) -> Result<(), String> {
+        let mut briefs = self.briefs();
         fs::remove_file(self.file(id)?).map_err(|e| e.to_string())?;
-        if let Some(all) = self.briefs().as_mut() {
+        if let Some(all) = briefs.as_mut() {
             all.remove(id);
         }
         Ok(())

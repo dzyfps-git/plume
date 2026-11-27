@@ -85,6 +85,8 @@
 .small-feet { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; --icon: 15px; }
 .small-feet small { display: none; }
 .foot-item[data-tone="muted"] small { display: inline; }
+.small-feet .foot-tag { display: inline; }
+.foot-tag { color: color-mix(in srgb, var(--text) 72%, transparent); font-size: 11px; }
 .meter-peek { display: grid; gap: 2px; margin: 0 5px 5px; padding: 5px 4px 2px; border-top: 1px solid color-mix(in srgb, var(--text) 9%, transparent); font-size: 12px; }
 .peek-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; padding: 0 4px 4px; }
 .peek-facts span { display: flex; justify-content: space-between; gap: 6px; }
@@ -141,7 +143,6 @@
 .meter[data-style="cards"] .meter-row { inset: var(--rim) 4px auto; border-radius: 6px; background: none; box-shadow: none; }
 .meter[data-style="cards"] .meter-row .meter-bar { inset: auto 58px calc(50% - 2px) auto; width: 44px; height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--deep), var(--bright)); transform: scaleX(var(--length)); transform-origin: left; }
 .meter[data-style="cards"] .meter-row::after { content: ""; position: absolute; inset: auto 58px calc(50% - 2px) auto; z-index: -2; width: 44px; height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--text) 10%, transparent); }
-.meter[data-style="cards"] .meter-row .meter-share { display: none; }
 .meter[data-style="cards"] .meter-row > b { min-width: 96px; }
 .meter[data-style="cards"] .meter-foot { border-top-color: color-mix(in srgb, var(--text) 10%, transparent); }
 .meter-hero { --mark: 32px; display: flex; align-items: center; gap: 9px; height: round(48px, var(--px, 1px)); padding: 0 11px 0 8px; overflow: hidden; }

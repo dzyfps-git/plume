@@ -30,3 +30,24 @@ test("unnamed numbers are dungeon rewards or entries, and take the name you give
   const rows = checklist([kept("A", { counts: [[60_000_002, 1, 0], [7, 3, 0], [3, 2, 0]] })], [{ id: 7, name: "Mine", kind: "", show: false }], false, at, () => "");
   assert.deepEqual(rows.map((r) => [r.group, r.name]), [["corridors", "Lower Abyss"], ["entries", "Mine"], ["dungeons", "Reward counter 60000002"]]);
 });
+
+test("what was done is to do again after its reset", () => {
+  // Seen an hour before the daily and weekly reset, looked at two hours later.
+  const later = at + 2 * 3_600_000;
+  const rows = checklist([kept("A", { duty: [5, 5], points: [900, 900], crafts: [[32_070_002, 4]], shop: [[100_134, 2]] })], [], false, later, () => "");
+  for (const key of ["duty", "points", "craft:32070002"]) {
+    const row = rows.find((r) => r.key === key)!;
+    assert.equal(row.done, false, key);
+    assert.equal(row.cells[0]!.n, 0, key);
+  }
+  assert.equal(rows.find((r) => r.key === "shop:100134")!.cells[0]!.n, 0);
+  assert.equal(checklist([kept("A", { duty: [5, 5] })], [], false, at, () => "").find((r) => r.key === "duty")!.done, true);
+});
+
+test("every number given one kind is a row of its own, with its own name", () => {
+  const chosen = [{ id: 70, name: "Hard", kind: "nightmare" as const, show: false }, { id: 71, name: "", kind: "nightmare" as const, show: false }];
+  const rows = checklist([kept("A", { counts: [[70, 3, 0], [71, 5, 0]] })], chosen, false, at, () => "");
+  const mine = rows.filter((r) => r.key.startsWith("nightmare"));
+  assert.deepEqual(mine.map((r) => [r.key, r.name, r.cells[0]!.n]), [["nightmare:70", "Hard", 3], ["nightmare:71", "Nightmare", 5]]);
+  assert.equal(rows.some((r) => r.key === "70" || r.key === "71"), false);
+});

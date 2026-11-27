@@ -110,3 +110,18 @@ test("events and the clock keep only what fits", () => {
 test("loot rules are item numbers, each once", () => {
   assert.deepEqual(read({ loot: { rules: [5, 5, -1, "x", 7.2], least: 9 } }).loot, { rules: [5, 7], least: 5 });
 });
+
+test("the meter's old switches become its sides and corner", () => {
+  const total = read({ meter: { share: true, total: true, power: false } }).meter;
+  assert.deepEqual([total.left, total.right, total.corner], ["share", "total", ""]);
+  const bare = read({ meter: { share: false, total: false, power: true } }).meter;
+  assert.deepEqual([bare.left, bare.right, bare.corner], ["", "", "power"]);
+  // Once chosen the new way, the old switches mean nothing.
+  const chosen = read({ meter: { left: "total", right: "", corner: "level", share: true, power: false } }).meter;
+  assert.deepEqual([chosen.left, chosen.right, chosen.corner], ["total", "", "level"]);
+});
+
+test("a sound file's name is kept whole", () => {
+  const name = `file:${"a".repeat(200)}.wav`;
+  assert.equal(read({ alerts: { low: { sound: name } } }).alerts.low.sound, name);
+});

@@ -16,7 +16,8 @@ export function Chart(props: { curve: readonly number[]; best?: readonly number[
   const best = createMemo(() => pace(props.best ?? []));
   const party = createMemo(() => pace(props.party ?? []));
   const most = createMemo(() => Math.max(1, ...mine(), ...best(), ...party()) * 1.08);
-  const count = createMemo(() => Math.max(mine().length, best().length));
+  // The party's line is on the same scale: one longer than yours stays inside, and late deaths are where they were.
+  const count = createMemo(() => Math.max(mine().length, best().length, party().length));
   const line = (values: number[]) => path(values, WIDTH, HEIGHT, most(), count());
   return (
     <Show when={props.curve.length > 1}>

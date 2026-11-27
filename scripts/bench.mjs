@@ -3,8 +3,8 @@
 //
 // PLUME_ENGINE=path runs that engine, so its RAM and CPU are measured too.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { cpus } from "node:os";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpus, tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
@@ -68,11 +68,17 @@ async function connect(name) {
 
 const call = (page, command, args) => page.run(`window.__TAURI_INTERNALS__.invoke(${JSON.stringify(command)}, ${JSON.stringify(args)})`);
 
+/** Each run keeps its settings and fights in a folder of its own, so the made-up fights never reach your History. */
+const folders = [];
+process.on("exit", () => folders.forEach((f) => rmSync(f, { recursive: true, force: true })));
+
 function launch() {
   const startedAt = Date.now();
+  const data = mkdtempSync(join(tmpdir(), "plume-bench-"));
+  folders.push(data);
   const child = spawn(exe, {
     stdio: "ignore",
-    env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${PORT}` },
+    env: { ...process.env, PLUME_DATA: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${PORT}` },
   });
   return { startedAt, pid: child.pid };
 }

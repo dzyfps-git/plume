@@ -22,8 +22,15 @@ const MODE_NAMES: Record<Mode, string> = {
 
 export function MeterPage() {
   const [picked, setPicked] = createSignal<number>();
-  const row = createMemo(() => fight.rows.find((r) => r.id === picked()) ?? fight.rows.find((r) => r.you) ?? fight.rows[0]);
   const list = createMemo(() => ranked({ rows: whose(fight.rows, settings.meter.who, new Set(near.party.map((u) => u.id))), ms: fight.ms }, settings.meter.view));
+  // Of the rows shown: another player picked under Everyone is not watched once You alone shows.
+  const row = createMemo(() => {
+    const rows = list().map((x) => x.row);
+    return rows.find((r) => r.id === picked()) ?? rows.find((r) => r.you) ?? rows[0];
+  });
+  // A row is drawn once per player and only its numbers change, so the button you are on keeps the focus.
+  const ids = createMemo(() => list().map((x) => x.row.id), [], { equals: (a, b) => a.length === b.length && a.every((id, i) => id === b[i]) });
+  const of = (id: number) => list().find((x) => x.row.id === id)!;
   // The engine works out the skills of one player, and only while they are looked at.
   const watched = createMemo(() => row()?.id);
   createEffect(() => void engineSend({ cmd: "watch", id: watched() ?? null }).catch(console.error));
@@ -79,22 +86,25 @@ export function MeterPage() {
           </div>
         </div>
         <div class="board">
-          <For each={list()}>
-            {({ row: r, total, rate, share }, i) => (
-              <button
-                class="board-row"
-                aria-pressed={r.id === row()?.id}
-                onClick={() => setPicked(r.id)}
-                style={{ "--class": classOf(r.job).color, "--length": total / Math.max(1, list()[0].total) }}
-              >
-                <i class="meter-bar" />
-                <ClassMark job={r.job} />
-                <span class="meter-name">{label(r, hideNames(), i() + 1)}<Show when={r.power > 0 && !settings.discreet}><small class="meter-power ui-num"><Thing of="power" />{power(r.power)}</small></Show></span>
-                <small class="ui-num">{short(total)}</small>
-                <small class="ui-num">{share.toFixed(1)}%</small>
-                <b class="ui-num">{settings.meter.view === "hits" ? rate.toFixed(1) : short(rate)}</b>
-              </button>
-            )}
+          <For each={ids()}>
+            {(id, i) => {
+              const r = () => of(id).row;
+              return (
+                <button
+                  class="board-row"
+                  aria-pressed={id === row()?.id}
+                  onClick={() => setPicked(id)}
+                  style={{ "--class": classOf(r().job).color, "--length": of(id).total / Math.max(1, list()[0].total) }}
+                >
+                  <i class="meter-bar" />
+                  <ClassMark job={r().job} />
+                  <span class="meter-name">{label(r(), hideNames(), i() + 1)}<Show when={r().power > 0 && !settings.discreet}><small class="meter-power ui-num"><Thing of="power" />{power(r().power)}</small></Show></span>
+                  <small class="ui-num">{short(of(id).total)}</small>
+                  <small class="ui-num">{of(id).share.toFixed(1)}%</small>
+                  <b class="ui-num">{settings.meter.view === "hits" ? of(id).rate.toFixed(1) : short(of(id).rate)}</b>
+                </button>
+              );
+            }}
           </For>
         </div>
         <Show when={settings.meter.view.endsWith("dps")}>

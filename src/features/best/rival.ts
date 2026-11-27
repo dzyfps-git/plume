@@ -1,7 +1,7 @@
 // Your best kill of the boss that is fought now, whole, to race against.
 import { createEffect, createMemo, createRoot, createSignal } from "solid-js";
 import { fight as loadFight } from "../../api";
-import { fight } from "../../live/store";
+import { fight, shownId } from "../../live/store";
 import type { Saved } from "../../live/types";
 import { followFights, fights } from "../history/store";
 import { bestKill, trail, wipes } from "./logic";
@@ -25,8 +25,8 @@ export function followRival() {
     const boss = createMemo(() => ({ code: fight.target.code, name: fight.target.name, maxHp: fight.target.boss ? fight.target.maxHp : 0 }), undefined, {
       equals: (a, b) => a.code === b.code && a.name === b.name && a.maxHp === b.maxHp,
     });
-    // This fight itself, once it is kept, is no rival of itself while it still shows.
-    const others = createMemo(() => fights().filter((f) => !f.you || f.you.damage !== fight.rows.find((r) => r.you)?.damage));
+    // This fight itself, once it is kept, is no rival of itself while it still shows. Another with the same damage is.
+    const others = createMemo(() => fights().filter((f) => f.id !== shownId()));
     const id = createMemo(() => (boss().maxHp > 0 ? bestKill(others(), boss())?.id : undefined));
     createEffect(() => {
       const wanted = id();

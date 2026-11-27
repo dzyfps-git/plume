@@ -44,23 +44,29 @@ export interface Shown {
   phase: boolean;
 }
 
+/** Of an effect on the boss: no phase, or a phase whose calls are on or turned off. */
+export type Phase = false | "on" | "off";
+
 /**
  * Effects on the boss, against those already seen: the calls they start, and whether a phase just ended with none left.
- * `seen` maps an effect's key to whether it is a phase.
+ * `seen` maps an effect's key to what phase it is. A phase is one as long as its effect is there, its calls on or not:
+ * turning a boss off only stops what is said.
  */
-export function onBoss(file: CallFile, auras: readonly Aura[], seen: ReadonlyMap<string, boolean>, off: readonly string[], now: number) {
+export function onBoss(file: CallFile, auras: readonly Aura[], seen: ReadonlyMap<string, Phase>, off: readonly string[], now: number) {
   const shown: Shown[] = [];
-  const next = new Map<string, boolean>();
+  const next = new Map<string, Phase>();
   for (const a of auras) {
-    const phases = file.calls.filter((c) => c.phase?.a === a.id && !off.includes(c.boss) && !off.includes(c.key));
+    const every = file.calls.filter((c) => c.phase?.a === a.id);
+    const phases = every.filter((c) => !off.includes(c.boss) && !off.includes(c.key));
     const ends = (ms: number) => (a.end > now ? a.end : now + ms);
     if (!seen.has(a.key)) {
       for (const c of heard(file, "abnormal", a.id, off)) shown.push({ call: c, end: a.end > now ? a.end : 0, phase: false });
       for (const c of phases) shown.push({ call: c, end: ends(c.phase!.ms), phase: true });
     }
-    next.set(a.key, phases.length > 0);
+    next.set(a.key, every.length ? (phases.length ? "on" : "off") : false);
   }
   const was = [...seen.values()].some(Boolean);
   const still = [...next.values()].some(Boolean);
-  return { shown, seen: next, safe: was && !still };
+  // "Safe" is said only for a phase whose calls are on.
+  return { shown, seen: next, safe: was && !still && [...seen.values()].includes("on") };
 }

@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { change, settings } from "../../store";
 import { clock, full } from "../../ui/format";
 import { Line, Slide } from "../../ui/Line";
@@ -15,6 +15,9 @@ export function TimePage() {
   const off = (id: string) => settings.events.off.includes(id);
   const flip = (id: string) => change((s) => (s.events.off = off(id) ? s.events.off.filter((k) => k !== id) : [...s.events.off, id]));
   const rows = () => EVENTS.map((e) => next(e, now())).sort((a, b) => a.start - b.start);
+  // Each button is drawn once, by its event, and only its time changes: the clock ticking keeps your focus and your click.
+  const order = createMemo(() => rows().map((n) => n.event.id), [], { equals: (a, b) => a.join() === b.join() });
+  const of = (id: string) => rows().find((n) => n.event.id === id)!;
   const [chance, setChance] = createSignal(10);
   const [cost, setCost] = createSignal(0);
   const tries = () => odds(chance() / 100);
@@ -35,16 +38,19 @@ export function TimePage() {
         <h2>Events</h2>
         <p class="ui-muted ui-small">On the server's clock, as guides give them: NC has published none, and they differ on Monday. Turned on, they show on the Time bar and the alert An event begins says them.</p>
         <div class="event-list" role="group" aria-label="Events to be told of">
-          <For each={rows()}>
-            {(n) => (
-              <button class="event-row" aria-pressed={!off(n.event.id)} data-open={n.open || undefined} onClick={() => flip(n.event.id)}>
-                <span class="thing-pic event-pic" aria-hidden="true"><GameIcon name={n.event.icon}><span class="ui-icon">{"\uea8f"}</span></GameIcon></span>
-                <span class="event-name">{n.event.name}</span>
-                <span class="event-when ui-num">{n.open ? "Open now" : `in ${wait(n.start - now())}`}</span>
-                <span class="ui-num ui-muted">{serverTime(n.start)}</span>
-                <span class="ui-icon event-bell" aria-hidden="true">{"\uea8f"}</span>
-              </button>
-            )}
+          <For each={order()}>
+            {(id) => {
+              const n = () => of(id);
+              return (
+                <button class="event-row" aria-pressed={!off(id)} data-open={n().open || undefined} onClick={() => flip(id)}>
+                  <span class="thing-pic event-pic" aria-hidden="true"><GameIcon name={n().event.icon}><span class="ui-icon">{"\uea8f"}</span></GameIcon></span>
+                  <span class="event-name">{n().event.name}</span>
+                  <span class="event-when ui-num">{n().open ? "Open now" : `in ${wait(n().start - now())}`}</span>
+                  <span class="ui-num ui-muted">{serverTime(n().start)}</span>
+                  <span class="ui-icon event-bell" aria-hidden="true">{"\uea8f"}</span>
+                </button>
+              );
+            }}
           </For>
         </div>
         <Line name="Alert before" about="Minutes before an event begins.">

@@ -188,7 +188,8 @@ function Overview(props: { fight: Saved; best?: Saved }) {
   const trip = createMemo(() => pings(props.fight));
   const top = createMemo(() => mvp(props.fight));
   const named = createMemo(() => titles(props.fight));
-  const timed = createMemo(() => burst(props.fight));
+  // As on the finish card: the Bursts switch turns it off here too.
+  const timed = createMemo(() => (settings.against.burst ? burst(props.fight) : undefined));
   const credited = () => (you()?.damage ?? 0) - (you()?.got ?? 0) + (you()?.given ?? 0);
   return (
     <>
@@ -291,8 +292,8 @@ function Overview(props: { fight: Saved; best?: Saved }) {
                 <div role="row">
                   <span role="rowheader">{who(props.fight, p.id)}</span>
                   <span role="cell">{short(p.dps)}</span>
-                  <span role="cell">{short(p.rdps)}</span>
-                  <span role="cell">{short(p.ndps)}</span>
+                  <span role="cell" data-tip={p.rdps === undefined ? "Not measured in this fight" : undefined}>{p.rdps === undefined ? "\u2013" : short(p.rdps)}</span>
+                  <span role="cell" data-tip={p.ndps === undefined ? "Not measured in this fight" : undefined}>{p.ndps === undefined ? "\u2013" : short(p.ndps)}</span>
                   <span role="cell">{p.hps ? short(p.hps) : ""}</span>
                   <span role="cell">{p.over === undefined ? "" : percent(p.over, 1)}</span>
                   <span role="cell">{p.support ? clock(p.support) : ""}</span>
@@ -303,7 +304,8 @@ function Overview(props: { fight: Saved; best?: Saved }) {
         </Show>
         <p class="ui-muted ui-small">Other players are gone when {NAME} closes.</p>
       </Show>
-      <Show when={rates(row()?.skills).length}>
+      {/* Healing, blocks and Combat Power show without direct hits too: only the hit rates need them. */}
+      <Show when={row() && (rates(row()!.skills).length || row()!.hitsTaken || row()!.healing || row()!.power)}>
         <div class="stats">
           <For each={rates(row()!.skills)}>{(r) => <Stat name={r.name} value={percent(r.share, 1)} tip={r.tip} />}</For>
           <Show when={row()!.hitsTaken}>{(n) => <Stat name="Blocked or parried" value={percent(row()!.blocked ?? 0, n())} tip={`${row()!.blocked ?? 0} of ${n()} hits taken`} />}</Show>

@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createSignal, on, onCleanup, onMount, Show } from "solid-js";
 import { openPage } from "../api";
 import { overlayName, widthOf, type Feature } from "../features/types";
 import { settings } from "../store";
@@ -25,6 +25,8 @@ export function Frame(props: Props) {
   const [size, setSize] = createSignal({ width: widthOf(overlay), height: 80 });
   const [screen, setScreen] = createSignal({ width: innerWidth, height: innerHeight });
   const [held, setHeld] = createSignal<Spot>();
+  /** Its height when first drawn, for an edge to be held by before it was ever moved or scaled. */
+  const [first, setFirst] = createSignal(0);
 
   const free = () => props.editing || !!overlay.loose?.();
   const zoom = () => at().scale * sizeOfAll(settings.overlay);
@@ -41,7 +43,7 @@ export function Frame(props: Props) {
   onCleanup(() => clearTimeout(leaving));
   const at = () => place(settings.places[props.feature.id], overlay.place);
   const spot = () => {
-    const height = at().height;
+    const height = at().height || first();
     if (held()) return held()!;
     // While it is placed, it is as high as it is.
     if (!overlay.edge || !height || props.editing) return toPixels(at(), size(), screen());
@@ -59,6 +61,7 @@ export function Frame(props: Props) {
     const watch = new ResizeObserver(() => {
       const { width, height } = frame.getBoundingClientRect();
       setSize({ width, height });
+      if (!first() && height > 0) setFirst(height / zoom());
     });
     watch.observe(frame);
     const resized = () => setScreen({ width: innerWidth, height: innerHeight });
@@ -68,14 +71,16 @@ export function Frame(props: Props) {
       removeEventListener("resize", resized);
     });
   });
-  // Leaving edit mode in the middle of a drag keeps where it was dragged to.
-  createEffect(() => {
-    const to = held();
-    if (!free() && to) {
-      putAt(to);
-      setHeld(undefined);
-    }
-  });
+  // Leaving edit mode in the middle of a drag keeps where it was dragged to. A drag by the handle is kept once, on release.
+  createEffect(
+    on(free, (now, was) => {
+      const to = held();
+      if (was && !now && to) {
+        putAt(to);
+        setHeld(undefined);
+      }
+    }),
+  );
 
   function grab(event: PointerEvent, handle = false) {
     if (!(free() || handle) || at().locked || event.button !== 0 || (event.target as Element).closest("button")) return;
@@ -110,7 +115,16 @@ export function Frame(props: Props) {
     putAt({ x: spot().x + x * by, y: spot().y + y * by });
   }
 
-  const scale = (by: number) => put({ scale: Math.round(Math.min(2, Math.max(0.6, at().scale + by)) * 20) / 20 });
+  // A locked overlay keeps its size too. It grows from the edge nearest the screen's side, so that edge stays where it is.
+  const scale = (by: number) => {
+    if (at().locked) return;
+    const next = Math.round(Math.min(2, Math.max(0.6, at().scale + by)) * 20) / 20;
+    const k = next / at().scale;
+    const [now, own] = [spot(), { width: size().width * k, height: size().height * k }];
+    const keep = (v: number, share: number, was: number, will: number) => (share > 0.5 ? v + was - will : v);
+    const to = { x: keep(now.x, at().x, size().width, own.width), y: keep(now.y, at().y, size().height, own.height) };
+    put({ scale: next, ...toShare(to, own, screen()) });
+  };
 
   return (
     <div
@@ -148,9 +162,9 @@ export function Frame(props: Props) {
         <div class="frame-bar" data-touch={menu() || undefined} data-under={(menu() && under()) || undefined} onPointerEnter={() => clearTimeout(leaving)} onPointerLeave={() => menu() && leave()}>
           <span>{overlayName(props.feature)}</span>
           <button class="ui-icon-button" aria-label={at().locked ? "Unlock" : "Lock"} aria-pressed={!!at().locked} onClick={() => put({ locked: !at().locked })}>{at().locked ? "\ue72e" : "\ue785"}</button>
-          <button class="ui-icon-button" aria-label="Smaller" onClick={() => scale(-0.05)}>{"\ue738"}</button>
+          <button class="ui-icon-button" aria-label="Smaller" disabled={!!at().locked} onClick={() => scale(-0.05)}>{"\ue738"}</button>
           <small class="ui-num">{Math.round(at().scale * 100)}%</small>
-          <button class="ui-icon-button" aria-label="Bigger" onClick={() => scale(0.05)}>{"\ue710"}</button>
+          <button class="ui-icon-button" aria-label="Bigger" disabled={!!at().locked} onClick={() => scale(0.05)}>{"\ue710"}</button>
           <button class="ui-icon-button" aria-label="Hide" onClick={() => put({ on: false })}>{"\ue711"}</button>
           <button class="ui-icon-button" aria-label="Its settings, in the app" onClick={() => void openPage(props.feature.page ? props.feature.id : "overlays")}>{"\ue713"}</button>
           <Show when={menu()}><button class="ui-icon-button" aria-label="Close the menu" onClick={() => setMenu(false)}>{"\ue8bb"}</button></Show>

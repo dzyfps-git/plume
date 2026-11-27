@@ -54,8 +54,8 @@ export function Tracker(props: TrackerProps) {
           <Match when={tab() === "trace" || tab() === "cube"}><Findable layer={tab() as Layer} {...props} here={here()} /></Match>
           <Match when={tab() === "gather"}><Kinds layer="gather" {...props} here={here()} /></Match>
           <Match when={tab() === "monster"}><Kinds layer="monster" {...props} here={here()} search /></Match>
-          <Match when={tab() === "pets"}><PetsHere {...props} /></Match>
-          <Match when={tab() === "item"}><Items {...props} /></Match>
+          <Match when={tab() === "pets"}><PetsHere {...props} here={here()} /></Match>
+          <Match when={tab() === "item"}><Items {...props} here={here()} /></Match>
           <Match when={tab() === "route"}><Routes {...props} /></Match>
         </Switch>
       </div>
@@ -171,7 +171,7 @@ function Kinds(props: TrackerProps & { layer: "gather" | "monster"; here: You | 
 }
 
 /** Pets whose souls drop on this map and that you still need. */
-function PetsHere(props: TrackerProps) {
+function PetsHere(props: TrackerProps & { here: You | null }) {
   const [file] = createResource(() => petFile().catch(() => null));
   const goal = () => settings.pets.goal;
   const needed = (p: Pet) => toGo(p, settings.pets.levels[p.id] ?? 0, settings.pets.souls[p.id] ?? 0, goal()) > 0;
@@ -199,7 +199,7 @@ function PetsHere(props: TrackerProps) {
             <b>{r.pet.name} <small class="ui-muted">{KIND_NAMES[r.pet.kind]}, {toGo(r.pet, settings.pets.levels[r.pet.id] ?? 0, settings.pets.souls[r.pet.id] ?? 0, goal())} souls to go</small></b>
             <For each={r.things}>
               {(t) => (
-                <div class="tracker-row" role="button" tabindex="0" onClick={() => pickNearest({ ...props, here: props.you }, t)} onKeyDown={(e) => e.key === "Enter" && pickNearest({ ...props, here: props.you }, t)}>
+                <div class="tracker-row" role="button" tabindex="0" onClick={() => pickNearest(props, t)} onKeyDown={(e) => e.key === "Enter" && pickNearest(props, t)}>
                   <span>{t.name} <small class="ui-muted">{t.level}</small></span>
                   <span class="ui-num ui-muted">{spots(t).length}</span>
                   <TrackButton key={keyOf(props.map.id, t)} name={t.name} />
@@ -214,7 +214,7 @@ function PetsHere(props: TrackerProps) {
 }
 
 /** Search an item, see what gives it here, and how likely. */
-function Items(props: TrackerProps) {
+function Items(props: TrackerProps & { here: You | null }) {
   const [drops] = createResource(() => dropFile().catch(() => null));
   const [query, setQuery] = createSignal("");
   const [item, setItem] = createSignal(0);
@@ -241,7 +241,7 @@ function Items(props: TrackerProps) {
         <p class="ui-muted ui-small">{from().length ? `${from().length} here.` : "Nothing on this map gives it."} {elsewhere()} monsters drop it in all.</p>
         <For each={from()}>
           {(x) => (
-            <div class="tracker-row" role="button" tabindex="0" onClick={() => pickNearest({ ...props, here: props.you }, x.t)} onKeyDown={(e) => e.key === "Enter" && pickNearest({ ...props, here: props.you }, x.t)}>
+            <div class="tracker-row" role="button" tabindex="0" onClick={() => pickNearest(props, x.t)} onKeyDown={(e) => e.key === "Enter" && pickNearest(props, x.t)}>
               <span><span class="dot" style={{ background: LAYER_COLOURS[x.t.layer] }} />{x.t.name} <small class="ui-muted">{x.t.level || x.t.sort}</small></span>
               <span class="ui-num ui-muted">{x.chance < 0 ? "" : `${x.chance < 0.01 ? x.chance.toFixed(4) : x.chance.toFixed(2)}%`}</span>
               <TrackButton key={keyOf(props.map.id, x.t)} name={x.t.name} />
@@ -285,7 +285,12 @@ function Routes(props: TrackerProps) {
             <span class="ui-row">
               <button class="ui-chip" aria-pressed={props.route === r.key} onClick={() => props.setRoute(props.route === r.key ? "" : r.key)}>Show</button>
               <button class="ui-chip" onClick={() => (props.setRoute(r.key), props.setDrawing(r.key))}>Add</button>
-              <button class="ui-icon-button" aria-label={`Delete ${r.name}`} onClick={() => change((s) => (s.world.routes = s.world.routes.filter((x) => x.key !== r.key)))}>{""}</button>
+              <button class="ui-icon-button" aria-label={`Delete ${r.name}`} onClick={() => {
+                // Drawing a route that is gone would send clicks to nothing.
+                if (props.drawing === r.key) props.setDrawing("");
+                if (props.route === r.key) props.setRoute("");
+                change((s) => (s.world.routes = s.world.routes.filter((x) => x.key !== r.key)));
+              }}>{""}</button>
             </span>
           </div>
         )}

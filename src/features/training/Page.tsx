@@ -129,7 +129,7 @@ export function TrainingPage() {
       <Show when={runs().length || group()}>
         <section class="block">
           <h2>Runs before</h2>
-          <Show when={groups().length}>
+          <Show when={groups().length || group()}>
             <div class="ui-row" role="group" aria-label="Group">
               <button class="ui-chip" aria-pressed={!group()} onClick={() => setGroup("")}>Every run</button>
               <For each={groups()}>{(g) => <button class="ui-chip" aria-pressed={group() === g} onClick={() => setGroup(g)}>{g}</button>}</For>

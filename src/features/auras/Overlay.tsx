@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createRoot, For, Match, Show, Switch, untrack } from "solid-js";
-import { near } from "../../live/store";
+import { near, sampling } from "../../live/store";
 import { settings } from "../../store";
 import { ticking } from "../../ui/now";
 import { casts, followActions, skills } from "../actions/store";
@@ -25,6 +25,8 @@ export function followAuras() {
     let before = new Set<string>();
     createEffect(() => {
       const all = list();
+      // A sample to place overlays by sounds nothing, and what was really on before it is what live data is weighed against after.
+      if (sampling()) return;
       untrack(() => {
         for (const s of fresh(before, all)) signal(s.rule, s.name);
         before = new Set(all.map((s) => s.rule.key));
@@ -91,8 +93,8 @@ export const ownAuras = (): Feature[] => settings.auras.filter((a) => a.own && a
     overlay: {
       view: () => {
         const now = ticking();
-        // While it is placed it may have nothing to show, so it shows itself.
-        const of = (): State | undefined => here() ?? (rule() && { rule: rule()!, name: ruleName(rule()!), start: 0, end: 0, stacks: 0, text: "" });
+        // While it is placed it may have nothing to show, so it shows itself. In play an aura that is not on shows nothing.
+        const of = (): State | undefined => here() ?? (sampling() && rule() ? { rule: rule()!, name: ruleName(rule()!), start: 0, end: 0, stacks: 0, text: "" } : undefined);
         return <section class="auras" aria-label="Aura"><Show when={of()}>{(s) => <One of={s()} now={now()} />}</Show></section>;
       },
       group: "Effects",

@@ -38,9 +38,12 @@ test("buffs move damage between players, and none of it is lost", () => {
   const fight = demoSaved("x", { ms: 120_000, killed: true });
   const all = players(fight);
   const sum = (of: (p: (typeof all)[number]) => number) => Math.round(all.reduce((n, p) => n + of(p), 0));
-  assert.equal(sum((p) => p.rdps), sum((p) => p.dps));
+  assert.equal(sum((p) => p.rdps!), sum((p) => p.dps));
   const chanter = all.find((p) => p.id === 7)!;
-  assert.ok(chanter.rdps > chanter.dps && chanter.ndps === chanter.dps && chanter.support > 0);
+  assert.ok(chanter.rdps! > chanter.dps && chanter.ndps === chanter.dps && chanter.support > 0);
+  // Without what buffs moved, the figures that need it are not known, not the raw damage a second.
+  const bare = players({ ...fight, rows: fight.rows!.map(({ got: _, given: __, ...r }) => r) })[0];
+  assert.deepEqual([bare.rdps, bare.ndps], [undefined, undefined]);
   assert.equal(all.find((p) => p.id === 1)!.support, 0, "your buffs on yourself support nobody");
   assert.equal(partyCurve(fight)!.at(-1), fight.total);
   assert.equal(partyCurve({ ...fight, rows: undefined }), undefined);

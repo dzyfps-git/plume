@@ -98,7 +98,7 @@ export function LootPage() {
               <div class="ui-row-item roll-row">
                 <span data-grade={gradeOf(file(), r.item) || undefined}>{r.item ? itemName(file(), r.item) : "An item"}{r.count > 1 ? ` x${r.count}` : ""}</span>
                 <span class="ui-small ui-num">{r.rolls.map((x) => `${x.you ? "You" : who(x.name)} ${x.roll}`).join(", ") || "No rolls seen"}{r.passed.length ? `; ${r.passed.length} passed` : ""}</span>
-                <span class="ui-small">{r.winner ? `${who(r.winner)} won` : "Open"}, {time(r.at)}</span>
+                <span class="ui-small">{r.winner ? `${who(r.winner)} won` : r.ends && r.ends < Date.now() ? "Ended" : "Open"}, {time(r.at)}</span>
               </div>
             )}
           </For>

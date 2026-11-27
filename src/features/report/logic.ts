@@ -57,8 +57,10 @@ export function untouchable(fight: Saved): Span[] {
   const curves = fight.rows?.map((r) => r.curve ?? []) ?? [fight.curve ?? []];
   const seconds = Math.max(0, ...curves.map((c) => c.length));
   const health = fight.health ?? [];
-  // Your own hits alone prove nothing: a pause of yours is not the target's.
-  if (!fight.rows && !health.some((h) => h >= 0)) return [];
+  // Your own hits alone prove nothing: a pause of yours is not the target's. Others' hits, or its health while others fought, do.
+  // A dummy cannot be made untouchable.
+  const others = fight.rows ? fight.rows.length > 1 : fight.players > 1 && health.some((h) => h >= 0);
+  if (fight.dummy || !others) return [];
   const still = (s: number) => curves.every((c) => c[s] === c[s - 1]) && health[s] === health[s - 1];
   const spans: Span[] = [];
   let from = -1;
@@ -75,7 +77,14 @@ export function untouchable(fight: Saved): Span[] {
 
 const overlap = (a: Span, b: Span) => Math.max(0, Math.min(a.to, b.to) - Math.max(a.from, b.from));
 
-/** Times you did nothing though you could. */
+/** What is left of a span once the times in `off` are taken out of it. */
+function without(span: Span, off: readonly Span[]): Span[] {
+  let left = [span];
+  for (const o of off) left = left.flatMap((s) => [{ from: s.from, to: Math.min(s.to, o.from) }, { from: Math.max(s.from, o.to), to: s.to }].filter((p) => p.to > p.from));
+  return left;
+}
+
+/** Times you did nothing though you could. Time you were down or the target could not be hit is not in them. */
 export function gaps(fight: Saved): Span[] {
   const list = casts(fight.casts);
   const off = [...down(fight), ...untouchable(fight)];
@@ -86,7 +95,7 @@ export function gaps(fight: Saved): Span[] {
     end = Math.max(end, c.end);
   }
   if (list.length && fight.ms - end > GAP) all.push({ from: end, to: fight.ms });
-  return all.filter((g) => g.to - g.from - sum(off.map((o) => overlap(g, o))) > GAP);
+  return all.map((g) => without(g, off)).filter((left) => length(left) > GAP).flat();
 }
 
 export interface Waited {
@@ -188,15 +197,15 @@ export interface Part extends Span {
   dps: number;
 }
 
-/** The fight cut at health marks, high to low, with your damage in each part. */
+/** The fight cut at health marks, high to low, with your damage in each part. A health sample is the end of its second. */
 export function parts(fight: Saved, marks: readonly number[]): Part[] {
   const { health = [], curve = [], maxHp, ms } = fight;
   if (!marks.length || maxHp <= 0 || curve.length < 2 || !health.some((h) => h >= 0)) return [];
   const cuts = [...marks]
     .sort((a, b) => b - a)
-    .map((mark) => ({ mark, second: health.findIndex((h) => h >= 0 && h <= (maxHp * mark) / 100) }))
-    .filter((c) => c.second > 0);
-  const edges = [0, ...cuts.map((c) => c.second * 1000), ms];
+    .map((mark) => ({ mark, index: health.findIndex((h) => h >= 0 && h <= (maxHp * mark) / 100) }))
+    .filter((c) => c.index >= 0);
+  const edges = [0, ...cuts.map((c) => Math.min(ms, (c.index + 1) * 1000)), ms];
   const at = (t: number) => (t <= 0 ? 0 : curve[Math.min(curve.length - 1, Math.max(0, Math.ceil(t / 1000) - 1))]);
   const names = [100, ...cuts.map((c) => c.mark)];
   return names.flatMap((mark, i) => {
@@ -223,8 +232,9 @@ export function wipeLine(fight: Saved, who: (id: number) => string): string | un
   const first = [...(fight.deaths ?? [])].sort((a, b) => a.ms - b.ms)[0];
   if (first) {
     const blow = first.hits.at(-1);
-    const name = fight.rows ? who(first.id) : "You";
-    parts.push(`${name} died first at ${clock(first.ms)}${blow ? `, to ${nameOf(fight, blow[1])} for ${short(blow[2])}` : ""}`);
+    // A kept fight has your deaths alone, so who fell first is not known.
+    const said = fight.rows ? `${who(first.id)} died first` : "You died";
+    parts.push(`${said} at ${clock(first.ms)}${blow ? `, to ${nameOf(fight, blow[1])} for ${short(blow[2])}` : ""}`);
   }
   return parts.length ? `${parts.join(". ")}.` : undefined;
 }

@@ -1,21 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { counts, done, fits, hear, sources, toGo, type Pet } from "./logic.ts";
+import { counts, done, fits, sources, toGo, type Pet } from "./logic.ts";
 
 const pet = (over: Partial<Pet> = {}): Pet => ({ id: 1066, name: "Papis", kind: "fera", where: [], ...over });
-
-test("all replaces, souls add and level by themselves, a level takes its cost once", () => {
-  const all = hear({ levels: { 9: 2 }, souls: { 9: 4 } }, { what: "all", levels: [[1066, 1], [1004, 0]], souls: [[1066, 24], [1004, 3]] });
-  assert.deepEqual(all, { levels: { 1066: 1 }, souls: { 1066: 24, 1004: 3 } });
-  const up = hear(all, { what: "souls", levels: [], souls: [[1066, 3], [1004, 2]] });
-  assert.deepEqual(up, { levels: { 1066: 2, 1004: 1 }, souls: { 1066: 2 } });
-  // Said again after the souls did it: nothing more is taken.
-  assert.deepEqual(hear(up, { what: "level", levels: [[1066, 2]], souls: [] }), up);
-  const by = hear({ levels: {}, souls: { 7: 30 } }, { what: "level", levels: [[7, 2]], souls: [] });
-  assert.deepEqual(by, { levels: { 7: 2 }, souls: {} });
-  const top = hear({ levels: { 7: 3 }, souls: {} }, { what: "souls", levels: [], souls: [[7, 9]] });
-  assert.deepEqual(top, { levels: { 7: 3 }, souls: { 7: 9 } }, "souls past the last level stay");
-});
 
 test("souls to go, done and how many have each level", () => {
   assert.equal(toGo(pet(), 0, 0, 3), 105);

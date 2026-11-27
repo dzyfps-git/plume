@@ -52,17 +52,24 @@ export function count(day: Day, e: LootEvent): Day {
     d.gathered = add(d.gathered, e.gather.item, e.gather.count + e.gather.bonus);
     d.gathered = add(d.gathered, e.gather.extraItem, e.gather.extraCount);
   } else if (e.kind === "drops") {
+    // A kill that gave an item counts once for it, however many came: a drop chance is of kills.
+    const once = new Set<string>();
     for (const x of e.drops) {
-      if (x.owner !== "you" || !x.mob) continue;
-      d.dropped = { ...d.dropped, [x.mob]: add(d.dropped[x.mob] ?? {}, x.item, x.count) };
+      if (x.owner !== "you" || !x.mob || once.has(`${x.source} ${x.item}`)) continue;
+      once.add(`${x.source} ${x.item}`);
+      d.dropped = { ...d.dropped, [x.mob]: add(d.dropped[x.mob] ?? {}, x.item, 1) };
     }
   } else if (e.kind === "kill" && e.byYou) d.kills = add(d.kills, e.mob, 1);
   return d;
 }
 
-/** Kinah today, as the game says it. */
-export const kinahSaid = (day: Day, kinah: number): Day =>
-  kinah < 0 || kinah === day.kinah[1] ? day : { ...day, kinah: [day.kinah[0] < 0 ? kinah : day.kinah[0], kinah] };
+/** Kinah today, as the game says it. `fresh`: the first said since Plume started or the character changed, which starts again
+ * from here with what was gained before kept. */
+export function kinahSaid(day: Day, kinah: number, fresh = false): Day {
+  if (kinah < 0) return day;
+  if (fresh) return { ...day, kinah: [kinah - kinahGained(day), kinah] };
+  return kinah === day.kinah[1] ? day : { ...day, kinah: [day.kinah[0] < 0 ? kinah : day.kinah[0], kinah] };
+}
 
 /** Kinah gained this day: what Kinah today grew by while Plume saw it. */
 export const kinahGained = (day: Day) => (day.kinah[0] < 0 ? 0 : Math.max(0, day.kinah[1] - day.kinah[0]));
@@ -107,11 +114,20 @@ export interface Roll {
 
 const MOST_ROLLS = 100;
 
+/** A roll as it is written down: other players by number, the same number for the same player in it. Yours has no name already. */
+export function redact(roll: Roll): Roll {
+  const names = new Map<string, string>();
+  const as = (name: string) => (name ? (names.get(name) ?? names.set(name, `Player ${names.size + 1}`).get(name)!) : "");
+  return { ...roll, rolls: roll.rolls.map((x) => ({ ...x, name: as(x.name) })), passed: roll.passed.map(as), winner: as(roll.winner) };
+}
+
 /** The rolls with one more thing said. Another's roll names the item and not the roll: it goes to the newest roll of it. */
 export function rolled(all: readonly Roll[], e: RollEvent): Roll[] {
   const r = e.roll;
   const item = r.type === "mine" ? 0 : r.itemId;
-  const at = all.findIndex((x) => ("rollId" in r && x.id === r.rollId) || (r.type === "roll" && x.item === r.itemId && !x.winner));
+  // Another's roll goes to an open roll of the item only: one past its end is closed.
+  const open = (x: Roll) => !x.winner && !(x.ends && x.ends < e.at);
+  const at = all.findIndex((x) => ("rollId" in r && x.id === r.rollId) || (r.type === "roll" && x.item === r.itemId && open(x)));
   const was: Roll = at >= 0 ? all[at] : { id: "rollId" in r ? r.rollId : `item ${item}`, item, count: 1, at: e.at, ends: 0, rolls: [], passed: [], winner: "" };
   const next: Roll = { ...was, item: was.item || item };
   if (r.type === "open") Object.assign(next, { count: r.count, ends: r.endsAt });

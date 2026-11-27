@@ -65,3 +65,15 @@ export const PACKS: Pack[] = [
     },
   },
 ];
+
+/** Puts back each value a pack changed and that still holds the pack's value: what you changed since stays. */
+type Tree = Record<string, unknown>;
+const tree = (v: unknown): v is Tree => !!v && typeof v === "object" && !Array.isArray(v);
+export function putBack<T extends object>(now: T, was: T, worn: T) {
+  const n = now as Tree, a = was as Tree, b = worn as Tree;
+  for (const k of Object.keys(b)) {
+    if (JSON.stringify(a[k]) === JSON.stringify(b[k])) continue;
+    if (tree(a[k]) && tree(b[k]) && tree(n[k])) putBack(n[k] as Tree, a[k] as Tree, b[k] as Tree);
+    else if (JSON.stringify(n[k]) === JSON.stringify(b[k])) n[k] = structuredClone(a[k]);
+  }
+}

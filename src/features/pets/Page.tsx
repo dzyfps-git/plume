@@ -195,7 +195,7 @@ export function PetsPage() {
                           </button>
                           <span class="pet-pips" role="radiogroup" aria-label={`Level of ${p.name}`}>
                             <For each={[1, 2, 3]}>
-                              {(n) => <button role="radio" aria-checked={level(p) >= n} aria-label={`Level ${n}`} onClick={() => setLevel(p, level(p) === n ? n - 1 : n)} />}
+                              {(n) => <button role="radio" aria-checked={level(p) === n} data-filled={level(p) >= n || undefined} aria-label={`Level ${n}`} onClick={() => setLevel(p, level(p) === n ? n - 1 : n)} />}
                             </For>
                           </span>
                           <span class="pet-souls">

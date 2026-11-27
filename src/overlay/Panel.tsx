@@ -73,7 +73,7 @@ export function Panel(props: { all: readonly Feature[]; on: (f: Feature) => bool
       </div>
 
       <footer>
-        <button class="ui-button" onClick={() => void openPage("overlays")}>
+        <button class="ui-button" onClick={() => (props.done(), void openPage("overlays"))}>
           <span class="ui-icon" aria-hidden="true">{"\ue8a7"}</span>
           Open in the app
         </button>

@@ -1,5 +1,4 @@
 import { followCloset } from "../closet/watch";
-import { followPets } from "../pets/watch";
 import type { Feature } from "../types";
 import { nowhere, TrackerMapOverlay, TrackerOverlay } from "./Overlay";
 import { MapPage } from "./Page";
@@ -24,7 +23,8 @@ export const tracker: Feature = {
   overlay: {
     view: TrackerOverlay, group: "World", about: "What you track on the map you are on, nearest first.", width: 260,
     place: { on: false, x: 1, y: 0.5, scale: 1 }, empty: nowhere,
-    // Your pets and Closet come as the game says them, so they are kept here, where a window is always open.
-    beside: () => (followPets(), followCloset()),
+    // Your Closet comes as the game says it, so it is kept by the overlay page, which runs while the game is heard.
+    // Your pets are kept by Plume itself: see `src-tauri/src/pets.rs`.
+    beside: followCloset,
   },
 };

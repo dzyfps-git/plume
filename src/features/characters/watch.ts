@@ -1,5 +1,6 @@
 import { createEffect, createRoot, createSignal, untrack } from "solid-js";
 import { entries, near, place, sampling } from "../../live/store";
+import { NO_ENTRIES, type Entries } from "../../live/types";
 import type { Kept } from "./logic";
 
 /** Each character as last seen, by name, on this PC. Yours alone. */
@@ -26,18 +27,30 @@ export const forget = (name: string) => {
   save(rest);
 };
 
+const counts = (e: Entries) => ({ counts: e.counts, duty: e.duty, points: e.points, kinah: e.kinah, shop: e.shop ?? [], crafts: e.crafts ?? [] });
+
 /** Keeps the character you play as its numbers change. */
 export function followCharacters() {
   createRoot(() => {
+    // Your name, energy and stats come together; entries and where you are come apart, after a switch of character.
+    // Those heard before the switch were the character before's, and are not kept under the new name.
+    let who = "";
+    let before: { entries?: Entries; place?: ReturnType<typeof place> } = {};
     createEffect(() => {
       const you = near.you;
       if (sampling() || !you?.name) return;
-      const e = entries();
-      const now = { odyle: [...near.odyle] as Kept["odyle"], counts: e.counts, duty: e.duty, points: e.points, kinah: e.kinah, shop: e.shop ?? [], crafts: e.crafts ?? [], map: place()?.map ?? 0 };
+      const [e, p, odyle, stats] = [entries(), place(), [...near.odyle] as Kept["odyle"], { power: you.power, level: you.level }];
       untrack(() => {
+        if (you.name !== who) {
+          if (who) before = { entries: e, place: p };
+          who = you.name;
+        }
         const was = kept()[you.name];
-        // A new character's entries arrive after its name: what is not said yet stays as it was.
-        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), ...now, map: now.map || was?.map || 0, power: you.power || was?.power || 0, level: you.level || was?.level || 0 };
+        const fresh = e !== before.entries;
+        const map = (p !== before.place && p?.map) || was?.map || 0;
+        // What is not said yet for this character stays as it was.
+        const said = fresh ? counts(e) : was ? {} : counts(NO_ENTRIES);
+        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), odyle, ...said, map, power: stats.power || was?.power || 0, level: stats.level || was?.level || 0 } as Kept;
         const same = was && JSON.stringify({ ...was, at: 0 }) === JSON.stringify({ ...next, at: 0 });
         if (!same) save({ ...kept(), [you.name]: { ...next, at: Date.now() } });
       });

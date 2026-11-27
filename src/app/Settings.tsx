@@ -89,7 +89,7 @@ export function AppGroups() {
         <Switch name="Start with Windows" about="In the tray, with no window." on={settings.startup} set={(on) => change((s) => (s.startup = on))} />
         <Switch name="Sleep while the game is closed" about="Gives the overlays' memory back until the game is there again." on={settings.sleep} set={(on) => change((s) => (s.sleep = on))} />
         <Line name="Closing this window">
-          <Choices name="Closing this window" all={[["tray", "Keeps the overlays, in the tray"], ["quit", "Quits Plume"]] as const} value={settings.close} set={(v) => change((s) => (s.close = v))} />
+          <Choices name="Closing this window" all={[["tray", "Keeps the overlays, in the tray"], ["quit", "Quits Plume"]] as const} value={settings.close} set={(v) => change((s) => ((s.close = v), (s.closeAsked = true)))} />
         </Line>
         <Line name="As the game starts" about="This page opens, minimized if the window was closed, so the game keeps the screen.">
           <select class="ui-select" aria-label="Page that opens as the game starts" value={settings.gameOpens} onChange={(e) => change((s) => (s.gameOpens = e.currentTarget.value))}>

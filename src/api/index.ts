@@ -70,7 +70,8 @@ interface Events {
   live: Message;
   engine: Start["engine"];
   settings: unknown;
-  saved: { id: string };
+  /** A fight was kept: its id, and its target's code. An empty id is a restore. */
+  saved: { id: string; code?: number };
   edit: Editing;
   /** The meter was emptied. */
   cleared: null;

@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
 import { unwrap } from "solid-js/store";
-import { FEATURES } from "../features";
+import { overlays } from "../features";
 import { overlayName, widthOf, type Feature } from "../features/types";
 import { fromCode, MARGIN, snap, toCode, toPixels, toShare } from "../overlay/layout";
 import { change, settings } from "../store";
@@ -29,7 +29,7 @@ const boxStyle = (f: Feature) => ({
   width: `${(size(f).width / SCREEN.width) * 100}%`,
   height: `${(size(f).height / SCREEN.height) * 100}%`,
 });
-const shown = () => FEATURES.filter((f) => f.overlay && at(f).on);
+const shown = () => overlays().filter((f) => at(f).on);
 
 /** The overlays that are on, as boxes on the picture of the screen, to look at. */
 export function ScreenPreview() {
@@ -90,7 +90,7 @@ export function LayoutGroup() {
 export function ScreenMap() {
   const [grid, setGrid] = createSignal(true);
   let box!: HTMLDivElement;
-  const all = () => FEATURES.filter((f) => f.overlay);
+  const all = overlays;
   const others = (f: Feature) => all().filter((o) => o !== f && at(o).on).map((o) => ({ ...spot(o), ...size(o) }));
 
   const drag = (f: Feature, e: PointerEvent) => {

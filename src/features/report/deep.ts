@@ -103,9 +103,9 @@ export function partyCurve(fight: Saved): number[] | undefined {
 export interface Player {
   id: number;
   dps: number;
-  /** With what their buffs gave others, and without what others' gave them. */
-  rdps: number;
-  ndps: number;
+  /** With what their buffs gave others, and without what others' gave them. Nothing when what it needs was not measured. */
+  rdps?: number;
+  ndps?: number;
   hps: number;
   /** How long their passing buffs were on others, all added up, in ms. */
   support: number;
@@ -128,8 +128,8 @@ export function players(fight: Saved): Player[] {
   return rows.map((r) => ({
     id: r.id,
     dps: r.damage / seconds,
-    rdps: (r.damage - (r.got ?? 0) + (r.given ?? 0)) / seconds,
-    ndps: (r.damage - (r.got ?? 0)) / seconds,
+    rdps: r.got === undefined || r.given === undefined ? undefined : (r.damage - r.got + r.given) / seconds,
+    ndps: r.got === undefined ? undefined : (r.damage - r.got) / seconds,
     hps: (r.healing ?? 0) / seconds,
     support: (fight.buffs ?? []).filter((b) => !b.passive && b.by === r.id && b.on !== r.id && ids.has(b.on)).reduce((n, b) => n + b.up, 0),
     over: overheal(r.heals),

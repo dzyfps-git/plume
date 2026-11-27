@@ -1,7 +1,7 @@
 import { createEffect, createSignal, on, Show, untrack } from "solid-js";
 import { near, onHappened, sampling } from "../../live/store";
 import { full } from "../../ui/format";
-import { count, hold, NONE, resume } from "./logic";
+import { count, hold, NONE, resume, stale, type Tally } from "./logic";
 import "../meter/meter.css";
 import "./pvp.css";
 
@@ -10,23 +10,40 @@ export { tally };
 
 /** Your own counts alone, on this PC: the overlay window closes as it sleeps. */
 const KEY = "pvp";
+/** When the count last changed. */
+let at = Date.now();
 function kept() {
   try {
-    return resume(JSON.parse(localStorage.getItem(KEY) ?? "null"), Date.now());
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as { at?: unknown } | null;
+    if (typeof saved?.at === "number") at = saved.at;
+    return resume(saved, Date.now());
   } catch {
     return NONE;
   }
 }
 
+/** Counts with `step`, on a new count when the last change is six hours old: also while the overlay stays open. */
+function add(step: (t: Tally) => Tally) {
+  const old = stale(at, Date.now());
+  const t = old ? NONE : tally();
+  const next = step(t);
+  if (next === t) return;
+  if (old) localStorage.removeItem(KEY);
+  setTally(next);
+}
+
 /** Counts for as long as the overlay window is open, and goes on from where it was. */
 export function followPvp() {
   setTally(kept());
-  createEffect(on(tally, (tally) => localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), tally })), { defer: true }));
+  createEffect(on(tally, (tally) => {
+    at = Date.now();
+    localStorage.setItem(KEY, JSON.stringify({ at, tally }));
+  }, { defer: true }));
   const seen = new Map<string, number>();
-  onHappened((h) => setTally((t) => count(t, h)));
+  onHappened((h) => add((t) => count(t, h)));
   createEffect(() => {
     const auras = sampling() ? [] : near.you?.auras.map((a) => ({ ...a })) ?? [];
-    untrack(() => setTally((t) => hold(t, auras, seen)));
+    untrack(() => add((t) => hold(t, auras, seen)));
   });
 }
 

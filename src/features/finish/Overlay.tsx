@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { fight as loadFight } from "../../api";
 import { demoSaved } from "../../live/demo";
+import { sampling } from "../../live/store";
 import type { FightRow, Saved } from "../../live/types";
 import { hideNames, settings } from "../../store";
 import { plan } from "../../store/settings";
@@ -12,7 +13,7 @@ import { burst, burstText, grades, streaks, type Grade as Graded } from "../best
 import { key } from "../bosses/logic";
 import { bestOf, bests } from "../history/logic";
 import { onKept } from "../history/store";
-import { gain, label, shown, signed } from "../meter/logic";
+import { gain, label, signed } from "../meter/logic";
 import { standing, titles } from "../report/deep";
 import { findings } from "../report/logic";
 import "../meter/meter.css";
@@ -50,7 +51,8 @@ export function followFinish() {
   onKept((fight, all) => {
     if (!fight.killed || fight.dummy || fight.ms < LEAST) return;
     const mine = all.filter((f) => f.you?.name === fight.you?.name);
-    const next: Card = { fight, gain: gain(fight, all), grade: grades(mine).get(fight.id), lines: lines(fight, mine) };
+    // Graded against every kill of that boss with that class, as History and the report do.
+    const next: Card = { fight, gain: gain(fight, all), grade: grades(all).get(fight.id), lines: lines(fight, mine) };
     setCard(next);
     setTimeout(() => setCard((now) => (now?.fight === fight ? undefined : now)), STAY);
     // What there was to do better needs your best pull whole. The card does not wait for it.
@@ -68,13 +70,20 @@ const sample = (): Card => {
 };
 
 export function FinishOverlay() {
-  const now = createMemo(() => card() ?? sample());
+  // The made-up victory only while overlays are placed. In play, no result is no card.
+  const shownCard = createMemo(() => card() ?? (sampling() ? sample() : undefined));
+  return <Show when={shownCard()} fallback={<section class="finish" aria-label="End of the fight" />}>{(c) => <Finished card={c()} />}</Show>;
+}
+
+function Finished(props: { card: Card }) {
+  const now = () => props.card;
   const rows = () => now().fight.rows ?? [];
   const places = createMemo(() => {
     const list = standing(now().fight).map((m) => ({ ...m, row: rows().find((r) => r.id === m.id)! }));
     const alone = now().fight.you;
-    // Alone there is nobody to be better than, and your numbers still count.
-    return shown(list.length || !alone ? list : [{ id: alone.id, points: 0, damage: 0, healing: 0, stagger: 0, deaths: 0, row: alone }], 4);
+    // Alone there is nobody to be better than, and your numbers still count. The podium is the first four, as they placed.
+    const all = list.length || !alone ? list : [{ id: alone.id, points: 0, damage: 0, healing: 0, stagger: 0, deaths: 0, row: alone }];
+    return all.slice(0, 4).map((p, i) => ({ ...p, rank: i + 1 }));
   });
   const named = createMemo(() => titles(now().fight));
   const name = (r: FightRow, rank: number) => label(r, hideNames(), rank);

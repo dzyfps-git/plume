@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js";
 import { editOverlays, type Editing } from "../api";
-import { FEATURES } from "../features";
+import { FEATURES, overlays } from "../features";
 import { overlayName, type Feature } from "../features/types";
 import { demoFight, demoNear } from "../live/demo";
 import { fight, near, sample, sampling, WAIT_FOR_YOU, waitingForYou } from "../live/store";
@@ -14,7 +14,6 @@ import { activity, allowed, inFight, pick } from "./rules";
 import { canRedo, canUndo, move, redo, undo } from "./undo";
 import { followZones } from "./zones";
 
-const FIXED = FEATURES.filter((f) => f.overlay);
 
 /** Idle this long, overlays fade. */
 const IDLE = 60_000;
@@ -26,7 +25,7 @@ export function Overlay(props: { editing: () => Editing; pointer: () => boolean 
   // With the overlay controls open, overlays can be moved too.
   const moving = () => props.editing() !== "";
   let root!: HTMLDivElement;
-  const all = createMemo(() => [...FIXED, ...FEATURES.flatMap((f) => f.more?.() ?? [])]);
+  const all = createMemo(overlays);
   const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
   // When the last fight was, as the overlays count one: the game's word, your hits or the party's.
   const [lastAt, setLastAt] = createSignal(0);
@@ -34,16 +33,18 @@ export function Overlay(props: { editing: () => Editing; pointer: () => boolean 
   const ticking = setInterval(() => setNow(Date.now()), 1000);
   onCleanup(() => clearInterval(ticking));
   // By the game's word it is when the fight ended; by hits, the last hit that was seen.
-  createEffect((was: boolean) => {
+  // By hits, only new damage counts: other players' rows changing, or the same total again, is not a hit of yours.
+  createEffect((was: number) => {
     const by = settings.overlay.fightBy;
     if (by === "game") {
       if (was && !near.fighting) setLastAt(Date.now());
-      return near.fighting;
+      return near.fighting ? 1 : 0;
     }
     const ids = new Set(near.party.map((u) => u.id));
-    if (fight.rows.some((r) => (r.you || (by === "party" && ids.has(r.id))) && r.damage > 0)) setLastAt(Date.now());
-    return false;
-  }, false);
+    const dealt = fight.rows.reduce((n, r) => (r.you || (by === "party" && ids.has(r.id)) ? n + r.damage : n), 0);
+    if (dealt > was) setLastAt(Date.now());
+    return dealt;
+  }, 0);
   const fighting = () => inFight(settings.overlay.fightBy, near.fighting, lastAt(), now(), settings.overlay.linger);
   const shown = () =>
     all().filter((f) => at(f).on && (moving() || (allowed(rule(settings.rules[f.id]), { ...near, fighting: fighting() }) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
@@ -56,7 +57,8 @@ export function Overlay(props: { editing: () => Editing; pointer: () => boolean 
     const key = fits ? `${fits.name}
 ${fits.when}
 ${fits.who}` : "";
-    if (!fits || key === worn) return;
+    if (!fits) return void (worn = "");
+    if (key === worn) return;
     worn = key;
     untrack(() => change((s) => (s.places = structuredClone(unwrap(fits.places))), true));
   });
@@ -72,14 +74,13 @@ ${fits.who}` : "";
 
   followZones();
 
-  // Made-up things to place overlays by. A fight that goes on stays the real one.
+  // Made-up things to place overlays by. A real fight, one that goes on or one that starts, is never written over: see `sample`.
   createEffect(() => {
     if (!moving()) return;
     const begun = performance.now() - 30_000;
-    const real = untrack(() => !sampling() && fight.rows.length > 0);
     const step = () => {
       const ms = performance.now() - begun;
-      sample({ near: demoNear(ms, Date.now()), ...(!real && { fight: demoFight(ms) }) });
+      sample({ near: demoNear(ms, Date.now()), fight: demoFight(ms) });
     };
     step();
     const timer = setInterval(step, settings.updateMs);
@@ -130,13 +131,13 @@ ${fits.who}` : "";
       <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} pointer={props.pointer()} others={boxes} />}</For>
       <Show when={settings.overlay.button}><GameButton open={props.editing() === "quick"} /></Show>
       <Show when={long() && !shut() && settings.overlay.on && !props.editing()}>
-        <div class="game-toast" role="status" data-touch>
+        <div class="game-toast" role="status">
           <span class="ui-icon" aria-hidden="true">{"\ue77b"}</span>
           <span>
             <b>Waiting for your character</b>
             <small>{WAIT_FOR_YOU}</small>
           </span>
-          <button class="ui-icon-button" aria-label="Close" onClick={() => setShut(true)}>{"\ue8bb"}</button>
+          <button class="ui-icon-button" data-touch aria-label="Close" onClick={() => setShut(true)}>{"\ue8bb"}</button>
         </div>
       </Show>
       <Show when={props.editing() === "quick"}>

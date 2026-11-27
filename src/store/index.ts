@@ -33,8 +33,6 @@ export async function useSettings(saved: unknown, overlay = false) {
     setSettings(reconcile(read(value)));
     wear(overlay);
   });
-  // The first start writes the defaults, which also turns the keys and the engine on.
-  if (!saved && !overlay) await keep();
 }
 
 async function keep() {

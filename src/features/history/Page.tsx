@@ -12,6 +12,7 @@ import { apart, beside, bestRun, fastest, records, splits, streak, streaks, type
 import { verdicts } from "../training/verdicts";
 import { Pic } from "../../ui/Pic";
 import { alike, bestOf, bests, byDay, characters, filtered, rdps, runs, session, tick, tries, week, type Filter, type Run } from "./logic";
+import { hideNames } from "../../store";
 import { allGrades, allRuns, fights, followFights } from "./store";
 import "./history.css";
 
@@ -33,17 +34,25 @@ export function HistoryPage() {
   const [picked, setPicked] = createSignal<string>();
   const [ticked, setTicked] = createSignal<string[]>([]);
   const people = createMemo(() => characters(fights()));
-  const person = () => (people().some((c) => c.name === mine()) ? mine() : "");
+  // A character with no fights kept yet stays chosen, and shows an empty history: not everyone else's.
+  const person = mine;
   const own = createMemo(() => (person() ? fights().filter((f) => f.you?.name === person()) : fights()));
+  const choices = createMemo(() => (person() && !people().some((c) => c.name === person()) ? [...people(), { name: person(), job: "" as const, fights: 0 }] : people()));
+  // In Discreet mode a name is never shown: each is a number, and the real name is only what is filtered by.
+  const shownName = (name: string, i: number) => (hideNames() === "all" ? `Character ${i + 1}` : name);
   const best = createMemo(() => bests(own()));
   const list = createMemo(() => filtered(filter() === "session" ? session(own()) : own(), filter(), search()));
   // The older one is what the newer is held against.
   const pair = createMemo(() => own().filter((f) => ticked().includes(f.id)).sort((a, b) => a.start - b.start));
+  // Two fights compare only when they could be held against each other: the same target, or dummy time, with the same class.
+  const fits = () => pair().length === 2 && alike([pair()[0]], pair()[1]).length === 1;
   const show = (id: string) => {
     setFilter("all");
     setPicked(id);
   };
   const open = createMemo(() => list().find((f) => f.id === picked()) ?? list()[0]);
+  const shownIds = createMemo(() => new Set(list().map((f) => f.id)));
+  const wholeRuns = createMemo(() => runs(filtered(own(), "runs", "")).filter((r) => r.fights.some((f) => shownIds().has(f.id))));
 
   return (
     <div class="page history">
@@ -56,10 +65,10 @@ export function HistoryPage() {
             )}
           </For>
         </div>
-        <Show when={people().length > 1}>
+        <Show when={choices().length > 1 || person()}>
           <select class="ui-select" aria-label="Character" value={person()} onChange={(e) => setMine(e.currentTarget.value)}>
             <option value="">Every character</option>
-            <For each={people()}>{(c) => <option value={c.name} selected={c.name === person()}>{c.name}{c.job ? `, ${CLASSES[c.job].name}` : ""}</option>}</For>
+            <For each={choices()}>{(c, i) => <option value={c.name} selected={c.name === person()}>{shownName(c.name, i())}{c.job ? `, ${CLASSES[c.job].name}` : ""}</option>}</For>
           </select>
         </Show>
         <input class="ui-input" placeholder="Search targets" aria-label="Search targets" onInput={(e) => setSearch(e.currentTarget.value)} />
@@ -82,7 +91,8 @@ export function HistoryPage() {
       >
         <Switch>
           <Match when={filter() === "runs"}>
-            <div class="history-detail"><For each={runs(list())}>{(run) => <RunCard run={run} open={show} />}</For></div>
+            {/* Splits come from whole runs. A search only picks which rows show. */}
+            <div class="history-detail"><For each={wholeRuns()}>{(run) => <RunCard run={run} open={show} shown={shownIds()} />}</For></div>
           </Match>
           <Match when={filter() === "table"}>
             <div class="history-detail"><Table fights={list()} best={best()} open={show} /></div>
@@ -101,7 +111,7 @@ export function HistoryPage() {
           <div class="history-list">
             <Show when={pair().length}>
               <div class="history-pair">
-                <span class="ui-muted ui-small">{pair().length < 2 ? "Tick one more to compare." : "Two fights compared."}</span>
+                <span class="ui-muted ui-small">{pair().length < 2 ? "Tick one more to compare." : fits() ? "Two fights compared." : "These two cannot be compared: tick two of the same target with the same class."}</span>
                 <button class="ui-button" onClick={() => setTicked([])}>Untick</button>
               </div>
             </Show>
@@ -139,7 +149,7 @@ export function HistoryPage() {
               )}
             </For>
           </div>
-          <Show when={pair().length === 2} fallback={<Show when={open()}>{(f) => <Report fight={f()} best={bestOf(best(), f())} others={alike(own(), f())} />}</Show>}>
+          <Show when={fits()} fallback={<Show when={open()}>{(f) => <Report fight={f()} best={bestOf(best(), f())} others={alike(own(), f())} />}</Show>}>
             <Pair older={pair()[0]} newer={pair()[1]} />
           </Show>
         </div>
@@ -307,7 +317,7 @@ function Records(props: { fights: Saved[]; open: (id: string) => void }) {
   );
 }
 
-function RunCard(props: { run: Run; open: (id: string) => void }) {
+function RunCard(props: { run: Run; open: (id: string) => void; shown: ReadonlySet<string> }) {
   // "Krao Cave, hard". Nothing without the engine's `dungeons.json`; the file is read once.
   const [dungeons] = createResource(() => dungeonFile().catch(() => ({}) as Record<string, [string, string]>));
   const place = () => {
@@ -348,7 +358,7 @@ function RunCard(props: { run: Run; open: (id: string) => void }) {
           <b class="ui-num">{props.run.deaths}</b>
         </div>
       </div>
-      <For each={props.run.fights}>
+      <For each={props.run.fights.filter((f) => props.shown.has(f.id))}>
         {(f) => (
           <button class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 100px 70px 90px 90px" }} onClick={() => props.open(f.id)}>
             <span>{f.target}</span>

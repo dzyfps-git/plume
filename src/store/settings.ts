@@ -503,7 +503,18 @@ const text = (v: unknown, most: number) => (typeof v === "string" ? v.slice(0, m
 const strings = (v: unknown, many: number) => [...new Set((Array.isArray(v) ? v : []).filter((k): k is string => typeof k === "string" && k.length <= 80))].slice(0, many);
 const list = (v: unknown, most: number) => (Array.isArray(v) ? v : []).slice(0, most).map(object);
 const named = (v: Record<string, unknown>): Named => ({ id: Math.round(number(v.id, 0, 2 ** 32, 0)), name: text(v.name, 120) });
-const signal = (v: Record<string, unknown>, d: Signal): Signal => ({ sound: typeof v.sound === "string" ? text(v.sound, 120) : d.sound, say: flag(v.say, d.say) });
+/** What a row shows on each side. Before the sides could be chosen, the share and the total had a switch each. */
+function sides(meter: Record<string, unknown>, m: Meter): Pick<Meter, "left" | "right"> {
+  if (meter.left === undefined && meter.right === undefined && (typeof meter.share === "boolean" || typeof meter.total === "boolean")) {
+    const on = [meter.share !== false && "share", meter.total === true && "total"].filter((s): s is "share" | "total" => !!s);
+    return { left: on[0] ?? "", right: on[1] ?? "" };
+  }
+  return { left: one(meter.left as Meter["left"], SIDES, m.left), right: one(meter.right as Meter["right"], SIDES, m.right) };
+}
+
+/** "file:" and a name as long as Windows lets a file name be. */
+const SOUND = 5 + 255;
+const signal = (v: Record<string, unknown>, d: Signal): Signal => ({ sound: typeof v.sound === "string" ? text(v.sound, SOUND) : d.sound, say: flag(v.say, d.say) });
 
 export const rule = (v: unknown): Rule => {
   const r = object(v);
@@ -643,11 +654,11 @@ export function read(value: unknown): Settings {
     meter: {
       style: one(meter.style, STYLES, m.style),
       rows: Math.round(number(meter.rows, 1, 24, m.rows)),
-      left: one(meter.left as Meter["left"], SIDES, m.left),
-      right: one(meter.right as Meter["right"], SIDES, m.right),
+      ...sides(meter, m),
       full: flag(meter.full, m.full),
       icons: flag(meter.icons, m.icons),
-      corner: one(meter.corner as Meter["corner"], CORNERS, m.corner),
+      // Before the corner could be chosen, Combat Power had a switch.
+      corner: meter.corner === undefined && typeof meter.power === "boolean" ? (meter.power ? "power" : "") : one(meter.corner as Meter["corner"], CORNERS, m.corner),
       corners: one(meter.corners, ["you", "all"] as const, m.corners),
       head: flag(meter.head, m.head),
       boss: flag(meter.boss, m.boss),
@@ -776,7 +787,8 @@ export function read(value: unknown): Settings {
     motion: flag(s.motion, d.motion),
     lighten: flag(s.lighten, d.lighten),
     close: one(s.close, ["tray", "quit"] as const, d.close),
-    closeAsked: flag(s.closeAsked, d.closeAsked),
+    // A quit saved before this was asked was a choice of yours, so it is not asked again.
+    closeAsked: flag(s.closeAsked, s.close === "quit" || d.closeAsked),
     gameOpens: typeof s.gameOpens === "string" && /^[a-z]{0,20}$/.test(s.gameOpens) ? s.gameOpens : d.gameOpens,
     layouts: list(s.layouts, 30).map((l) => ({
       name: text(l.name, 40) || "Layout",

@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { editOverlays } from "../api";
 import { change, settings } from "../store";
 import { drag } from "./zones";
@@ -10,7 +10,16 @@ const STILL = 4;
 export function GameButton(props: { open: boolean }) {
   let button!: HTMLButtonElement;
   const [held, setHeld] = createSignal<{ x: number; y: number }>();
-  const at = () => held() ?? { x: settings.overlay.buttonAt.x * innerWidth, y: settings.overlay.buttonAt.y * innerHeight };
+  // The window follows the game's, so its size is watched: the button stays on the screen when it shrinks.
+  const [screen, setScreen] = createSignal({ width: innerWidth, height: innerHeight });
+  const sized = () => setScreen({ width: innerWidth, height: innerHeight });
+  addEventListener("resize", sized);
+  onCleanup(() => removeEventListener("resize", sized));
+  const at = () => {
+    const { width, height } = screen();
+    const x = settings.overlay.buttonAt.x * width, y = settings.overlay.buttonAt.y * height;
+    return held() ?? { x: Math.max(0, Math.min(width - (button?.offsetWidth ?? 0), x)), y: Math.max(0, Math.min(height - (button?.offsetHeight ?? 0), y)) };
+  };
 
   function grab(event: PointerEvent) {
     if (event.button !== 0) return;

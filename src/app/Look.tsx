@@ -14,7 +14,7 @@ import { Group } from "../ui/Group";
 import { Chips, Choices, Colour, Line, Slide } from "../ui/Line";
 import { RunLength } from "../ui/RunLength";
 import { Switch } from "../ui/Switch";
-import { PACKS } from "./packs";
+import { PACKS, putBack } from "./packs";
 import { Preview } from "./Preview";
 import { Shell } from "./Shell";
 
@@ -209,18 +209,19 @@ export function LookPage() {
   );
 }
 
-/** What was there before the last pack, to put back. */
-const [before, setBefore] = createSignal<Settings>();
+/** What was there before the last pack, and what the pack made of it, to put back only what the pack changed. */
+const [before, setBefore] = createSignal<{ was: Settings; worn: Settings }>();
 
 function PackGroup() {
   const wear = (pack: (typeof PACKS)[number]) => {
-    setBefore(structuredClone(unwrap(settings)));
+    const was = structuredClone(unwrap(settings));
     change(pack.wear);
+    setBefore({ was, worn: structuredClone(unwrap(settings)) });
   };
   const back = () => {
     const was = before();
     if (!was) return;
-    change((s) => Object.assign(s, { look: was.look, meter: was.meter, accent: was.accent, pictures: was.pictures, discreet: was.discreet, alerts: was.alerts }));
+    change((s) => putBack(s, was.was, was.worn));
     setBefore(undefined);
   };
   return (

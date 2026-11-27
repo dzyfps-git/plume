@@ -8,8 +8,13 @@ import { casts, skills } from "./store";
 
 const MOST = 14;
 
-/** Those you use: a skill not cast since the start may not be on your bars any more. */
-export const bar = () => skills().filter((k) => !settings.skip.includes(k.skill)).slice(0, MOST);
+/** Those you use: a skill not cast since the start may not be on your bars any more.
+ * A skill the game gave a cooldown for is one too, though no fight has taught it yet. */
+export const bar = () => {
+  const known = skills();
+  const told = [...cooldowns().keys()].filter((skill) => !known.some((k) => k.skill === skill)).map((skill) => ({ skill, name: "", back: 0, casts: 0 }));
+  return [...known, ...told].filter((k) => !settings.skip.includes(k.skill)).slice(0, MOST);
+};
 
 export function ActionsOverlay() {
   const now = ticking();

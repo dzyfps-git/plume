@@ -29,6 +29,12 @@
 .map-wait .lights li { display: flex; align-items: center; gap: 6px; }
 .map-wait .lights small { display: none; }
 .map-tip { position: absolute; z-index: 2; display: grid; gap: 2px; max-width: 240px; padding: 6px 10px; translate: -50% calc(-100% - 12px); border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--overlay-solid); box-shadow: 0 6px 20px rgb(0 0 0 / 40%); pointer-events: none; }
+/* Near an edge the label turns inwards, so it is never cut off. */
+.map-tip[data-edge="left"] { translate: -12px calc(-100% - 12px); }
+.map-tip[data-edge="right"] { translate: calc(-100% + 12px) calc(-100% - 12px); }
+.map-tip[data-below] { translate: -50% 12px; }
+.map-tip[data-below][data-edge="left"] { translate: -12px 12px; }
+.map-tip[data-below][data-edge="right"] { translate: calc(-100% + 12px) 12px; }
 .map-tip b { font-size: 13px; font-weight: 600; }
 .map-tip small { color: var(--text-muted); font-size: 12px; }
 .map-list h3 { display: flex; align-items: center; gap: 6px; }
@@ -70,3 +76,9 @@
 .chip-pic > :is(img, canvas, .sharp) { width: 100%; height: 100%; }
 .map-card-pic { width: 44px; height: 44px; }
 .map-card-head { gap: var(--space-2); }
+/* Narrow, as at the smallest window with the navigation open: the Tracker goes under the map, so the map keeps its room. */
+.map-page { container-type: inline-size; }
+@container (max-width: 700px) {
+  .map-grid { grid-template-columns: 140px minmax(0, 1fr); grid-template-rows: minmax(220px, 1fr) minmax(0, 40%); }
+  .map-grid > .tracker { grid-column: 1 / -1; }
+}

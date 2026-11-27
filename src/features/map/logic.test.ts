@@ -47,7 +47,8 @@ test("found ones drop out, the rest come nearest first, and counts follow", () =
 test("a guess goes on as you went, for a while, and never through a teleport", () => {
   const at = (x: number, ms: number, map = 1110) => ({ map, known: true, x, y: 0, z: 0, at: ms });
   assert.deepEqual(guess(at(0, 0), at(10, 1000), 2000), { x: 20, y: 0, z: 0, guess: true });
-  assert.equal(guess(at(0, 0), at(10, 1000), 60_000).x, 40, "three seconds at most");
+  assert.equal(guess(at(0, 0), at(10, 1000), 4_000).x, 40, "three seconds at most");
+  assert.deepEqual(guess(at(0, 0), at(10, 1000), 60_000), { x: 10, y: 0, z: 0, guess: false }, "then it is over");
   assert.deepEqual(guess(at(0, 0), at(900, 1000), 2000), { x: 900, y: 0, z: 0, guess: false });
   assert.equal(guess(at(0, 0, 20), at(10, 1000), 2000).guess, false);
   assert.equal(guess(null, at(10, 1000), 2000).guess, false);

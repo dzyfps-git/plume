@@ -20,9 +20,11 @@ export function speak(text: string) {
   speechSynthesis.speak(words);
 }
 
-/** Without the timers that a mechanic of yours already says with its note. */
+/** Without the timers that a mechanic of yours already says with its note. That is only so when the callout can be made:
+ * as `ahead` in `src/features/alerts/logic.ts`, during a fight the game says, for your class or when your class is not known. */
 const unsaid = (p: BossPlan): BossPlan => {
-  const said = (skill: number) => p.mechanics.some((m) => m.say && !m.effect && m.id === skill && (!m.job || m.job === near.you?.job));
+  const job = near.you?.job ?? "";
+  const said = (skill: number) => near.fighting && p.mechanics.some((m) => m.say && !m.effect && m.id === skill && (!m.job || !job || m.job === job));
   return { ...p, timers: p.timers.filter((t) => !said(t.skill)) };
 };
 

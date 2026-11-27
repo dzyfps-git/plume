@@ -35,3 +35,12 @@ test("a phase on the boss is counted down, and safe follows when it ends", () =>
   assert.equal(over.safe, true);
   assert.equal(onBoss(file, [], over.seen, [], 21_000).safe, false, "once");
 });
+
+test("turning a boss off during its phase says nothing, and no false safe", () => {
+  const first = onBoss(file, [aura("a", 16046601, 20_000)], new Map(), [], 10_000);
+  // Turned off while the phase is still on the boss.
+  const off = onBoss(file, [aura("a", 16046601, 20_000)], first.seen, ["thamon"], 11_000);
+  assert.deepEqual([off.shown, off.safe], [[], false], "the phase is still there");
+  const over = onBoss(file, [], off.seen, ["thamon"], 20_100);
+  assert.equal(over.safe, false, "nothing is said for a boss that is off");
+});

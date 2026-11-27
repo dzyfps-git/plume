@@ -15,7 +15,7 @@ import { callFile } from "../map/data";
 import { upcoming } from "../time/logic";
 import { fullIn } from "../characters/logic";
 import { seen as grown } from "../resources/watch";
-import { heard, onBoss as onBossAuras, words as callWords, type CallFile, type GameCall } from "../calls/logic";
+import { heard, onBoss as onBossAuras, words as callWords, type CallFile, type GameCall, type Phase } from "../calls/logic";
 import { ahead, look, notes, onBlow, onEffects, raised, safe, streakText, type Call, type Look, type Raised } from "./logic";
 import { signal } from "./signal";
 import "../meter/meter.css";
@@ -44,11 +44,13 @@ let file: CallFile | undefined;
 /** The same call again this soon counts once. */
 const AGAIN = 1_200;
 const said = new Map<string, number>();
-function gameCall(c: GameCall, end: number) {
+/** A cast warning, or a phase: a phase says its own instruction, and counts apart from the cast before it. */
+function gameCall(c: GameCall, end: number, phase = false) {
   const now = Date.now();
-  if (now - (said.get(c.key) ?? -AGAIN) < AGAIN) return;
-  said.set(c.key, now);
-  const text = callWords(c, settings.calls.mode, file!);
+  const key = phase ? `${c.key} phase` : c.key;
+  if (now - (said.get(key) ?? -AGAIN) < AGAIN) return;
+  said.set(key, now);
+  const text = (phase && c.phase?.say) || callWords(c, settings.calls.mode, file!);
   show(text, end);
   if (settings.calls.voice) speak(text);
 }
@@ -64,7 +66,8 @@ const untouchable = () => (near.target?.boss ? safe(near.target.auras) : undefin
 let words: () => string = () => "";
 export const empty = () => !banners().length && !words() && !untouchable();
 
-function alert(r: Raised) {
+/** Sounds or says an alert, and shows it large when it is chosen so. */
+export function alert(r: Raised) {
   const a = settings.alerts[r.id];
   if (!a.on) return;
   signal(a, r.text);
@@ -120,7 +123,8 @@ export function followAlerts() {
 
     // Events about to begin, and Odyle Energy about to be full. Each once.
     const told = new Set<string>();
-    let filling = false;
+    // By character: another one near its cap is warned of too. A sample to place overlays by changes nothing.
+    const filling = new Map<string, boolean>();
     setInterval(() => {
       const now = Date.now();
       const before = settings.events.before * 60_000;
@@ -132,10 +136,12 @@ export function followAlerts() {
           alert({ id: "event", text: before ? `${n.event.name} in ${Math.max(1, Math.round((n.start - now) / 60_000))} min` : `${n.event.name} opens` });
         }
       }
-      const odyle = near.you ? near.odyle[0] : -1;
+      const name = near.you?.name ?? "";
+      if (sampling() || !name) return;
+      const odyle = near.odyle[0];
       const soon = odyle >= 0 && fullIn(odyle, settings.odyle.member, grown().odyle, now) <= 30 * 60_000;
-      if (soon && !filling && !sampling()) alert({ id: "full", text: "Odyle Energy nearly full" });
-      filling = soon;
+      if (soon && !filling.get(name)) alert({ id: "full", text: "Odyle Energy nearly full" });
+      filling.set(name, soon);
     }, 15_000);
 
     onKept((kept, all) => {
@@ -143,14 +149,14 @@ export function followAlerts() {
       if (more) alert({ id: "best", text: `New best, ${signed(more)}` });
     });
 
-    let phases = { id: 0, seen: new Map<string, boolean>() };
+    let phases = { id: 0, seen: new Map<string, Phase>() };
     createEffect(() => {
       const [id, auras] = [near.target?.boss && !sampling() ? near.target.id : 0, near.target?.boss ? near.target.auras.map((a) => ({ ...a })) : []];
       untrack(() => {
         if (!file || !settings.calls.on) return;
         const now = onBossAuras(file, auras, phases.id === id ? phases.seen : new Map(), settings.calls.off, Date.now());
         if (id && phases.id === id) {
-          for (const s of now.shown) gameCall(s.call, s.end);
+          for (const s of now.shown) gameCall(s.call, s.end, s.phase);
           if (now.safe) show(file.safe, 0, 2_500);
         }
         phases = { id, seen: now.seen };

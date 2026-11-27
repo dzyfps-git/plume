@@ -1,5 +1,5 @@
 import { createContext, createEffect, createMemo, For, on, Show, useContext } from "solid-js";
-import { fight, near, over, sampling, skills, waitingForYou } from "../../live/store";
+import { fight, near, over, sampling, shownId, skills, waitingForYou } from "../../live/store";
 import type { Row } from "../../live/types";
 import { hideNames, nameStyle, settings } from "../../store";
 import { barEase, type Footer, type Meter } from "../../store/settings";
@@ -67,7 +67,9 @@ const footers = () => {
   // Odyle Energy and the entries stand where you want them.
   const entry: Footer[] = footer.filter((f) => f === "odyle" || f === "entries");
   const { place } = settings.odyle;
-  return { top: place === "top" ? entry : [], bottom: place === "bottom" ? footer : footer.filter((f) => !entry.includes(f)) };
+  // Out of the meter, they are in the Odyle and tickets overlay alone: on the compact bar too.
+  const small = place === "out" ? look().footerSmall.filter((f) => f !== "odyle" && f !== "entries") : look().footerSmall;
+  return { top: place === "top" ? entry : [], bottom: place === "bottom" ? footer : footer.filter((f) => !entry.includes(f)), small };
 };
 
 /** A row for you while there is no fight. */
@@ -80,7 +82,7 @@ function Whole(props: { gone: boolean; still: boolean }) {
   const lone = () => (m().always && alone() ? [alone()!] : []);
   const rows = () => (props.gone ? lone() : fight.rows.length ? whose(fight.rows, m().who, new Set(near.party.map((u) => u.id))) : lone());
   const you = () => rows().find((r) => r.you);
-  const held = createMemo(() => (m().head || m().ghost ? against(fight, fights()) : undefined));
+  const held = createMemo(() => (m().head || m().ghost ? against(fight, fights(), shownId()) : undefined));
   const best = () => (m().ghost && view() === "damage" && you() ? held()?.best : undefined);
   const all = createMemo(() => withBest(ranked({ rows: rows(), ms: fight.ms }, view()), best(), fight.ms, you()?.job ?? ""));
   // Your own card stands by itself.
@@ -121,12 +123,13 @@ function Whole(props: { gone: boolean; still: boolean }) {
           <BossBar title={title()} beside={pull()}>{figures()}</BossBar>
         </header>
       </Show>
-      <Feet of={feet().top} class="meter-foot meter-top" />
+      <Feet of={feet().top} class="meter-foot meter-top" cleared={props.gone} />
       <Show when={cards() && all().find(({ row }) => row.you)}>
         {(at) => <Hero at={at()} first={rows().length > 1 && ranked({ rows: rows(), ms: fight.ms }, view())[0]?.row.you} held={m().head ? held() : undefined} gap={m().gap ? gap(all()) : undefined} />}
       </Show>
       <Show when={mySkills()}><SoloSkills /></Show>
-      <Show when={!mySkills() && list().length}>
+      {/* In Cards your row is your card, so the strip of your last casts shows with no other row too. */}
+      <Show when={!mySkills() && (list().length || (cards() && strip()))}>
         <div class="meter-rows" style={{ "--count": list().length, "--more": strip() ? 1 : 0, "--yours": cards() ? list().length - 1 : yours() }}>
           <For each={still()}>{line}</For>
           {line(bestRow)}
@@ -138,7 +141,7 @@ function Whole(props: { gone: boolean; still: boolean }) {
         </div>
       </Show>
       <Show when={peek() && !props.still}><Details /></Show>
-      <Show when={!m().locked || m().footerLocked}><Feet of={feet().bottom} class="meter-foot" /></Show>
+      <Show when={!m().locked || m().footerLocked}><Feet of={feet().bottom} class="meter-foot" cleared={props.gone} /></Show>
     </>
   );
 }
@@ -150,7 +153,7 @@ function Small(props: { gone: boolean; still: boolean }) {
   const row = () => mine()?.row ?? alone();
   return (
     <div class="meter-small">
-      <Show when={row()} fallback={<strong class="meter-name"><span>Plume</span></strong>}>
+      <Show when={row()} fallback={<strong class="meter-name"><span>{!props.still && waitingForYou() ? "Waiting for your character" : "Plume"}</span></strong>}>
         {(r) => (
           <>
             <ClassMark job={r().job} />
@@ -163,7 +166,7 @@ function Small(props: { gone: boolean; still: boolean }) {
       </Show>
       <Show when={!over() && fight.target.maxHp > 0}><small class="ui-num">{percent(hp(fight), fight.target.maxHp)}</small></Show>
       <Show when={mine()}>{(at) => <b class="ui-num" data-over={over() || undefined}>{rateText(at().rate)}</b>}</Show>
-      <Feet of={m().footerSmall} class="small-feet" />
+      <Feet of={footers().small} class="small-feet" cleared={props.gone} />
       <Show when={!props.still}><Buttons /></Show>
     </div>
   );
@@ -257,7 +260,8 @@ function Hero(props: { at: Ranked; first: boolean; held?: Against; gap?: number 
         <b class="ui-num">{rateText(props.at.rate)}</b>
         <span>
           <Show when={props.gap !== undefined}><small class="meter-gap ui-num" aria-label="To the next place">-{short(props.gap!)}</small> </Show>
-          <Show when={props.held} fallback={<small class="ui-num">{props.at.share.toFixed(1)}%</small>}>{(h) => <Pull of={h()} />}</Show>
+          {/* "Your pull" and "Share of the damage" are as you chose them, on your card too. */}
+          <Show when={props.held} fallback={<Show when={m().left === "share" || m().right === "share"}><small class="ui-num">{props.at.share.toFixed(1)}%</small></Show>}>{(h) => <Pull of={h()} />}</Show>
         </span>
       </span>
     </div>

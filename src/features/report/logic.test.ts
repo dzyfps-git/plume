@@ -22,18 +22,29 @@ test("a gap is time you could have used", () => {
   assert.deepEqual(all.map((g) => [g.from, g.to]), [[19_100, 30_000], [31_000, 51_100]]);
   const dead = gaps(fight({ casts: list, deaths: [{ id: 1, you: true, ms: 31_500, up: 50_800, hits: [] }] }));
   assert.deepEqual(dead.map((g) => g.from), [19_100]);
+  // Time down is taken out of the gap, not counted in it.
+  const part = gaps(fight({ casts: list, deaths: [{ id: 1, you: true, ms: 40_000, up: 45_000, hits: [] }] }));
+  assert.deepEqual(part.map((g) => [g.from, g.to]), [[19_100, 30_000], [31_000, 40_000], [45_000, 51_100]]);
   assert.deepEqual(gaps(fight({ casts: [] })), []);
 });
 
 test("a target nobody can hit is told from you pausing", () => {
   const flat = [10, 20, 30, 30, 30, 30, 30, 40];
   const you = { ...base.you!, curve: flat };
-  assert.deepEqual(untouchable(fight({ rows: [you], health: [], ms: 8_000 })), [{ from: 3_000, to: 7_000 }]);
+  const boss = { dummy: false, ms: 8_000 };
+  const still = { ...you, id: 99, curve: [5, 6, 7, 7, 7, 7, 7, 8] };
+  assert.deepEqual(untouchable(fight({ ...boss, rows: [you, still], health: [] })), [{ from: 3_000, to: 7_000 }]);
+  // You alone, or a dummy: a pause of yours is no proof.
+  assert.deepEqual(untouchable(fight({ ...boss, rows: [you], health: [] })), []);
+  assert.deepEqual(untouchable(fight({ ...boss, rows: [you], health: [9, 8, 7, 7, 7, 7, 7, 6] })), []);
+  assert.deepEqual(untouchable(fight({ ms: 8_000, rows: [you, still], health: [] })), []);
   const other = { ...you, curve: [1, 2, 3, 4, 5, 6, 7, 8] };
-  assert.deepEqual(untouchable(fight({ rows: [you, other], health: [] })), []);
-  assert.deepEqual(untouchable(fight({ curve: flat, health: [] })), []);
-  assert.equal(untouchable(fight({ curve: flat, health: [9, 8, 7, 7, 7, 7, 7, 6] })).length, 1);
-  assert.equal(activeDps(fight({ rows: [you], health: [], ms: 8_000, you: { ...you, damage: 40 } })), 10);
+  assert.deepEqual(untouchable(fight({ ...boss, rows: [you, other], health: [] })), []);
+  assert.deepEqual(untouchable(fight({ ...boss, curve: flat, health: [], players: 4 })), []);
+  assert.equal(untouchable(fight({ ...boss, curve: flat, health: [9, 8, 7, 7, 7, 7, 7, 6], players: 4 })).length, 1);
+  assert.deepEqual(untouchable(fight({ ...boss, curve: flat, health: [9, 8, 7, 7, 7, 7, 7, 6], players: 1 })), []);
+  assert.equal(activeDps(fight({ ...boss, rows: [you, still], health: [], you: { ...you, damage: 40 } })), 10);
+  assert.equal(activeDps(fight({ ...boss, rows: [you], health: [], you: { ...you, damage: 40 } })), 5);
 });
 
 test("a skill with a cooldown that lay ready is found", () => {
@@ -56,8 +67,11 @@ test("a buff of yours that came without a cast is a proc", () => {
 test("parts of a fight add up to the whole", () => {
   const f = fight({ curve: [10, 20, 30, 40, 50], ms: 5_000, maxHp: 100, health: [90, 70, 50, 30, 10], killed: false });
   const all = parts(f, [80, 40]);
-  assert.deepEqual(all.map((p) => [p.name, p.from, p.to]), [["100% to 80%", 0, 1_000], ["80% to 40%", 1_000, 3_000], ["from 40%", 3_000, 5_000]]);
+  // Health is 70% at the end of second 2, so 80% was passed by then.
+  assert.deepEqual(all.map((p) => [p.name, p.from, p.to]), [["100% to 80%", 0, 2_000], ["80% to 40%", 2_000, 4_000], ["from 40%", 4_000, 5_000]]);
   assert.equal(all.reduce((s, p) => s + p.damage, 0), 50);
+  // Passed in the first second.
+  assert.deepEqual(parts(f, [95]).map((p) => [p.from, p.to]), [[0, 1_000], [1_000, 5_000]]);
   assert.deepEqual(parts(f, []), []);
   assert.deepEqual(parts(fight({ maxHp: 0 }), [50]), []);
 });
@@ -67,6 +81,9 @@ test("a wipe in a line, with no name where none is known", () => {
   const f = fight({ dummy: false, killed: false, maxHp: 200, health: [200, 50], deaths, names: { 9: "Breath" }, rows: [base.you!] });
   assert.equal(wipeLine(f, () => "Maren"), "25.0% left. Maren died first at 0:30, to Breath for 1.50K.");
   assert.equal(wipeLine({ ...f, killed: true }, () => ""), undefined);
+  // A kept fight has your deaths alone: no first.
+  const kept = { ...f, rows: undefined, deaths: [{ ...deaths[0], you: true }] };
+  assert.equal(wipeLine(kept, () => ""), "25.0% left. You died at 0:30, to Breath for 1.50K.");
   assert.equal(left({ ...f, killed: true }), undefined);
   assert.equal(down(f).length, 0);
 });

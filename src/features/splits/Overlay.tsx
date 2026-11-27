@@ -45,7 +45,8 @@ export const bare = () => {
 export function SplitsOverlay() {
   follow();
   const now = ticking();
-  const demo = () => bare() || sampling();
+  // Made-up bosses only to place it by. Out of a run in play, it says so.
+  const demo = sampling;
   const done = createMemo(() => (demo() ? DEMO.now : splits(mine())));
   const before = createMemo(() => (demo() ? DEMO.best : splits(best()?.fights ?? [])));
   const lines = createMemo(() => beside(done(), before()));
@@ -61,6 +62,7 @@ export function SplitsOverlay() {
         <Show when={before().length}><small>best {clock(before().at(-1)!.at)}</small></Show>
         <b>{clock(elapsed())}</b>
       </header>
+      <Show when={!demo() && bare()}><small class="ui-muted">Not in a dungeon run</small></Show>
       <For each={lines()}>
         {(l) => {
           // A boss that stands is behind only once its time has passed.

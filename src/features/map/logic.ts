@@ -195,8 +195,9 @@ export function guess(before: Position | null, last: Position, now: number): { x
   if (!before || !before.known || !last.known || before.map !== last.map) return still;
   const ms = last.at - before.at;
   const speed = ms > 0 ? (metres(last, before) / ms) * 1000 : 0;
-  if (ms <= 0 || ms > 5000 || speed < 0.5 || speed > FASTEST) return still;
-  const ahead = Math.min(GUESS_MS, Math.max(0, now - last.at)) / ms;
+  // Past three seconds without a word the guess is over: where you were last said is all that is known.
+  if (ms <= 0 || ms > 5000 || speed < 0.5 || speed > FASTEST || now - last.at > GUESS_MS) return still;
+  const ahead = Math.max(0, now - last.at) / ms;
   return {
     x: last.x + (last.x - before.x) * ahead,
     y: last.y + (last.y - before.y) * ahead,

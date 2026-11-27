@@ -3,6 +3,7 @@
 mod cost;
 mod engine;
 mod hotkeys;
+mod pets;
 mod startup;
 mod storage;
 mod windowing;
@@ -23,6 +24,8 @@ const VIEWS: [&str; 6] = ["damage", "rdps", "ndps", "healing", "taken", "hits"];
 struct Saved {
     path: PathBuf,
     settings: Mutex<Value>,
+    /// One save at a time, from writing the file to putting it to work: the main window, the overlay and the keys all save.
+    writes: Mutex<()>,
     /// The page the main window opens on, when a key asked for one.
     page: Mutex<String>,
     /// It opens minimized, without taking the screen from the game.
@@ -34,6 +37,34 @@ static LIGHT: AtomicBool = AtomicBool::new(false);
 /// Above this share of the CPU Plume makes itself lighter, below the other it is itself again. In percent.
 const HEAVY: f64 = 6.0;
 const EASY: f64 = 3.0;
+
+/// The keys a page reads from the settings, as `read` in `src/store/settings.ts` does: one the file has not got is the default,
+/// and the overlay controls leave the key they had before version 2. A key you emptied stays empty.
+const KEYS: [(&str, &str); 5] =
+    [("overlay", "Ctrl+Alt+F9"), ("edit", "Ctrl+Alt+F10"), ("reset", "Ctrl+Alt+F11"), ("view", "Ctrl+Alt+F12"), ("quick", "Alt+E")];
+
+/// Puts in the keys Windows is to have, so they work before any page saves. True when something changed.
+fn fill_keys(settings: &mut Value) -> bool {
+    if !settings.is_object() {
+        return false;
+    }
+    let old = settings["version"].as_u64().unwrap_or(0) < 2;
+    let mut changed = old;
+    if !settings["hotkeys"].is_object() {
+        settings["hotkeys"] = json!({});
+    }
+    for (action, key) in KEYS {
+        let now = &settings["hotkeys"][action];
+        if !now.is_string() || (action == "quick" && old && now == "Ctrl+Alt+F8") {
+            settings["hotkeys"][action] = key.into();
+            changed = true;
+        }
+    }
+    if old {
+        settings["version"] = 2.into();
+    }
+    changed
+}
 
 /// Everything a page needs to draw its first frame.
 #[tauri::command]
@@ -53,10 +84,16 @@ fn start_state(app: AppHandle, window: tauri::WebviewWindow, saved: State<Saved>
 /// Keeps the settings and puts them to work. Gives back the actions whose key could not be had.
 #[tauri::command(async)]
 fn save_settings(app: AppHandle, saved: State<Saved>, value: Value) -> Result<Vec<String>, String> {
+    let _one = saved.writes.lock().unwrap_or_else(|p| p.into_inner());
+    put(&app, &saved, value)
+}
+
+/// Writes the settings and puts them to work. The caller holds `writes`.
+fn put(app: &AppHandle, saved: &Saved, value: Value) -> Result<Vec<String>, String> {
     storage::save(&saved.path, &value)?;
     let before = std::mem::replace(&mut *saved.settings.lock().unwrap_or_else(|p| p.into_inner()), value.clone());
     let _ = app.emit("settings", &value);
-    Ok(apply(&app, &before, &value))
+    Ok(apply(app, &before, &value))
 }
 
 fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
@@ -119,8 +156,23 @@ fn open_recordings_folder(app: AppHandle) -> Result<(), String> {
     show_folder(recordings_folder(&app))
 }
 
+/// The last skills each window asked to watch: when one closes, what another still watches is asked for again.
+static WATCHES: Mutex<Vec<(String, Value)>> = Mutex::new(Vec::new());
+
+/// Forgets what a closed window watched, and gives the watch another window still wants, if any.
+fn unwatch(label: &str) -> Value {
+    let mut all = WATCHES.lock().unwrap_or_else(|p| p.into_inner());
+    all.retain(|(l, _)| l != label);
+    all.iter().rev().map(|(_, c)| c).find(|c| !c["id"].is_null()).cloned().unwrap_or_else(|| json!({ "cmd": "watch" }))
+}
+
 #[tauri::command]
-fn engine_send(app: AppHandle, engine: State<Arc<Engine>>, command: Value) -> Result<(), String> {
+fn engine_send(app: AppHandle, window: tauri::Window, engine: State<Arc<Engine>>, command: Value) -> Result<(), String> {
+    if command["cmd"] == "watch" {
+        let mut all = WATCHES.lock().unwrap_or_else(|p| p.into_inner());
+        all.retain(|(l, _)| l != window.label());
+        all.push((window.label().to_string(), command.clone()));
+    }
     // Where a file is written is not for a page to say.
     if command["cmd"] == "record" {
         return Err("not from here".into());
@@ -140,18 +192,26 @@ fn backup(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>, name:
 }
 
 /// What a backup held: its settings take the place of yours, its fights come beside yours. Gives back how many.
+/// How many fights are kept and whether the session is recorded stay as they are on this PC, and a fight you have is not written over.
 #[tauri::command(async)]
 fn restore(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>, value: Value) -> Result<usize, String> {
     let fights = value["fights"].as_array().filter(|_| value["plume"] == 1 && value["settings"].is_object());
     let fights = fights.ok_or("This is not a backup of Plume.")?;
-    save_settings(app.clone(), saved, value["settings"].clone())?;
+    let mut settings = value["settings"].clone();
+    {
+        let now = saved.settings.lock().unwrap_or_else(|p| p.into_inner());
+        settings["record"] = now["record"].as_bool().unwrap_or(false).into();
+        settings["fights"]["keep"] = now["fights"]["keep"].clone();
+    }
     let mut count = 0;
     for fight in fights {
         let fight = storage::kept(fight);
-        if !fight["you"].is_null() && engine.fights.save(&fight).is_ok() {
+        let id = fight["id"].as_str().unwrap_or_default();
+        if !fight["you"].is_null() && engine.fights.load(id).is_none() && engine.fights.save(&fight).is_ok() {
             count += 1;
         }
     }
+    save_settings(app.clone(), saved, settings)?;
     let _ = app.emit("saved", json!({ "id": "" }));
     Ok(count)
 }
@@ -227,13 +287,40 @@ fn keep_second(app: &AppHandle, place: Option<(windowing::Rect, bool)>, open: bo
 /// Nothing before the first start is done: what is written then would pass for settings.
 fn edit_settings(app: &AppHandle, edit: &dyn Fn(&mut Value)) {
     let saved = app.state::<Saved>();
+    let _one = saved.writes.lock().unwrap_or_else(|p| p.into_inner());
     let mut settings = saved.settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
     if !settings.is_object() {
         return;
     }
     edit(&mut settings);
-    if let Err(e) = save_settings(app.clone(), saved, settings) {
+    if let Err(e) = put(app, &saved, settings) {
         eprintln!("{e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn closing_a_window_gives_back_what_another_watches() {
+        WATCHES.lock().unwrap().extend([("overlay".to_string(), json!({ "cmd": "watch", "id": 7 })), ("main".to_string(), json!({ "cmd": "watch", "id": 9 }))]);
+        assert_eq!(unwatch("main"), json!({ "cmd": "watch", "id": 7 }));
+        assert_eq!(unwatch("overlay"), json!({ "cmd": "watch" }));
+    }
+
+    #[test]
+    fn keys_are_there_before_a_page_saves() {
+        let mut old = json!({ "version": 1, "hotkeys": { "quick": "Ctrl+Alt+F8", "edit": "" } });
+        assert!(fill_keys(&mut old));
+        assert_eq!(old["hotkeys"]["quick"], "Alt+E");
+        assert_eq!(old["hotkeys"]["edit"], "", "an emptied key stays empty");
+        assert_eq!(old["hotkeys"]["overlay"], "Ctrl+Alt+F9");
+        let mut missing = json!({ "version": 2, "hotkeys": {} });
+        assert!(fill_keys(&mut missing) && missing["hotkeys"]["quick"] == "Alt+E");
+        let mut chosen = json!({ "version": 2, "hotkeys": { "quick": "Ctrl+Alt+F8", "overlay": "", "edit": "", "reset": "", "view": "" } });
+        assert!(!fill_keys(&mut chosen) && chosen["hotkeys"]["quick"] == "Ctrl+Alt+F8");
+        assert!(!fill_keys(&mut Value::Null));
     }
 }
 
@@ -491,8 +578,14 @@ fn main() {
                 None => app.path().app_local_data_dir()?,
             };
             let path = folder.join("settings.json");
-            let settings = storage::load(&path).unwrap_or(Value::Null);
-            app.manage(Saved { path, settings: Mutex::new(settings.clone()), page: Mutex::default(), quiet: AtomicBool::new(false) });
+            let mut settings = storage::load(&path).unwrap_or(Value::Null);
+            // Written down before the keys are taken from it: an upgrade has the keys the pages show.
+            if fill_keys(&mut settings)
+                && let Err(e) = storage::save(&path, &settings)
+            {
+                eprintln!("{e}");
+            }
+            app.manage(Saved { path, settings: Mutex::new(settings.clone()), writes: Mutex::default(), page: Mutex::default(), quiet: AtomicBool::new(false) });
 
             let name = "plume-engine.exe";
             let mut places: Vec<PathBuf> = std::env::var_os("PLUME_ENGINE").map(PathBuf::from).into_iter().collect();
@@ -503,6 +596,16 @@ fn main() {
                 places,
                 storage::Fights::new(folder.join("fights")),
                 Box::new(move |event, value| {
+                    if event == "live" && value["t"] == "pets" {
+                        edit_settings(&tell, &|s| {
+                            let (levels, souls) = pets::hear(&s["pets"], value);
+                            s["pets"]["levels"] = levels;
+                            s["pets"]["souls"] = souls;
+                            if value["what"] == "all" {
+                                s["pets"]["told"] = std::time::UNIX_EPOCH.elapsed().map_or(0, |d| d.as_millis() as u64).into();
+                            }
+                        });
+                    }
                     let _ = tell.emit(event, value);
                 }),
             );
@@ -548,13 +651,17 @@ fn main() {
 
     app.run(|app, e| match e {
         // A page that closes with its window cannot put back what it asked of the engine.
-        RunEvent::WindowEvent { label, event: WindowEvent::Destroyed, .. } if label == windowing::MAIN => {
+        RunEvent::WindowEvent { label, event: WindowEvent::Destroyed, .. } => {
             let engine = app.state::<Arc<Engine>>();
-            let settings = app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
-            let mode = settings["mode"].as_str().unwrap_or("bossTargets");
-            for command in [json!({ "cmd": "limit", "ms": 0 }), json!({ "cmd": "mode", "mode": mode }), json!({ "cmd": "watch" })] {
-                let _ = engine.send(command);
+            let watch = unwatch(&label);
+            if label == windowing::MAIN {
+                let settings = app.state::<Saved>().settings.lock().unwrap_or_else(|p| p.into_inner()).clone();
+                let mode = settings["mode"].as_str().unwrap_or("bossTargets");
+                for command in [json!({ "cmd": "limit", "ms": 0 }), json!({ "cmd": "mode", "mode": mode })] {
+                    let _ = engine.send(command);
+                }
             }
+            let _ = engine.send(watch);
         }
         // Unless you chose that closing it quits. Before you chose, the page asks.
         RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. }

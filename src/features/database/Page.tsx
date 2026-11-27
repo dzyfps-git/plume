@@ -32,16 +32,22 @@ export function DatabasePage() {
   const [open, setOpen] = createSignal<Entry>();
   const found = createMemo(() => search(all(), query(), kind()));
   const shown = () => open() ?? found()[0];
+  // The number asked for, by a link or by searching it: items of one name have many numbers, each its own recipe and drops.
+  const [wanted, setWanted] = createSignal<number>();
+  const idOf = (e: Entry) => {
+    const asked = wanted() ?? Number(query().trim());
+    return e.ids.includes(asked) ? asked : e.ids[0];
+  };
   const go = (k: Kind, id: number) => {
     const e = all().find((x) => x.kind === k && x.ids.includes(id));
-    if (e) setOpen(e);
+    if (e) (setOpen(e), setWanted(id));
   };
 
   return (
     <div class="page">
       <header class="page-head">
         <h1>Database</h1>
-        <input class="ui-input db-search" type="search" placeholder="Search anything, or a number" aria-label="Search anything, or a number" value={query()} onInput={(e) => (setQuery(e.currentTarget.value), setOpen(undefined))} />
+        <input class="ui-input db-search" type="search" placeholder="Search anything, or a number" aria-label="Search anything, or a number" value={query()} onInput={(e) => (setQuery(e.currentTarget.value), setOpen(undefined), setWanted(undefined))} />
       </header>
       <Choices name="Kind" all={[["", "Everything"], ...KINDS.map((k) => [k, KIND_NAMES[k]] as const)] as const} value={kind()} set={(k) => (setKind(k), setOpen(undefined))} />
       <Show when={files() && !files()!.items && !files()!.names} fallback={null}>
@@ -53,7 +59,7 @@ export function DatabasePage() {
             <Show when={found().length} fallback={<p class="ui-muted ui-small">Nothing found.</p>}>
               <For each={found()}>
                 {(e) => (
-                  <button class="ui-row-item db-row" role="option" aria-selected={shown() === e} onClick={() => setOpen(e)}>
+                  <button class="ui-row-item db-row" role="option" aria-selected={shown() === e} onClick={() => (setOpen(e), setWanted(undefined))}>
                     <span data-grade={e.kind === "item" || e.kind === "skin" ? gradeName(e) : undefined}>{e.name}</span>
                     <small class="ui-muted">{KIND_NAMES[e.kind].replace(/s$/, "")}{e.more ? `, ${e.more}` : ""}</small>
                   </button>
@@ -65,7 +71,7 @@ export function DatabasePage() {
             {(e) => (
               <section class="block db-card">
                 <header class="db-head">
-                  <Picture of={e()} icon={files()?.items?.items[e().ids[0]]?.[2]} />
+                  <Picture of={e()} icon={files()?.items?.items[idOf(e())]?.[2]} />
                   <div>
                     <h2 data-grade={e().kind === "item" || e().kind === "skin" ? gradeName(e()) : undefined}>{e().name}</h2>
                     <small class="ui-muted">{KIND_NAMES[e().kind].replace(/s$/, "")}{e().more ? `, ${e().more}` : ""}, number {e().ids.slice(0, 4).join(", ")}{e().ids.length > 4 ? ` and ${e().ids.length - 4} more` : ""}</small>
@@ -73,7 +79,7 @@ export function DatabasePage() {
                 </header>
                 <Switch>
                   <Match when={e().kind === "item"}>
-                    <ItemCard id={e().ids[0]} />
+                    <ItemCard id={idOf(e())} />
                   </Match>
                   <Match when={e().kind === "monster"}>
                     <Part name="Drops" of={e().ids.flatMap((id) => (drops() ? dropsOf(drops()!, id) : [])).filter((d, i, a) => a.findIndex((x) => x.item === d.item) === i).slice(0, 30)}>
@@ -83,12 +89,12 @@ export function DatabasePage() {
                   </Match>
                   <Match when={e().kind === "skin"}>
                     {(() => {
-                      const s = () => files()?.skins?.skins[e().ids[0]];
+                      const s = () => files()?.skins?.skins[idOf(e())];
                       return (
                         <Show when={s()}>
                           {(x) => (
                             <>
-                              <p>{slotName(x()[3])}{x()[1] ? `; for Asmodians ${x()[1]}` : ""}. {closet().ids.includes(e().ids[0]) ? "In your Closet." : "Not in your Closet, as last said."}</p>
+                              <p>{slotName(x()[3])}{x()[1] ? `; for Asmodians ${x()[1]}` : ""}. {closet().ids.includes(idOf(e())) ? "In your Closet." : "Not in your Closet, as last said."}</p>
                               <Part name="Comes from" of={x()[5]}>{(w) => <div class="ui-row-item"><span>{w}</span></div>}</Part>
                             </>
                           )}

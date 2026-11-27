@@ -32,3 +32,6 @@ export const FEATURES: Feature[] = [
   buffs, debuffs, partyDebuffs, control, ready, actions,
   flight, ping, pvp, tracker,
 ];
+
+/** Every overlay: each feature's own, and those made from settings, such as your own frames. */
+export const overlays = () => [...FEATURES.filter((f) => f.overlay), ...FEATURES.flatMap((f) => f.more?.() ?? [])];

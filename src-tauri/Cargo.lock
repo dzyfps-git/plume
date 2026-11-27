@@ -2679,7 +2679,7 @@ dependencies = [
 
 [[package]]
 name = "plume"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "serde_json",
  "tauri",

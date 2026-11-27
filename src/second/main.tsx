@@ -15,7 +15,7 @@ import { SecondScreen } from "./Second";
 
 const start = await startState();
 await useSettings(start.settings, true);
-await follow(start);
+await follow();
 followPaint();
 // What the parts need beside them. Sounds, voices and counts stay with the overlays, or they would come twice.
 followMeter();
