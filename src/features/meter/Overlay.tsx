@@ -1,5 +1,5 @@
 import { createContext, createEffect, createMemo, For, on, Show, useContext } from "solid-js";
-import { fight, near, over, sampling, shownId, skills, waitingForYou } from "../../live/store";
+import { fight, near, over, sampling, shownId, skills, state, waitingForYou } from "../../live/store";
 import type { Row } from "../../live/types";
 import { change, hideNames, nameStyle, settings } from "../../store";
 import { barEase, type Footer, type Meter } from "../../store/settings";
@@ -22,9 +22,18 @@ const Look = createContext<() => Meter>(() => settings.meter);
 const look = () => useContext(Look)();
 
 /** Nothing to show but what stays on screen out of fights. */
-/** In a dungeon fight with no boss the meter knows: a monster missing from the game data, or no boss at all. Said in the meter, with a
- * way to show every fight, rather than an empty meter. */
-export const noBoss = () => !fight.rows.length && near.fighting && near.dungeon > 0 && settings.mode === "bossTargets" && !sampling();
+/** A fight with no boss the meter knows: in a dungeon, or anywhere against a monster whose arrival the engine missed (it started
+ * late, or bytes were lost), so it cannot tell a boss. Said in the meter, with why and a way to show every fight, rather than an
+ * empty meter. The dungeon may be unknown too when the engine missed going in. */
+export const noBoss = () => !fight.rows.length && near.fighting && (near.dungeon > 0 || !!state()?.unseen) && settings.mode === "bossTargets" && !sampling();
+
+/** Why no boss is known. */
+const whyNoBoss = () => {
+  const s = state();
+  if (!s?.unseen) return "Fighting, but no boss is known here.";
+  const why = s.lossy ? "Some of the game's data was lost on the way" : s.late ? "Plume started after you came in" : "Plume missed this monster arriving";
+  return `${why}, so it cannot tell if this is a boss.`;
+};
 export const bare = () => !fight.rows.length && !noBoss() && !settings.meter.compact && !settings.meter.small && !settings.meter.always;
 
 /** One compact piece: the target with its health, the bars, and a line with what you chose under them. */
@@ -128,7 +137,7 @@ function Whole(props: { gone: boolean; still: boolean }) {
       </Show>
       <Show when={!props.still && noBoss()}>
         <p class="meter-noboss">
-          <span>Fighting, but no boss is known here.</span>
+          <span>{whyNoBoss()}</span>
           <button class="ui-chip" data-touch onClick={() => change((s) => (s.mode = "lastHitByMe"))}>Show every fight</button>
         </p>
       </Show>
@@ -209,8 +218,10 @@ function MeterRow(props: { row: Row; at: Ranked & { rank: number; spot: number; 
   const died = () => (m().dead ? fallen().get(props.row.id) : undefined);
   const part = () => (m().buffShare && m().view === "damage" && props.row.got > 0 && props.row.damage > 0 ? Math.min(1, props.row.got / props.row.damage) : 0);
   const side = (what: Meter["left"]) => (
-    <Show when={what && !(ghost() && what === "share")}>
-      <small class="ui-num" classList={{ "meter-share": what === "share" }}>{what === "total" ? number(props.at.total) : `${props.at.share.toFixed(1)}%`}</small>
+    <Show when={what && !(ghost() && (what === "share" || what === "boss")) && !(what === "boss" && !fight.target.maxHp)}>
+      <small class="ui-num" classList={{ "meter-share": what !== "total" }}>
+        {what === "total" ? number(props.at.total) : `${(what === "boss" ? (props.row.damage / fight.target.maxHp) * 100 : props.at.share).toFixed(1)}%`}
+      </small>
     </Show>
   );
   return (
@@ -242,7 +253,7 @@ function MeterRow(props: { row: Row; at: Ranked & { rank: number; spot: number; 
       </Show>
       <Show when={props.gap !== undefined}><small class="meter-gap ui-num" aria-label="To the next place">-{short(props.gap!)}</small></Show>
       {side(m().left)}
-      <b class="ui-num">{rateText(props.at.rate)}</b>
+      <b class="ui-num">{rateText(props.at.rate)}<Show when={m().perSecond}><small class="meter-unit">/s</small></Show></b>
       {side(m().right)}
     </div>
   );

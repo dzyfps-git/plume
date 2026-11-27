@@ -18,7 +18,7 @@ export const FOOTER = ["ping", "total", "flight", "odyle", "entries", "kina", "p
 /** Buttons on the meter. */
 export const BUTTONS = ["view", "clear", "history", "compact", "lock", "sound", "clock", "news", "second", "menu"] as const;
 /** What can stand beside a row's number, and by a name. */
-export const SIDES = ["", "total", "share"] as const;
+export const SIDES = ["", "total", "share", "boss"] as const;
 export const CORNERS = ["power", "level", ""] as const;
 export const THEMES = ["glass", "minimal", "solid", "light"] as const;
 export const OUTLINES = ["", "soft", "solid"] as const;
@@ -234,6 +234,8 @@ export interface Meter {
   right: (typeof SIDES)[number];
   /** Numbers with all their figures. */
   full: boolean;
+  /** "/s" after a row's number. */
+  perSecond: boolean;
   icons: boolean;
   /** By a name: yours, or the party's too. */
   corner: (typeof CORNERS)[number];
@@ -413,7 +415,7 @@ export const DEFAULTS: Settings = {
   },
   overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true, linger: 0, fightBy: "game", grips: true, button: true, buttonDim: false, buttonAt: { x: 0.62, y: 0.004 }, game: 3 },
   meter: {
-    style: "bar", rows: 8, left: "share", right: "", full: false, icons: true, corner: "power", corners: "all", head: true, boss: true, clock: true, ghost: false,
+    style: "bar", rows: 8, left: "share", right: "", full: false, perSecond: false, icons: true, corner: "power", corners: "all", head: true, boss: true, clock: true, ghost: false,
     hideNames: false, view: "damage", edge: "bottom", footer: ["ping", "odyle", "entries"], footerLocked: true, footerSmall: ["ping", "odyle"],
     compact: true, small: false, locked: true, buttons: ["view", "clear", "history", "compact", "lock", "menu"], buttonsLocked: [],
     top: false, always: false, gap: true, burst: true, dead: true, casts: false, buffShare: false, who: "everyone", solo: true,
@@ -661,6 +663,7 @@ export function read(value: unknown): Settings {
       rows: Math.round(number(meter.rows, 1, 24, m.rows)),
       ...sides(meter, m),
       full: flag(meter.full, m.full),
+      perSecond: flag(meter.perSecond, m.perSecond),
       icons: flag(meter.icons, m.icons),
       // Before the corner could be chosen, Combat Power had a switch.
       corner: meter.corner === undefined && typeof meter.power === "boolean" ? (meter.power ? "power" : "") : one(meter.corner as Meter["corner"], CORNERS, m.corner),

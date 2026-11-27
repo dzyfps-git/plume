@@ -57,6 +57,9 @@ export function Styles() {
 }
 
 /** The meter's settings. `still` leaves out the pictures. */
+/** "Boss": the damage as a part of the target's whole health, as in 1.2%. */
+const SIDE_NAMES = [["", "Nothing"], ["total", "Total"], ["share", "Share"], ["boss", "Of its health"]] as const;
+
 export function MeterGroups(props: { still?: boolean }) {
   const m = () => settings.meter;
   const l = () => settings.look;
@@ -78,12 +81,13 @@ export function MeterGroups(props: { still?: boolean }) {
           </select>
         </Line>
         <Line name="Left of the number">
-          <Choices name="Left of the number" all={[["", "Nothing"], ["total", "Total"], ["share", "Share"]] as const} value={m().left} set={meter("left")} />
+          <Choices name="Left of the number" all={SIDE_NAMES} value={m().left} set={meter("left")} />
         </Line>
         <Line name="Right of the number">
-          <Choices name="Right of the number" all={[["", "Nothing"], ["total", "Total"], ["share", "Share"]] as const} value={m().right} set={meter("right")} />
+          <Choices name="Right of the number" all={SIDE_NAMES} value={m().right} set={meter("right")} />
         </Line>
         <Switch name="Numbers in full" about="46,200 in place of 46.2K." on={m().full} set={meter("full")} />
+        <Switch name="/s after the number" about="46.2K/s." on={m().perSecond} set={meter("perSecond")} />
         <Line name="By the name" about="Other players' is never written down.">
           <Choices name="By the name" all={[["power", "Combat Power"], ["level", "Item level"], ["", "Nothing"]] as const} value={m().corner} set={meter("corner")} />
         </Line>

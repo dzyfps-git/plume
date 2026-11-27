@@ -17,6 +17,9 @@ export function Waiting(props: { idle: string }) {
         <Match when={waitingForYou()}>
           <Said icon={"\ue77b"} text={`Waiting for your character. ${WAIT_FOR_YOU}`} />
         </Match>
+        <Match when={live() && state()?.lossy}>
+          <Said icon={""} text={`${props.idle} Some of the game's data was lost on the way in the last minute, so a boss or a hit may be missing. A wired connection helps.`} />
+        </Match>
         <Match when={live() && state()?.late}>
           <Said icon={"\ue946"} text={`${props.idle} The engine started after you entered the world, so some names come after the next zone change.`} />
         </Match>
