@@ -1,0 +1,10 @@
+.splits { display: grid; gap: 1px; padding: 8px 11px 9px; font-size: 12px; }
+.splits header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.splits header strong { flex: 1; font-size: 13px; font-weight: 650; }
+.splits header b { font-size: 16px; font-weight: 700; line-height: 1; }
+.splits small { color: color-mix(in srgb, var(--text) 72%, transparent); font-size: 10.5px; }
+.split { display: flex; align-items: baseline; gap: 8px; line-height: 1.55; color: color-mix(in srgb, var(--text) 62%, transparent); }
+.split span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split em { font-style: normal; font-weight: 700; }
+.split b { min-width: 36px; font-weight: 600; text-align: right; }
+.split[data-done], .split[data-next] { color: var(--text); }

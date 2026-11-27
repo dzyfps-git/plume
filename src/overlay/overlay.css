@@ -1,0 +1,68 @@
+html, body, #root { height: 100%; background: transparent; overflow: hidden; user-select: none; }
+.screen { position: fixed; inset: 0; transition: opacity 1.2s; }
+.screen[data-idle] { opacity: .4; }
+.screen[data-editing] { background: rgb(0 0 0 / 30%); }
+.frame { position: absolute; top: 0; left: 0; }
+.frame[data-editing] { border-radius: var(--radius-large); outline: 1px dashed var(--accent); cursor: move; touch-action: none; }
+.frame[data-editing]:focus-visible { outline: 2px solid var(--accent); }
+.frame-bar {
+  position: absolute; bottom: calc(100% + 4px); left: 0; display: flex; align-items: center; gap: 2px; padding: 2px 2px 2px 10px;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--overlay-solid); white-space: nowrap;
+}
+.frame-bar span { margin-right: var(--space-2); font-weight: 600; }
+.frame-bar small { min-width: 36px; color: var(--text-muted); text-align: center; }
+.frame-bar .ui-icon-button { width: 24px; height: 24px; border-radius: 50%; }
+.frame[data-locked] { outline-color: var(--text-muted); cursor: default; }
+.frame-bar[data-under] { top: calc(100% + 4px); bottom: auto; }
+/* A handle along the top edge, seen only while the mouse pointer shows. */
+.frame-grip { position: absolute; right: 0; bottom: 100%; left: 0; display: flex; align-items: flex-end; justify-content: center; height: 16px; opacity: 0; cursor: grab; touch-action: none; }
+.frame-grip[data-under] { top: 100%; bottom: auto; align-items: flex-start; }
+.frame-grip::before { width: 34px; height: 4px; margin: 3px; border-radius: 2px; background: var(--text); content: ""; opacity: .5; box-shadow: 0 0 3px rgb(0 0 0 / 60%); }
+.frame-grip span { display: none; }
+.screen[data-pointer] .frame-grip { opacity: 1; }
+.frame-grip:hover { border: 1px solid var(--border); border-radius: 999px; background: var(--overlay-solid); }
+.frame-grip:hover::before { display: none; }
+.frame-grip:hover span { display: block; overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.frame-grip:active { cursor: grabbing; }
+/* The button that opens the overlay controls. */
+.game-button {
+  position: fixed; top: 0; left: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--overlay-solid); color: var(--text); font: inherit; font-size: 12px; opacity: .5; cursor: pointer; touch-action: none; transition: opacity .2s;
+}
+.screen[data-pointer] .game-button, .game-button[data-open] { opacity: 1; }
+.game-button[data-open] { border-color: var(--accent); }
+.game-button kbd { color: var(--text-muted); font: inherit; font-size: 11px; }
+.edit-bar { position: fixed; bottom: 48px; left: 50%; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); width: max-content; max-width: min(980px, 92vw); height: auto; translate: -50% 0; background: var(--overlay-solid); }
+.over-panel {
+  position: fixed; top: 8vh; left: 24px; display: grid; gap: var(--space-2); width: 360px; max-height: 84vh; padding: var(--space-3); overflow: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-large); background: var(--overlay-solid); color: var(--text); box-shadow: var(--shadow);
+}
+.over-panel header, .over-panel footer { display: flex; align-items: center; gap: var(--space-1); }
+.over-panel header strong { flex: 1; font-size: 15px; font-weight: 600; }
+.over-panel footer { justify-content: flex-end; gap: var(--space-2); }
+.over-panel h3 { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.over-panel .ui-row { flex-wrap: wrap; }
+.over-panel .line { justify-content: space-between; padding: 0 var(--space-1); }
+.over-panel .slide { width: 190px; }
+.over-panel footer { flex-wrap: wrap; }
+.over-hint { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.over-line { display: grid; gap: 6px; padding: var(--space-1); }
+.over-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.over-pick {
+  display: flex; align-items: center; gap: 8px; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid transparent; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text-muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+}
+.over-pick span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.over-pick:hover { background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); }
+.over-pick[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.over-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.line { display: flex; align-items: center; gap: var(--space-4); min-height: 40px; padding: var(--space-1) var(--space-2); }
+.slide { display: flex; align-items: center; gap: var(--space-3); width: 240px; }
+.slide > span { min-width: 56px; text-align: right; }
+
+/* Said over the game while Plume waits for your character, as a toast at the top. */
+.game-toast { position: fixed; top: 64px; left: 50%; z-index: 5; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; width: min(400px, calc(100vw - 32px)); padding: 12px 12px 12px 16px; translate: -50% 0; border: 1px solid color-mix(in srgb, var(--grade-unique) 70%, transparent); border-radius: 10px; background: rgb(14 14 18 / 92%); box-shadow: 0 10px 30px rgb(0 0 0 / 45%); color: var(--text); animation: toast-in 240ms ease-out; }
+.game-toast > .ui-icon { margin-top: 2px; color: var(--grade-unique); font-size: 18px; }
+.game-toast b { display: block; color: var(--grade-unique); font-size: 15px; font-weight: 650; }
+.game-toast small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; }
+@keyframes toast-in { from { opacity: 0; translate: -50% -8px; } }

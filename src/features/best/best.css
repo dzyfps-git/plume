@@ -1,0 +1,17 @@
+/* Grey to violet says how many of your others it beat. Gold is a new best. */
+.grade { --grade: #9aa7bd; display: inline-grid; flex: none; place-items: center; min-width: 26px; height: 17px; padding: 0 5px; border-radius: 99px; background: color-mix(in srgb, var(--grade) 20%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--grade) 55%, transparent); color: color-mix(in oklab, var(--grade) 62%, var(--text)); font-size: 11px; font-weight: 700; line-height: 1; }
+.grade[data-grade="green"] { --grade: #4fd58c; }
+.grade[data-grade="blue"] { --grade: #4ea4ff; }
+.grade[data-grade="violet"] { --grade: #b283ff; }
+.grade[data-grade="orange"] { --grade: #ff9a45; }
+.grade[data-grade="gold"] { --grade: var(--tone-best); box-shadow: inset 0 0 0 1px var(--grade), 0 0 10px color-mix(in srgb, var(--grade) 45%, transparent); }
+.grade[data-large] { min-width: 42px; height: 30px; font-size: 18px; }
+
+/* Ahead of your best, and behind it. */
+.ahead { color: var(--tone-ready); }
+.behind { color: var(--tone-danger); }
+.boss-bar .boss-rival { top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--tone-ready); box-shadow: 0 0 6px var(--tone-ready); transition: left var(--bar-time) var(--bar-ease); }
+.boss-bar .boss-rival[data-behind] { background: var(--tone-danger); box-shadow: 0 0 6px var(--tone-danger); }
+.boss-bar .boss-wipe { top: auto; width: 2px; height: 45%; border-radius: 1px 1px 0 0; background: color-mix(in srgb, var(--text) 85%, transparent); }
+.boss-sub > .boss-apart { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .boss-bar .boss-rival { transition: none; } }

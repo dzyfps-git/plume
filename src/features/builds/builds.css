@@ -1,0 +1,11 @@
+.builds-top { margin-bottom: var(--space-2); }
+.builds-main { display: grid; grid-template-columns: minmax(0, 520px) minmax(240px, 1fr); gap: var(--space-4); align-items: start; margin-top: var(--space-3); }
+.board { display: grid; grid-template-columns: repeat(var(--side), 1fr); grid-template-rows: repeat(var(--side), 1fr); gap: 3px; aspect-ratio: 1; }
+.node { display: grid; place-items: center; min-width: 0; padding: 0; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 50%; background: color-mix(in srgb, currentColor 8%, var(--surface)); color: #9aa0a6; cursor: pointer; opacity: 0.45; transition: opacity var(--motion), background var(--motion); }
+.node[data-grade="none"] { color: var(--accent); cursor: default; }
+.node[data-can] { opacity: 0.8; }
+.node[data-taken] { opacity: 1; background: color-mix(in srgb, currentColor 40%, var(--surface)); box-shadow: 0 0 6px color-mix(in srgb, currentColor 60%, transparent); }
+.node:hover:not(:disabled) { opacity: 1; }
+.node .pic { width: 70%; height: 70%; border-radius: 50%; }
+.builds-sum { display: grid; gap: 2px; }
+@media (max-width: 900px) { .builds-main { grid-template-columns: 1fr; } }

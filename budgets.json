@@ -1,0 +1,8 @@
+{
+  "installerMB": 20,
+  "startMs": 550,
+  "mainRamMB": 140,
+  "engineRamMB": 60,
+  "overlayRamMB": 120,
+  "fightCpuPercent": 3
+}

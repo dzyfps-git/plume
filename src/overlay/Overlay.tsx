@@ -1,0 +1,166 @@
+import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js";
+import { editOverlays, type Editing } from "../api";
+import { FEATURES, overlays } from "../features";
+import { overlayName, type Feature } from "../features/types";
+import { demoFight, demoNear } from "../live/demo";
+import { fight, near, sample, sampling, WAIT_FOR_YOU, waitingForYou } from "../live/store";
+import { unwrap } from "solid-js/store";
+import { change, settings } from "../store";
+import { place, rule } from "../store/settings";
+import { GameButton } from "./Button";
+import { Frame } from "./Frame";
+import { Panel } from "./Panel";
+import { activity, allowed, inFight, pick } from "./rules";
+import { canRedo, canUndo, move, redo, undo } from "./undo";
+import { followZones } from "./zones";
+
+
+/** Idle this long, overlays fade. */
+const IDLE = 60_000;
+const DRIFT_EVERY = 180_000;
+const DRIFT = [[0, 0], [2, 0], [2, 2], [0, 2], [-2, 0], [-2, -2], [0, -2]] as const;
+
+/** Every overlay, on one clear page over the game. */
+export function Overlay(props: { editing: () => Editing; pointer: () => boolean }) {
+  // With the overlay controls open, overlays can be moved too.
+  const moving = () => props.editing() !== "";
+  let root!: HTMLDivElement;
+  const all = createMemo(overlays);
+  const at = (f: Feature) => place(settings.places[f.id], f.overlay!.place);
+  // When the last fight was, as the overlays count one: the game's word, your hits or the party's.
+  const [lastAt, setLastAt] = createSignal(0);
+  const [now, setNow] = createSignal(Date.now());
+  const ticking = setInterval(() => setNow(Date.now()), 1000);
+  onCleanup(() => clearInterval(ticking));
+  // By the game's word it is when the fight ended; by hits, the last hit that was seen.
+  // By hits, only new damage counts: other players' rows changing, or the same total again, is not a hit of yours.
+  createEffect((was: number) => {
+    const by = settings.overlay.fightBy;
+    if (by === "game") {
+      if (was && !near.fighting) setLastAt(Date.now());
+      return near.fighting ? 1 : 0;
+    }
+    const ids = new Set(near.party.map((u) => u.id));
+    const dealt = fight.rows.reduce((n, r) => (r.you || (by === "party" && ids.has(r.id)) ? n + r.damage : n), 0);
+    if (dealt > was) setLastAt(Date.now());
+    return dealt;
+  }, 0);
+  const fighting = () => inFight(settings.overlay.fightBy, near.fighting, lastAt(), now(), settings.overlay.linger);
+  const shown = () =>
+    all().filter((f) => at(f).on && (moving() || (allowed(rule(settings.rules[f.id]), { ...near, fighting: fighting() }) && !(settings.overlay.hideEmpty && f.overlay!.empty?.()))));
+
+  // A layout of yours comes by itself, once each time what fits changes. Moving one by hand stays until then.
+  let worn = "";
+  createEffect(() => {
+    if (!settings.layoutAuto || moving()) return;
+    const fits = pick(settings.layouts, activity(near, fight.target.dummy), near.you?.name ?? "");
+    const key = fits ? `${fits.name}
+${fits.when}
+${fits.who}` : "";
+    if (!fits) return void (worn = "");
+    if (key === worn) return;
+    worn = key;
+    untrack(() => change((s) => (s.places = structuredClone(unwrap(fits.places))), true));
+  });
+  const hidden = () => all().filter((f) => !at(f).on);
+  const turn = (f: Feature, on: boolean) => move((all) => ({ ...all, [f.id]: { ...at(f), on } }));
+  const boxes = () =>
+    [...root.querySelectorAll<HTMLElement>("[data-frame]")].map((el) => {
+      const { x, y, width, height } = el.getBoundingClientRect();
+      return { x, y, width, height };
+    });
+
+  for (const f of FEATURES) f.overlay?.beside?.();
+
+  followZones();
+
+  // Made-up things to place overlays by. A real fight, one that goes on or one that starts, is never written over: see `sample`.
+  createEffect(() => {
+    if (!moving()) return;
+    const begun = performance.now() - 30_000;
+    const step = () => {
+      const ms = performance.now() - begun;
+      sample({ near: demoNear(ms, Date.now()), fight: demoFight(ms) });
+    };
+    step();
+    const timer = setInterval(step, settings.updateMs);
+    onCleanup(() => {
+      clearInterval(timer);
+      sample();
+    });
+  });
+
+  // On a screen that can burn in: paler while nothing happens, and never quite in the same place.
+  const [idle, setIdle] = createSignal(false);
+  createEffect(() => {
+    setIdle(false);
+    if (!settings.oled || near.fighting || props.editing()) return;
+    const timer = setTimeout(() => setIdle(true), IDLE);
+    onCleanup(() => clearTimeout(timer));
+  });
+  // Over the game, once the wait is more than a login's: what to do so Plume learns who you are. It can be closed.
+  const [long, setLong] = createSignal(false);
+  const [shut, setShut] = createSignal(false);
+  createEffect(() => {
+    if (!waitingForYou()) return void (setLong(false), setShut(false));
+    const timer = setTimeout(() => setLong(true), 8000);
+    onCleanup(() => clearTimeout(timer));
+  });
+  const [step, setStep] = createSignal(0);
+  const drift = setInterval(() => setStep((n) => (n + 1) % DRIFT.length), DRIFT_EVERY);
+  onCleanup(() => clearInterval(drift));
+  const shift = () => (settings.oled && !props.editing() ? DRIFT[step()] : DRIFT[0]);
+
+  const done = () => void editOverlays("");
+  const keys = (e: KeyboardEvent) => {
+    if (!props.editing()) return;
+    if (e.key === "Escape") done();
+    else if (e.ctrlKey && e.key.toLowerCase() === "z") (e.shiftKey ? redo : undo)();
+    else if (e.ctrlKey && e.key.toLowerCase() === "y") redo();
+    else return;
+    e.preventDefault();
+  };
+  addEventListener("keydown", keys);
+  onCleanup(() => removeEventListener("keydown", keys));
+
+  return (
+    <div
+      ref={root} class="screen" data-editing={props.editing() || undefined} data-idle={idle() || undefined} data-pointer={props.pointer() || undefined}
+      style={{ translate: `${shift()[0]}px ${shift()[1]}px` }} onContextMenu={(e) => e.preventDefault()}
+    >
+      <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} pointer={props.pointer()} others={boxes} />}</For>
+      <Show when={settings.overlay.button}><GameButton open={props.editing() === "quick"} /></Show>
+      <Show when={long() && !shut() && settings.overlay.on && !props.editing()}>
+        <div class="game-toast" role="status">
+          <span class="ui-icon" aria-hidden="true">{"\ue77b"}</span>
+          <span>
+            <b>Waiting for your character</b>
+            <small>{WAIT_FOR_YOU}</small>
+          </span>
+          <button class="ui-icon-button" data-touch aria-label="Close" onClick={() => setShut(true)}>{"\ue8bb"}</button>
+        </div>
+      </Show>
+      <Show when={props.editing() === "quick"}>
+        <Panel all={all()} on={(f) => at(f).on} turn={turn} done={done} />
+      </Show>
+      <Show when={props.editing() === "move"}>
+        <div class="edit-bar ui-bar">
+          <small>
+            Drag to move. Scroll to scale. Alt drags freely. What they show is a sample.
+          </small>
+          <button class="ui-icon-button" aria-label="Undo" aria-keyshortcuts="Control+Z" disabled={!canUndo()} onClick={undo}>{"\ue7a7"}</button>
+          <button class="ui-icon-button" aria-label="Redo" aria-keyshortcuts="Control+Y" disabled={!canRedo()} onClick={redo}>{"\ue7a6"}</button>
+          <For each={hidden()}>
+            {(f) => (
+              <button class="ui-button" onClick={() => turn(f, true)}>
+                <span class="ui-icon" aria-hidden="true">{"\ue710"}</span>
+                {overlayName(f)}
+              </button>
+            )}
+          </For>
+          <button class="ui-button" data-main aria-keyshortcuts="Escape" onClick={done}>Done</button>
+        </div>
+      </Show>
+    </div>
+  );
+}

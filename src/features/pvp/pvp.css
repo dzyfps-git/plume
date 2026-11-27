@@ -1,0 +1,6 @@
+.pvp { display: grid; grid-template-columns: repeat(3, 1fr) 1.6fr; gap: 4px var(--space-2); padding: 8px 10px; }
+.pvp div { display: grid; }
+.pvp b { font-size: 18px; font-weight: 600; line-height: 1.1; }
+.pvp small, .pvp p { color: var(--text-muted); font-size: 11px; }
+.pvp p { grid-column: 1 / -1; margin: 0; }
+.pvp div[data-streak] b { color: var(--accent-ink); }

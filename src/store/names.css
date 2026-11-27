@@ -1,0 +1,9 @@
+/* Our own looks for names you chose, in every window. */
+[data-name="glow"] { text-shadow: 0 0 6px currentColor, 0 0 12px color-mix(in srgb, currentColor 60%, transparent); }
+[data-name="gold"] { background: linear-gradient(180deg, #fff1b8, #e8b33c 55%, #a86f12); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 700; }
+[data-name="frost"] { background: linear-gradient(90deg, #e8fbff, #8fd8ff, #e8fbff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 8px #8fd8ff66; }
+[data-name="ember"] { background: linear-gradient(90deg, #ffd27a, #ff6a3d, #ffd27a); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 700; }
+[data-name="dawn"] { background: linear-gradient(90deg, #ff9ad5, #c49bff, #7fd6ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+[data-name="shadow"] { color: #f4f4f8; text-shadow: 1px 1px 0 #000, 0 0 6px #000; letter-spacing: 0.03em; font-weight: 700; }
+[data-name="frost"], [data-name="ember"], [data-name="dawn"] { background-size: 200% 100%; animation: name-shine 4s linear infinite; }
+@keyframes name-shine { to { background-position: -200% 0; } }

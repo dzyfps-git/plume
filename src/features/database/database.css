@@ -1,0 +1,12 @@
+.db-search { min-width: 320px; }
+.db-main { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 1.5fr); gap: var(--space-4); align-items: start; margin-top: var(--space-3); }
+.db-list { display: grid; gap: 1px; max-height: calc(100vh - 220px); overflow: auto; }
+.db-row { --columns: minmax(0, 1fr) auto; }
+.db-card { display: grid; gap: 2px; }
+.db-card .ui-row-item { --columns: minmax(0, 1fr) auto; }
+.db-head { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-3); align-items: center; margin-bottom: var(--space-2); }
+.db-head h2 { margin: 0; }
+.db-pic { display: grid; width: 48px; height: 48px; place-items: center; overflow: hidden; border-radius: var(--radius); background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 18px; }
+.db-pic .pic[data-large] { width: 48px; height: 48px; }
+.db-part { margin: var(--space-3) 0 var(--space-1); font-size: 13px; color: var(--text-muted); font-weight: 600; }
+@media (max-width: 900px) { .db-main { grid-template-columns: 1fr; } }

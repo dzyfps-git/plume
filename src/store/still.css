@@ -1,0 +1,2 @@
+/* The setting "Animations" off: nothing moves by itself, in every window. */
+[data-still] *, [data-still] *::before, [data-still] *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; }

@@ -1,0 +1,25 @@
+.drawn, .thing { display: inline-block; flex: none; width: round(var(--icon, 16px), var(--px, 1px)); height: round(var(--icon, 16px), var(--px, 1px)); vertical-align: -3px; }
+.thing .drawn { display: block; }
+.ping-bars rect { fill: color-mix(in srgb, var(--text) 22%, transparent); }
+.ping-bars { --tone: #6fe39b; }
+.ping-bars[data-bars="3"] { --tone: #c9e26a; }
+.ping-bars[data-bars="2"] { --tone: #ffbe55; }
+.ping-bars[data-bars="1"] { --tone: #ff6b61; }
+.ping-bars rect:first-child,
+.ping-bars:not([data-bars="1"]) rect:nth-child(2),
+.ping-bars:is([data-bars="3"], [data-bars="4"]) rect:nth-child(3),
+.ping-bars[data-bars="4"] rect:nth-child(4) { fill: var(--tone); }
+
+/* Sizes are whole points of the screen: --px is one of them, where something is scaled. */
+
+/* A class: its emblem on a tile in its colour. The light is behind the emblem, never on it. */
+.class-mark {
+  display: inline-grid; place-items: center; flex: none; width: round(var(--mark, 20px), var(--px, 1px)); height: round(var(--mark, 20px), var(--px, 1px)); padding: round(up, 1px, var(--px, 1px)); border-radius: 28%;
+  background: radial-gradient(circle at 50% 25%, color-mix(in srgb, var(--class-color) 62%, #14121c), #100f17 90%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--class-color) 60%, transparent);
+}
+/* As wide as the tile but for a whole point at each side. */
+.class-mark .sharp { filter: brightness(1.45); }
+.class-mark svg { width: 64%; height: 64%; fill: none; stroke: color-mix(in srgb, var(--class-color) 45%, white); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* What comes on top of a figure: charged energy, an entry's bonus. */
+.bonus { color: var(--tone-bonus); }

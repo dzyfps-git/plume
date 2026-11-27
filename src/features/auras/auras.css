@@ -1,0 +1,12 @@
+.auras { display: grid; justify-items: center; gap: 6px; }
+.auras .tile { width: 44px; height: 44px; }
+.aura-bar { position: relative; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 24px; padding: 0 8px; border-radius: var(--radius); isolation: isolate; text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
+.aura-bar i { position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--accent) 45%, transparent); transform: translateX(calc((var(--length) - 1) * 100%)); }
+.aura-bar span { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.aura-bar b { font-weight: 600; }
+.aura-bar[data-glow] { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.aura-text { font-size: 20px; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
+.aura-text[data-glow] { color: var(--accent); text-shadow: 0 1px 3px #000, 0 0 12px var(--accent); }
+.aura-row { --columns: auto minmax(0, 1fr) auto; }
+.aura-row[aria-selected="true"] { background: var(--surface-selected); }
+.aura-pick { max-width: 280px; }

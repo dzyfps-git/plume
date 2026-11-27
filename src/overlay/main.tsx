@@ -1,0 +1,21 @@
+import { createSignal } from "solid-js";
+import { render } from "solid-js/web";
+import { on, startState, type Editing } from "../api";
+import { follow } from "../live/store";
+import { useSettings } from "../store";
+import { followPaint } from "../ui/paint";
+import "../house/tokens.css";
+import "../house/bundle.css";
+import "../ui/game.css";
+import "./overlay.css";
+import { Overlay } from "./Overlay";
+
+const start = await startState();
+const [editing, setEditing] = createSignal<Editing>(start.editing);
+const [pointer, setPointer] = createSignal(start.pointer);
+await useSettings(start.settings, true);
+await follow();
+followPaint();
+await on("edit", setEditing);
+await on("pointer", setPointer);
+render(() => <Overlay editing={editing} pointer={pointer} />, document.getElementById("root")!);

@@ -1,0 +1,4 @@
+.loot-feed { display: grid; gap: 2px; padding: 6px 10px; font-size: 13px; }
+.loot-feed .loot-item[data-chosen] { font-weight: 700; text-shadow: 0 0 8px currentColor; }
+.loot-row { --columns: minmax(0, 1fr) 90px 90px auto; }
+.roll-row { --columns: minmax(0, 1fr) minmax(0, 1.4fr) 120px; }

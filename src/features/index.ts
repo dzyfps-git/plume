@@ -1,0 +1,37 @@
+import { actions } from "./actions/feature";
+import { alerts } from "./alerts/feature";
+import { auras } from "./auras/feature";
+import { boss } from "./boss/feature";
+import { bosses } from "./bosses/feature";
+import { builds } from "./builds/feature";
+import { closet } from "./closet/feature";
+import { database } from "./database/feature";
+import { buffs, control, debuffs, partyDebuffs, ready } from "./effects/feature";
+import { finish } from "./finish/feature";
+import { flight } from "./flight/feature";
+import { card, foe, force, party, target, you } from "./frames/feature";
+import { history } from "./history/feature";
+import { home } from "./home/feature";
+import { loot } from "./loot/feature";
+import { map, tracker } from "./map/feature";
+import { meter } from "./meter/feature";
+import { pets } from "./pets/feature";
+import { ping } from "./ping/feature";
+import { pvp } from "./pvp/feature";
+import { splits } from "./splits/feature";
+import { resources } from "./resources/feature";
+import { time } from "./time/feature";
+import { timers } from "./timers/feature";
+import { training } from "./training/feature";
+import type { Feature } from "./types";
+
+/** Pages stand in the menu in this order. */
+export const FEATURES: Feature[] = [
+  home, meter, boss, finish, splits, timers, training, history, bosses, resources, time, loot, map, pets, closet, builds, database, auras, alerts,
+  you, target, foe, party, force, card,
+  buffs, debuffs, partyDebuffs, control, ready, actions,
+  flight, ping, pvp, tracker,
+];
+
+/** Every overlay: each feature's own, and those made from settings, such as your own frames. */
+export const overlays = () => [...FEATURES.filter((f) => f.overlay), ...FEATURES.flatMap((f) => f.more?.() ?? [])];
