@@ -14,8 +14,12 @@ export { settings, taken };
 const root = document.documentElement;
 const dark = matchMedia("(prefers-color-scheme: dark)");
 
+/** The window over the game, once `useSettings` said so: settings changed in it keep its look, whoever changes them. */
+let overWindow = false;
+
 /** The look that comes from the settings. An overlay is always dark: it lies over the game. */
 function wear(overlay: boolean) {
+  overlay ||= overWindow;
   const theme = settings.theme === "auto" ? (dark.matches ? "dark" : "light") : settings.theme;
   root.dataset.theme = overlay ? "dark" : theme;
   if (!overlay) root.style.setProperty("zoom", String(settings.text));
@@ -26,6 +30,7 @@ function wear(overlay: boolean) {
 }
 
 export async function useSettings(saved: unknown, overlay = false) {
+  overWindow = overlay;
   setSettings(reconcile(read(saved)));
   wear(overlay);
   dark.addEventListener("change", () => wear(overlay));

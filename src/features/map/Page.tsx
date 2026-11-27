@@ -26,6 +26,8 @@ export function MapPage() {
   const [look, setLook] = createSignal<{ x: number; y: number; across?: number } | null>(null);
   const [drawing, setDrawing] = createSignal("");
   const [route, setRoute] = createSignal("");
+  /** The region last picked in the list, shown as picked. */
+  const [region, setRegion] = createSignal("");
   const tracked = createMemo(() => new Set(settings.world.tracked));
   const shownRoute = () => settings.world.routes.find((r) => r.key === route() && r.map === id())?.points;
   createEffect(on(id, () => (setPicked(null), setDrawing(""), setRoute(""))));
@@ -100,7 +102,8 @@ export function MapPage() {
               <h3>Regions</h3>
               <For each={map()!.regions}>
                 {(r) => (
-                  <button class="tracker-row" onClick={() => {
+                  <button class="tracker-row" aria-current={region() === r.name || undefined} onClick={() => {
+                    setRegion(r.name);
                     const xs = r.shape.filter((_, i) => i % 2 === 0);
                     const ys = r.shape.filter((_, i) => i % 2 === 1);
                     setLook({ x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2, across: Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 1.4 });

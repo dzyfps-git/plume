@@ -52,7 +52,9 @@
 .tracker-row .done { color: var(--success); }
 .tracker-row > .ui-input { min-width: 0; }
 .tracker-pet { display: grid; gap: 1px; margin-bottom: var(--space-2); }
-.tracker-pet > b { padding: 0 var(--space-2); font-size: 13px; }
+.tracker-pet > b { display: flex; gap: var(--space-2); align-items: center; padding: 0 var(--space-2); font-size: 13px; }
+.tracker-pet > b .thing-pic { width: 32px; height: 32px; }
+.tracker-kinds { flex-wrap: wrap; gap: 4px; margin-bottom: var(--space-2); }
 
 .tracker-map { width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-large); }
 .tracker-map > small { display: grid; height: 100%; place-items: center; }

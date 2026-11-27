@@ -31,7 +31,7 @@ export const SLOTS = {
 } as const;
 
 /** The game's slot names, as words. */
-export const slotName = (slot: string) => ({ Magicbook: "Spellbook", EyeWear: "Eyewear", MouthWear: "Mouthwear", ShoulderWear: "On the shoulder" })[slot] ?? slot;
+export const slotName = (slot: string) => ({ Cape: "Cloak", Magicbook: "Spellbook", EyeWear: "Eyewear", MouthWear: "Mouthwear", ShoulderWear: "On the shoulder" })[slot] ?? slot;
 
 export function heard(was: Closet, said: Skins, now: number): Closet {
   if (said.what === "all") return { ids: [...new Set(said.ids)], told: now };

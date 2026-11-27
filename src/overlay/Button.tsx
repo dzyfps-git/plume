@@ -53,6 +53,7 @@ export function GameButton(props: { open: boolean }) {
       class="game-button"
       data-touch
       data-open={props.open || undefined}
+      data-dim={settings.overlay.buttonDim || undefined}
       aria-label="Overlay controls"
       aria-pressed={props.open}
       style={{ transform: `translate(${Math.round(at().x)}px, ${Math.round(at().y)}px)` }}

@@ -14,6 +14,8 @@ html, body, #root { height: 100%; background: transparent; overflow: hidden; use
 .frame-bar .ui-icon-button { width: 24px; height: 24px; border-radius: 50%; }
 .frame[data-locked] { outline-color: var(--text-muted); cursor: default; }
 .frame-bar[data-under] { top: calc(100% + 4px); bottom: auto; }
+/* Near the right edge the bar lines up with the overlay's right side instead, so it is never cut off. */
+.frame-bar[data-end] { right: 0; left: auto; }
 /* A handle along the top edge, seen only while the mouse pointer shows. */
 .frame-grip { position: absolute; right: 0; bottom: 100%; left: 0; display: flex; align-items: flex-end; justify-content: center; height: 16px; opacity: 0; cursor: grab; touch-action: none; }
 .frame-grip[data-under] { top: 100%; bottom: auto; align-items: flex-start; }
@@ -27,8 +29,9 @@ html, body, #root { height: 100%; background: transparent; overflow: hidden; use
 /* The button that opens the overlay controls. */
 .game-button {
   position: fixed; top: 0; left: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px;
-  background: var(--overlay-solid); color: var(--text); font: inherit; font-size: 12px; opacity: .5; cursor: pointer; touch-action: none; transition: opacity .2s;
+  background: var(--overlay-solid); color: var(--text); font: inherit; font-size: 12px; opacity: 1; cursor: pointer; touch-action: none; transition: opacity .2s;
 }
+.game-button[data-dim] { opacity: .5; }
 .screen[data-pointer] .game-button, .game-button[data-open] { opacity: 1; }
 .game-button[data-open] { border-color: var(--accent); }
 .game-button kbd { color: var(--text-muted); font: inherit; font-size: 11px; }
@@ -66,3 +69,17 @@ html, body, #root { height: 100%; background: transparent; overflow: hidden; use
 .game-toast b { display: block; color: var(--grade-unique); font-size: 15px; font-weight: 650; }
 .game-toast small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; }
 @keyframes toast-in { from { opacity: 0; translate: -50% -8px; } }
+
+/* The overlays, by group, each with its switch and its gear. */
+.over-list { display: grid; gap: 4px; }
+.over-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; }
+.over-item[data-open] .over-pick { border-color: var(--accent); }
+/* One overlay's own settings, beside the controls. */
+.over-side { left: 400px; width: 380px; }
+.over-side .block { margin: 0; padding: 0; border: 0; background: none; }
+.over-settings { display: grid; gap: var(--space-1); }
+.over-settings .line { padding: 0 var(--space-1); }
+@media (max-width: 900px) { .over-side { left: 24px; top: 4vh; z-index: 2; } }
+/* A corner to size an overlay by, while overlays are placed. */
+.frame-corner { position: absolute; right: -6px; bottom: -6px; width: 14px; height: 14px; border: 2px solid var(--accent); border-top: 0; border-left: 0; border-radius: 0 0 4px 0; cursor: nwse-resize; touch-action: none; }
+.frame-corner:hover { border-color: var(--text); }

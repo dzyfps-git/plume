@@ -8,6 +8,7 @@ import { App } from "./app/App";
 import { follow } from "./live/store";
 import { keepNow, useSettings } from "./store";
 import { followPaint } from "./ui/paint";
+import { followTips } from "./ui/tip";
 import "./app/app.css";
 import "./ui/game.css";
 
@@ -17,6 +18,7 @@ await useSettings(start.settings);
 await follow();
 if (!start.settings) await keepNow();
 followPaint();
+followTips();
 render(() => <App page={start.page} />, document.getElementById("root")!);
 window.House.start();
 await appWindow().show();

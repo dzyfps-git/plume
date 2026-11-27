@@ -54,7 +54,7 @@ export function followCharacters() {
         const map = (p !== before.place && p?.map) || was?.map || 0;
         // What is not said yet for this character stays as it was.
         const said = fresh ? counts(e) : was ? {} : counts(NO_ENTRIES);
-        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), read, odyle, ...said, map, power: stats.power || was?.power || 0, level: stats.level || was?.level || 0 } as Kept;
+        const next: Kept = { ...was, name: you.name, job: you.job || was?.job || "", at: was?.at ?? Date.now(), read, odyle, ...said, map, power: stats.power || was?.power || 0, level: stats.level || was?.level || 0 } as Kept;
         const same = was && JSON.stringify({ ...was, at: 0 }) === JSON.stringify({ ...next, at: 0 });
         if (!same) save({ ...kept(), [you.name]: { ...next, at: Date.now() } });
       });

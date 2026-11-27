@@ -1,7 +1,7 @@
 import { createContext, createEffect, createMemo, For, on, Show, useContext } from "solid-js";
 import { fight, near, over, sampling, shownId, skills, waitingForYou } from "../../live/store";
 import type { Row } from "../../live/types";
-import { hideNames, nameStyle, settings } from "../../store";
+import { change, hideNames, nameStyle, settings } from "../../store";
 import { barEase, type Footer, type Meter } from "../../store/settings";
 import { ClassMark, classOf } from "../../ui/classes";
 import { clock, full, percent, short } from "../../ui/format";
@@ -22,7 +22,10 @@ const Look = createContext<() => Meter>(() => settings.meter);
 const look = () => useContext(Look)();
 
 /** Nothing to show but what stays on screen out of fights. */
-export const bare = () => !fight.rows.length && !settings.meter.compact && !settings.meter.small && !settings.meter.always;
+/** In a dungeon fight with no boss the meter knows: a monster missing from the game data, or no boss at all. Said in the meter, with a
+ * way to show every fight, rather than an empty meter. */
+export const noBoss = () => !fight.rows.length && near.fighting && near.dungeon > 0 && settings.mode === "bossTargets" && !sampling();
+export const bare = () => !fight.rows.length && !noBoss() && !settings.meter.compact && !settings.meter.small && !settings.meter.always;
 
 /** One compact piece: the target with its health, the bars, and a line with what you chose under them. */
 export function MeterOverlay(props: { look?: Partial<Meter> }) {
@@ -122,6 +125,12 @@ function Whole(props: { gone: boolean; still: boolean }) {
         <header class="meter-boss">
           <BossBar title={title()} beside={pull()}>{figures()}</BossBar>
         </header>
+      </Show>
+      <Show when={!props.still && noBoss()}>
+        <p class="meter-noboss">
+          <span>Fighting, but no boss is known here.</span>
+          <button class="ui-chip" data-touch onClick={() => change((s) => (s.mode = "lastHitByMe"))}>Show every fight</button>
+        </p>
       </Show>
       <Feet of={feet().top} class="meter-foot meter-top" cleared={props.gone} />
       <Show when={cards() && all().find(({ row }) => row.you)}>

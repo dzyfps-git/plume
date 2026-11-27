@@ -15,7 +15,12 @@ import { CLASSES } from "../ui/classes";
 import { Group } from "../ui/Group";
 import { SECOND_NAMES } from "../second/parts";
 import { Chips, Choices, Line, Slide } from "../ui/Line";
+import { Pic } from "../ui/Pic";
 import { Switch } from "../ui/Switch";
+import { entries } from "../live/store";
+import { openPage } from "../api";
+import { kindOf, nameOf } from "../features/resources/logic";
+import { MeterGroups } from "./Look";
 import { LayoutGroup, ScreenMap } from "./Layouts";
 import { Preview } from "./Preview";
 import { Shell } from "./Shell";
@@ -55,6 +60,7 @@ export function OverlayGroups(props: { still?: boolean }) {
         <Switch name="Snap while moving" about="To the screen's edges and to each other." on={over().snap} set={set("snap")} />
         <Switch name="Handles while you play" about="Drag an overlay by its top edge while the mouse pointer shows. Right-click it for its menu." on={over().grips} set={set("grips")} />
         <Switch name="Button over the game" about={`Opens the overlay controls. So does ${settings.hotkeys.quick || "a key you set in Settings"}.`} on={over().button} set={set("button")} />
+        <Switch name="Dim the button" about="Half see-through while the mouse pointer is hidden in the game." on={over().buttonDim} set={set("buttonDim")} />
         <Switch name="Care for an OLED screen" about="Overlays fade after a minute without a fight, and move two points every few minutes." on={settings.oled} set={(on) => change((s) => (s.oled = on))} />
         <Switch name="Names and Combat Power hidden" about={`Yours too, for pictures and streams. ${settings.hotkeys.discreet || "No key"}`} on={settings.discreet} set={(on) => change((s) => (s.discreet = on))} />
         <Line name="Bar movement" about="Frames a second. Higher is smoother and costs more.">
@@ -64,7 +70,7 @@ export function OverlayGroups(props: { still?: boolean }) {
           <Choices name="A fight starts with" all={[["game", "The game's word"], ["you", "Your hits"], ["party", "The party's hits"]] as const} value={over().fightBy} set={set("fightBy")} />
         </Line>
         <Line name="They stay after a fight"><Slide name="They stay after a fight" least={0} most={60} step={5} value={over().linger} text={over().linger ? `${over().linger} s` : "No"} set={set("linger")} /></Line>
-        <Line name="Numbers change every" about="Shorter is more live and costs more.">
+        <Line name="Numbers change every" about="How often the numbers over the game are drawn again. 1000 ms is one second. 250 ms is smooth and light; 50 ms is the most live and uses the most CPU; 1 s is the lightest.">
           <Slide name="Numbers change every" least={50} most={1000} step={50} value={settings.updateMs} text={`${settings.updateMs} ms`} set={(v) => change((s) => (s.updateMs = v))} />
         </Line>
       </Group>
@@ -132,7 +138,60 @@ function One(props: { of: Feature; still?: boolean }) {
 }
 
 /** What else an overlay can be told, by its id. */
-const MORE: Partial<Record<string, Component>> = { boss: Boss, finish: Finish, party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control, alerts: Calls };
+const MORE: Partial<Record<string, Component>> = { boss: Boss, finish: Finish, party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control, alerts: Calls, resources: Tickets, meter: () => <MeterGroups still /> };
+
+/** Smallest and largest an overlay can be made, by its buttons, a corner or a slider. */
+export const SCALE = { least: 0.5, most: 2.5 } as const;
+
+/** Every setting of one overlay, the same in the app and over the game: shown or not, its size, when, and its own. */
+export function OverlaySettings(props: { of: Feature; over?: boolean }) {
+  const name = () => overlayName(props.of);
+  const at = () => place(settings.places[props.of.id], props.of.overlay!.place);
+  const put = (to: Partial<ReturnType<typeof at>>) => change((s) => (s.places = { ...s.places, [props.of.id]: { ...at(), ...to } }), props.over);
+  const now = () => rule(settings.rules[props.of.id]);
+  const set = (to: Partial<Rule>) => change((s) => (s.rules = { ...s.rules, [props.of.id]: { ...now(), ...to } }), props.over);
+  return (
+    <div class="over-settings">
+      <Switch name="Shown" about={props.of.overlay!.about} on={at().on} set={(on) => put({ on })} />
+      <Line name="Size"><Slide name={`Size of ${name()}`} least={SCALE.least} most={SCALE.most} step={0.05} value={at().scale} text={`${Math.round(at().scale * 100)}%`} set={(scale) => put({ scale })} /></Line>
+      <Switch name="Locked" about="Not moved or sized by mistake." on={!!at().locked} set={(locked) => put({ locked })} />
+      <Line name="When it shows">
+        <select class="ui-select" aria-label={`When ${name()} shows`} value={now().when} onChange={(e) => set({ when: e.currentTarget.value as When })}>
+          <For each={WHEN}>{(w) => <option value={w}>{WHEN_NAMES[w]}</option>}</For>
+        </select>
+      </Line>
+      <Line name="For which class">
+        <select class="ui-select" aria-label={`Class ${name()} shows for`} value={now().job} onChange={(e) => set({ job: e.currentTarget.value as Rule["job"] })}>
+          <option value="">Every class</option>
+          <For each={Object.entries(CLASSES)}>{([job, c]) => <option value={job}>{c.name}</option>}</For>
+        </select>
+      </Line>
+      <Show when={MORE[props.of.id]}>{(more) => <Dynamic component={more()} />}</Show>
+      <Show when={props.over && props.of.page}>
+        <button class="ui-button" onClick={() => void openPage(props.of.id)}>Open its page in the app</button>
+      </Show>
+    </div>
+  );
+}
+
+/** Which entries and tickets show, beside Odyle Energy: those the game counts that have a kind. */
+function Tickets() {
+  const ids = () => entries().counts.map(([id]) => id).filter((id) => kindOf(id, settings.resources));
+  const shown = (id: number) => !!settings.resources.find((r) => r.id === id)?.show;
+  const flip = (id: number) =>
+    change((s) => {
+      const at = s.resources.findIndex((r) => r.id === id);
+      if (at < 0) s.resources.push({ id, name: "", kind: "", show: true });
+      else s.resources[at] = { ...s.resources[at], show: !s.resources[at].show };
+    });
+  return (
+    <Group name="Tickets shown">
+      <Show when={ids().length} fallback={<p class="ui-muted ui-small">Your entries show here once the game has said them: open the game's dungeon list once.</p>}>
+        <For each={ids()}>{(id) => <Switch name={nameOf(id, settings.resources)} on={shown(id)} set={() => flip(id)} />}</For>
+      </Show>
+    </Group>
+  );
+}
 
 const against = (key: keyof Settings["against"]) => ({ on: settings.against[key], set: (on: boolean) => change((s) => (s.against[key] = on)) });
 
@@ -207,7 +266,9 @@ function Cooldowns() {
 function Buffs() {
   followActions();
   const b = () => settings.buffs;
-  const all = createMemo(() => known(false, true));
+  const [unnamed, setUnnamed] = createSignal(false);
+  const all = createMemo(() => known(false, true).filter((e) => e.name || unnamed()));
+  const nameless = createMemo(() => known(false, true).filter((e) => !e.name).length);
   const left = (e: { id: number; name: string }) => b().skip.some((n) => same(n, e));
   return (
     <>
@@ -218,8 +279,11 @@ function Buffs() {
       <Line name="Which buffs" about={all().length ? `${all().filter((e) => !left(e)).length} of ${all().length} shown.` : "Those of your fights are listed here."} wide>
         <div class="ui-row" role="group" aria-label="Which buffs">
           <For each={all()}>
-            {(e) => <button class="ui-chip" aria-pressed={!left(e)} onClick={() => change((s) => (s.buffs.skip = left(e) ? s.buffs.skip.filter((n) => !same(n, e)) : [...s.buffs.skip, e]))}>{called(e)}</button>}
+            {(e) => <button class="ui-chip" aria-pressed={!left(e)} onClick={() => change((s) => (s.buffs.skip = left(e) ? s.buffs.skip.filter((n) => !same(n, e)) : [...s.buffs.skip, e]))}><Pic effect={e.id} name={called(e)} />{called(e)}</button>}
           </For>
+          <Show when={nameless()}>
+            <button class="ui-chip" aria-pressed={unnamed()} onClick={() => setUnnamed(!unnamed())}>{unnamed() ? "Hide" : "Show"} {nameless()} with no name yet</button>
+          </Show>
         </div>
       </Line>
     </>
