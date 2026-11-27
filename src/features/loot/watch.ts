@@ -53,8 +53,8 @@ function feed(e: LootEvent) {
 
 /** Keeps loot and rolls as they come. `chosen` hears each item gained. */
 export function followLoot(chosen?: (item: number) => void) {
+  // Loot comes only from the game, so it is kept while overlays are placed too. Only the feed and the alerts wait.
   onLoot((m) => {
-    if (sampling()) return;
     if (m.t === "rolls") {
       let all = rolls();
       for (const e of m.events) all = rolled(all, e);
@@ -65,20 +65,29 @@ export function followLoot(chosen?: (item: number) => void) {
     }
     for (const e of m.events) {
       keep((d) => count(d, e), e.at);
+      if (sampling()) continue;
       feed(e);
       if (e.kind === "items") for (const i of e.items) if ((i.gained ?? (i.change === "new" ? i.total : 0)) > 0) chosen?.(i.item);
     }
   });
   createRoot(() => {
     // Each launch and each character starts again from what the game says first: only what grows while seen is gained.
+    // After a switch, the entries heard before it are the character before's: their Kinah waits for the game's next word.
     let who: string | undefined;
+    let fresh = true;
+    let stale: ReturnType<typeof entries> | undefined;
     createEffect(() => {
-      const [kinah, name] = [entries().kinah, near.you?.name ?? ""];
-      if (sampling() || kinah < 0) return;
+      const [e, name] = [entries(), near.you?.name ?? ""];
+      if (sampling() || e.kinah < 0) return;
       untrack(() => {
-        const fresh = who !== name;
-        who = name;
-        keep((d) => kinahSaid(d, kinah, fresh), Date.now());
+        if (who !== name) {
+          if (who !== undefined) stale = e;
+          who = name;
+          fresh = true;
+        }
+        if (e === stale) return;
+        keep((d) => kinahSaid(d, e.kinah, fresh), Date.now());
+        fresh = false;
       });
     });
   });

@@ -153,6 +153,24 @@ impl Fights {
     }
 
     pub fn save(&self, fight: &Value) -> Result<(), String> {
+        self.write(fight)?;
+        let keep = self.keep.load(SeqCst);
+        if keep > 0 {
+            for old in self.list().iter().skip(keep) {
+                let _ = self.delete(old["id"].as_str().unwrap_or_default());
+            }
+        }
+        Ok(())
+    }
+
+    /// How many more fights there is room for, before the oldest go. None when all are kept.
+    pub fn room(&self) -> Option<usize> {
+        let keep = self.keep.load(SeqCst);
+        (keep > 0).then(|| keep.saturating_sub(self.list().len()))
+    }
+
+    /// Writes a fight, and lets no other go.
+    pub fn write(&self, fight: &Value) -> Result<(), String> {
         let id = fight["id"].as_str().unwrap_or_default();
         let path = self.file(id)?;
         // The file and the list change together, so a delete in between cannot leave a fight listed that is not there.
@@ -165,12 +183,6 @@ impl Fights {
         }
         // A fight is written again as it grows, and the last is the whole of it.
         let _ = fs::remove_file(path.with_extension("bak"));
-        let keep = self.keep.load(SeqCst);
-        if keep > 0 {
-            for old in self.list().iter().skip(keep) {
-                let _ = self.delete(old["id"].as_str().unwrap_or_default());
-            }
-        }
         Ok(())
     }
 
@@ -436,6 +448,11 @@ mod tests {
         fights.save(&fight("d", 4)).unwrap();
         let ids: Vec<_> = fights.all().iter().map(|f| f["id"].as_str().unwrap().to_string()).collect();
         assert_eq!(ids, ["d", "c"]);
+        assert_eq!(fights.room(), Some(0));
+        fights.write(&fight("e", 9)).unwrap();
+        assert_eq!(fights.list().len(), 3, "a write lets no fight go");
+        fights.keep.store(0, SeqCst);
+        assert_eq!(fights.room(), None);
         let back = kept(&json!({ "id": "x", "you": 1, "rows": [1], "credits": [], "casts": [2] }));
         assert_eq!(back, json!({ "id": "x", "you": 1, "casts": [2] }));
         fs::remove_dir_all(&fights.folder).unwrap();

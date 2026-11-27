@@ -215,7 +215,7 @@ function Backup() {
   const bring = () => {
     const from = found()!;
     setFound();
-    restore(from.value).then((n) => setSaid({ text: `Settings are back, with ${n} of ${from.value.fights.length} fights.` }), told);
+    restore(from.value).then((n) => setSaid({ text: `Settings are back, with ${n} of ${from.value.fights.length} fights.${n < from.value.fights.length ? " The rest were here already, or there was no room under how many fights are kept: none of yours were let go." : ""}` }), told);
   };
   return (
     <>

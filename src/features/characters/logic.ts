@@ -3,12 +3,17 @@ import type { Entries } from "../../live/types.ts";
 import type { Kind, Resource } from "../../store/settings.ts";
 import { capOf, coming, KIND_NAMES, kindOf, RECHARGE, type Seen } from "../resources/logic.ts";
 
+/** When a character's entries and tasks were last read: what a reset is counted from. */
+export const readAt = (k: Kept) => k.read ?? k.at;
+
 export interface Kept {
   name: string;
   job: string;
   /** When the numbers last changed. */
   at: number;
   odyle: [daily: number, charged: number];
+  /** When the entries, tasks, shop and crafts were last read from the game. Missing in those kept before: then `at`. */
+  read?: number;
   counts: Entries["counts"];
   duty: Entries["duty"];
   points: Entries["points"];
@@ -67,7 +72,7 @@ export function lines(k: Kept, chosen: readonly Resource[], member: boolean, now
     const name = chosen.find((r) => r.id === id)?.name || (kind ? KIND_NAMES[kind] : "");
     if (!name) return [];
     const most = (kind && capOf(kind, member)) || 0;
-    const value = kind ? carried(kind, first, k.at, now, member) : first;
+    const value = kind ? carried(kind, first, readAt(k), now, member) : first;
     return [{ name, value, most, lost: !!most && value >= most }];
   });
 }

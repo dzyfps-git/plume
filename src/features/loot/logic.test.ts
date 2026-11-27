@@ -51,6 +51,10 @@ test("a kill that gave a stack counts once, and a relaunch gains only what grew"
   const again = kinahSaid(seen, 1200, true);
   assert.equal(kinahGained(again), 100);
   assert.equal(kinahGained(kinahSaid(again, 1500)), 400);
+  // Another character, poorer than what was gained: the gain stays.
+  const other = kinahSaid(kinahSaid(kinahSaid(d, 0, true), 50), 10, true);
+  assert.equal(kinahGained(other), 50);
+  assert.equal(kinahGained(kinahSaid(other, 30)), 70);
 });
 
 test("a roll past its end takes no later result, and names are not kept", () => {

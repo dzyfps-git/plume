@@ -42,6 +42,9 @@ test("what was done is to do again after its reset", () => {
   }
   assert.equal(rows.find((r) => r.key === "shop:100134")!.cells[0]!.n, 0);
   assert.equal(checklist([kept("A", { duty: [5, 5] })], [], false, at, () => "").find((r) => r.key === "duty")!.done, true);
+  // A map or Odyle change after the reset moves `at`, but the tasks were read before it: still to do again.
+  const moved = kept("A", { duty: [5, 5], at: later, read: at });
+  assert.equal(checklist([moved], [], false, later, () => "").find((r) => r.key === "duty")!.done, false);
 });
 
 test("every number given one kind is a row of its own, with its own name", () => {

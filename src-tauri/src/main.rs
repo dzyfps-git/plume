@@ -168,11 +168,17 @@ fn unwatch(label: &str) -> Value {
 
 #[tauri::command]
 fn engine_send(app: AppHandle, window: tauri::Window, engine: State<Arc<Engine>>, command: Value) -> Result<(), String> {
-    if command["cmd"] == "watch" {
+    // A window that lets its watch go gives the engine what another window still watches, not nothing.
+    let command = if command["cmd"] != "watch" {
+        command
+    } else if command["id"].is_null() {
+        unwatch(window.label())
+    } else {
         let mut all = WATCHES.lock().unwrap_or_else(|p| p.into_inner());
         all.retain(|(l, _)| l != window.label());
         all.push((window.label().to_string(), command.clone()));
-    }
+        command
+    };
     // Where a file is written is not for a page to say.
     if command["cmd"] == "record" {
         return Err("not from here".into());
@@ -203,12 +209,19 @@ fn restore(app: AppHandle, saved: State<Saved>, engine: State<Arc<Engine>>, valu
         settings["record"] = now["record"].as_bool().unwrap_or(false).into();
         settings["fights"]["keep"] = now["fights"]["keep"].clone();
     }
+    // The fights here stay: those brought in fill only the room left under how many are kept, newest first.
+    let mut fights: Vec<Value> = fights.iter().map(storage::kept).filter(|f| !f["you"].is_null()).collect();
+    fights.sort_by_key(|f| std::cmp::Reverse(f["start"].as_i64().unwrap_or(0)));
+    let mut room = engine.fights.room();
     let mut count = 0;
     for fight in fights {
-        let fight = storage::kept(fight);
+        if room == Some(0) {
+            break;
+        }
         let id = fight["id"].as_str().unwrap_or_default();
-        if !fight["you"].is_null() && engine.fights.load(id).is_none() && engine.fights.save(&fight).is_ok() {
+        if engine.fights.load(id).is_none() && engine.fights.write(&fight).is_ok() {
             count += 1;
+            room = room.map(|n| n - 1);
         }
     }
     save_settings(app.clone(), saved, settings)?;

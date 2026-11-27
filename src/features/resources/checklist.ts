@@ -1,7 +1,7 @@
 // The Checklist: every character as a column, and a row for each thing that is kept, used up or done.
 import type { Kind, Resource } from "../../store/settings.ts";
 import { full } from "../../ui/format.ts";
-import { carried, energy, resetsBetween, type Kept } from "../characters/logic.ts";
+import { carried, energy, readAt, resetsBetween, type Kept } from "../characters/logic.ts";
 import { power } from "../meter/logic.ts";
 import { capOf, KIND_NAMES, kindOf, nameOf, wait } from "./logic.ts";
 
@@ -83,8 +83,8 @@ export function checklist(chars: readonly Kept[], chosen: readonly Resource[], m
   const ids = [...new Set(chars.flatMap((k) => k.counts.map(([id]) => id)))].sort((a, b) => a - b);
   const named = (id: number) => chosen.find((r) => r.id === id)?.name;
   // What was done counts only in the day or week it was seen in: after a reset it is to do again.
-  const day = (k: Kept) => resetsBetween(k.at, now).day > 0;
-  const week = (k: Kept) => resetsBetween(k.at, now).week > 0;
+  const day = (k: Kept) => resetsBetween(readAt(k), now).day > 0;
+  const week = (k: Kept) => resetsBetween(readAt(k), now).week > 0;
   // A row for each of the game's numbers of a kind: two numbers you gave one kind are two rows, each with its own name.
   const ofKind = (kind: Kind): Def[] => {
     const all = ids.filter((id) => kindOf(id, chosen) === kind);
@@ -94,7 +94,7 @@ export function checklist(chars: readonly Kept[], chosen: readonly Resource[], m
         const found = count(k, at);
         if (!found) return undefined;
         const most = capOf(kind, member);
-        const n = carried(kind, found[1], k.at, now, member);
+        const n = carried(kind, found[1], readAt(k), now, member);
         return { n, most, more: plus(found[2]), lost: !!most && n >= most };
       },
     }));

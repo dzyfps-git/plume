@@ -22,11 +22,23 @@ addEventListener("storage", (e) => e.key === KEY && setSeen(kept()));
 export function followGrowth() {
   followCharacters();
   createRoot(() => {
-    let before: Record<string, number> = {};
+    // What each character had last, by name: another character's numbers are not growth. After a switch the entries
+    // heard before it are the character before's, so they wait until the game says them again.
+    const bases: Record<string, Record<string, number>> = {};
+    let who = "";
+    let stale: ReturnType<typeof entries> | undefined;
     createEffect(() => {
-      if (sampling()) return;
-      const now: Record<string, number> = Object.fromEntries(entries().counts.map(([id, n]) => [String(id), n]));
+      const name = near.you?.name;
+      if (sampling() || !name) return;
+      const e = entries();
+      if (name !== who) {
+        if (who) stale = e;
+        who = name;
+      }
+      const now: Record<string, number> = e === stale ? {} : Object.fromEntries(e.counts.map(([id, n]) => [String(id), n]));
       if (near.odyle[0] >= 0) now.odyle = near.odyle[0];
+      const before = bases[name] ?? {};
+      bases[name] = { ...before, ...now };
       untrack(() => {
         const next = { ...seen() };
         for (const [id, n] of Object.entries(now)) if (n !== before[id]) next[id] = note(next[id], before[id], n, Date.now());
@@ -34,7 +46,6 @@ export function followGrowth() {
           setSeen(next);
           localStorage.setItem(KEY, JSON.stringify(next));
         }
-        before = { ...before, ...now };
       });
     });
   });

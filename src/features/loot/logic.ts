@@ -26,7 +26,8 @@ export interface Day {
   /** Monsters you hit that died. */
   kills: Record<string, number>;
   /** Kinah today as the game said it first and last this day. -1 when not said. */
-  kinah: [first: number, last: number];
+  /** Kinah when this session began, now, and what was gained before it: other sessions, other characters. */
+  kinah: [first: number, last: number, before?: number];
 }
 
 const HOUR = 3_600_000;
@@ -67,12 +68,12 @@ export function count(day: Day, e: LootEvent): Day {
  * from here with what was gained before kept. */
 export function kinahSaid(day: Day, kinah: number, fresh = false): Day {
   if (kinah < 0) return day;
-  if (fresh) return { ...day, kinah: [kinah - kinahGained(day), kinah] };
-  return kinah === day.kinah[1] ? day : { ...day, kinah: [day.kinah[0] < 0 ? kinah : day.kinah[0], kinah] };
+  if (fresh) return { ...day, kinah: [kinah, kinah, kinahGained(day)] };
+  return kinah === day.kinah[1] ? day : { ...day, kinah: [day.kinah[0] < 0 ? kinah : day.kinah[0], kinah, day.kinah[2]] };
 }
 
 /** Kinah gained this day: what Kinah today grew by while Plume saw it. */
-export const kinahGained = (day: Day) => (day.kinah[0] < 0 ? 0 : Math.max(0, day.kinah[1] - day.kinah[0]));
+export const kinahGained = (day: Day) => (day.kinah[2] ?? 0) + (day.kinah[0] < 0 ? 0 : Math.max(0, day.kinah[1] - day.kinah[0]));
 
 /** An hour of active time, at least a minute of it. */
 export const anHour = (n: number, active: number) => (active < 60_000 ? 0 : (n * HOUR) / active);

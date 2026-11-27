@@ -36,6 +36,8 @@ export function followCharacters() {
     // Those heard before the switch were the character before's, and are not kept under the new name.
     let who = "";
     let before: { entries?: Entries; place?: ReturnType<typeof place> } = {};
+    // The entries last kept: a map or Odyle change runs this again with the same entries, which were not read again.
+    let last: Entries | undefined;
     createEffect(() => {
       const you = near.you;
       if (sampling() || !you?.name) return;
@@ -47,10 +49,12 @@ export function followCharacters() {
         }
         const was = kept()[you.name];
         const fresh = e !== before.entries;
+        const read = fresh && e !== last ? Date.now() : was?.read;
+        last = e;
         const map = (p !== before.place && p?.map) || was?.map || 0;
         // What is not said yet for this character stays as it was.
         const said = fresh ? counts(e) : was ? {} : counts(NO_ENTRIES);
-        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), odyle, ...said, map, power: stats.power || was?.power || 0, level: stats.level || was?.level || 0 } as Kept;
+        const next: Kept = { ...was, name: you.name, job: you.job, at: was?.at ?? Date.now(), read, odyle, ...said, map, power: stats.power || was?.power || 0, level: stats.level || was?.level || 0 } as Kept;
         const same = was && JSON.stringify({ ...was, at: 0 }) === JSON.stringify({ ...next, at: 0 });
         if (!same) save({ ...kept(), [you.name]: { ...next, at: Date.now() } });
       });

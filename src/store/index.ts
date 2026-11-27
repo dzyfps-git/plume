@@ -30,12 +30,17 @@ export async function useSettings(saved: unknown, overlay = false) {
   wear(overlay);
   dark.addEventListener("change", () => wear(overlay));
   await on("settings", (value) => {
-    setSettings(reconcile(read(value)));
+    // Settings from elsewhere, such as a hotkey or pets, while edits of this window wait to be written: those edits
+    // are made again on top, so neither is lost.
+    const next = read(value);
+    for (const edit of pending) edit(next);
+    setSettings(reconcile(read(next)));
     wear(overlay);
   });
 }
 
 async function keep() {
+  pending = [];
   try {
     setTaken(await saveSettings(unwrap(settings)));
   } catch (failure) {
@@ -55,10 +60,13 @@ export function keepNow() {
 }
 
 let timer = 0;
+/** The edits made since the settings were last written. */
+let pending: ((s: Settings) => void)[] = [];
 /** Changes settings now, and writes them down once the changing stops. */
 export function change(edit: (s: Settings) => void, overlay = false) {
   const next = structuredClone(unwrap(settings));
   edit(next);
+  pending.push(edit);
   setSettings(reconcile(read(next)));
   wear(overlay);
   clearTimeout(timer);
