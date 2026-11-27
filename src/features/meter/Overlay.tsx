@@ -135,12 +135,7 @@ function Whole(props: { gone: boolean; still: boolean }) {
           <BossBar title={title()} beside={pull()}>{figures()}</BossBar>
         </header>
       </Show>
-      <Show when={!props.still && noBoss()}>
-        <p class="meter-noboss">
-          <span>{whyNoBoss()}</span>
-          <button class="ui-chip" data-touch onClick={() => change((s) => (s.mode = "lastHitByMe"))}>Show every fight</button>
-        </p>
-      </Show>
+      <Show when={!props.still}><NoBoss /></Show>
       <Feet of={feet().top} class="meter-foot meter-top" cleared={props.gone} />
       <Show when={cards() && all().find(({ row }) => row.you)}>
         {(at) => <Hero at={at()} first={rows().length > 1 && ranked({ rows: rows(), ms: fight.ms }, view())[0]?.row.you} held={m().head ? held() : undefined} gap={m().gap ? gap(all()) : undefined} />}
@@ -170,23 +165,38 @@ function Small(props: { gone: boolean; still: boolean }) {
   const mine = createMemo(() => (props.gone ? undefined : ranked(fight, m().view).find(({ row }) => row.you)));
   const row = () => mine()?.row ?? alone();
   return (
-    <div class="meter-small">
-      <Show when={row()} fallback={<strong class="meter-name"><span>{!props.still && waitingForYou() ? "Waiting for your character" : "Plume"}</span></strong>}>
-        {(r) => (
-          <>
-            <ClassMark job={r().job} />
-            <span class="meter-name">
-              <span>{label(r(), hideNames(), 1)}</span>
-              <Corner of={r()} />
-            </span>
-          </>
-        )}
-      </Show>
-      <Show when={!over() && fight.target.maxHp > 0}><small class="ui-num">{percent(hp(fight), fight.target.maxHp)}</small></Show>
-      <Show when={mine()}>{(at) => <b class="ui-num" data-over={over() || undefined}>{rateText(at().rate)}</b>}</Show>
-      <Feet of={footers().small} class="small-feet" cleared={props.gone} />
-      <Show when={!props.still}><Buttons /></Show>
-    </div>
+    <>
+      <div class="meter-small">
+        <Show when={row()} fallback={<strong class="meter-name"><span>{!props.still && waitingForYou() ? "Waiting for your character" : "Plume"}</span></strong>}>
+          {(r) => (
+            <>
+              <ClassMark job={r().job} />
+              <span class="meter-name">
+                <span>{label(r(), hideNames(), 1)}</span>
+                <Corner of={r()} />
+              </span>
+            </>
+          )}
+        </Show>
+        <Show when={!over() && fight.target.maxHp > 0}><small class="ui-num">{percent(hp(fight), fight.target.maxHp)}</small></Show>
+        <Show when={mine()}>{(at) => <b class="ui-num" data-over={over() || undefined}>{rateText(at().rate)}</b>}</Show>
+        <Feet of={footers().small} class="small-feet" cleared={props.gone} />
+        <Show when={!props.still}><Buttons /></Show>
+      </div>
+      <Show when={!props.still}><NoBoss /></Show>
+    </>
+  );
+}
+
+/** Why no boss shows, and a way to show every fight: under the rows, and under the one bar too. */
+function NoBoss() {
+  return (
+    <Show when={noBoss()}>
+      <p class="meter-noboss">
+        <span>{whyNoBoss()}</span>
+        <button class="ui-chip" data-touch onClick={() => change((s) => (s.mode = "lastHitByMe"))}>Show every fight</button>
+      </p>
+    </Show>
   );
 }
 

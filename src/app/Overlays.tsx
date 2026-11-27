@@ -10,7 +10,7 @@ import { called, CONTROL, same } from "../features/effects/logic";
 import { GROUPS, overlayName, widthOf, type Feature } from "../features/types";
 import { WHEN_NAMES } from "../overlay/rules";
 import { change, settings } from "../store";
-import { FPS, place, rule, SECOND, WHEN, type Rule, type Settings, type When } from "../store/settings";
+import { FPS, place, rule, SCALE, SECOND, WHEN, type Rule, type Settings, type When } from "../store/settings";
 import { CLASSES } from "../ui/classes";
 import { Group } from "../ui/Group";
 import { SECOND_NAMES } from "../second/parts";
@@ -140,9 +140,6 @@ function One(props: { of: Feature; still?: boolean }) {
 /** What else an overlay can be told, by its id. */
 const MORE: Partial<Record<string, Component>> = { boss: Boss, finish: Finish, party: Party, force: Party, actions: Cooldowns, buffs: Buffs, control: Control, alerts: Calls, resources: Tickets, meter: () => <MeterGroups still /> };
 
-/** Smallest and largest an overlay can be made, by its buttons, a corner or a slider. */
-export const SCALE = { least: 0.5, most: 2.5 } as const;
-
 /** Every setting of one overlay, the same in the app and over the game: shown or not, its size, when, and its own. */
 export function OverlaySettings(props: { of: Feature; over?: boolean }) {
   const name = () => overlayName(props.of);
@@ -174,10 +171,11 @@ export function OverlaySettings(props: { of: Feature; over?: boolean }) {
   );
 }
 
-/** Which entries and tickets show, beside Odyle Energy: those the game counts that have a kind. */
+/** Which entries and tickets show, beside Odyle Energy: those the game counts that have a kind, and any already shown (one turned on
+ * from the Checklist without a kind), so it can be turned off here too. */
 function Tickets() {
-  const ids = () => entries().counts.map(([id]) => id).filter((id) => kindOf(id, settings.resources));
   const shown = (id: number) => !!settings.resources.find((r) => r.id === id)?.show;
+  const ids = () => entries().counts.map(([id]) => id).filter((id) => kindOf(id, settings.resources) || shown(id));
   const flip = (id: number) =>
     change((s) => {
       const at = s.resources.findIndex((r) => r.id === id);

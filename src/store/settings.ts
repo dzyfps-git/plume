@@ -20,6 +20,8 @@ export const BUTTONS = ["view", "clear", "history", "compact", "lock", "sound", 
 /** What can stand beside a row's number, and by a name. */
 export const SIDES = ["", "total", "share", "boss"] as const;
 export const CORNERS = ["power", "level", ""] as const;
+/** Smallest and largest an overlay can be made, by its buttons, a corner or a slider; a saved size is kept within it too. */
+export const SCALE = { least: 0.5, most: 2.5 } as const;
 export const THEMES = ["glass", "minimal", "solid", "light"] as const;
 export const OUTLINES = ["", "soft", "solid"] as const;
 export const FONTS = ["house", "narrow", "round", "mono"] as const;
@@ -496,7 +498,7 @@ export const place = (v: unknown, d: Place): Place => {
   const p = object(v);
   const height = number(p.height, 0, 5000, 0);
   return {
-    on: flag(p.on, d.on), x: number(p.x, 0, 1, d.x), y: number(p.y, 0, 1, d.y), scale: number(p.scale, 0.6, 2, d.scale),
+    on: flag(p.on, d.on), x: number(p.x, 0, 1, d.x), y: number(p.y, 0, 1, d.y), scale: number(p.scale, SCALE.least, SCALE.most, d.scale),
     ...(height > 0 && { height }),
     ...(p.locked === true && { locked: true }),
   };

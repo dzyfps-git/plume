@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { barEase, DEFAULTS, place, read, sizeOfAll } from "./settings.ts";
+import { barEase, DEFAULTS, place, read, SCALE, sizeOfAll } from "./settings.ts";
 
 test("the old key for the overlay controls moves to Alt+E once, and a key you chose stays", () => {
   assert.equal(read({ version: 1, hotkeys: { quick: "Ctrl+Alt+F8" } }).hotkeys.quick, "Alt+E");
@@ -39,7 +39,9 @@ test("settings read twice are the same", () => {
 
 test("a place stays on the screen", () => {
   const d = { on: true, x: 0.1, y: 0.2, scale: 1 };
-  assert.deepEqual(place({ x: 7, y: Number.NaN, scale: 0 }, d), { on: true, x: 1, y: 0.2, scale: 0.6 });
+  assert.deepEqual(place({ x: 7, y: Number.NaN, scale: 0 }, d), { on: true, x: 1, y: 0.2, scale: SCALE.least });
+  // The controls go as far as a saved size may.
+  assert.equal(place({ scale: SCALE.most }, d).scale, SCALE.most);
 });
 
 test("bars move in as many steps as the frame rate gives", () => {

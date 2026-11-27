@@ -1,12 +1,11 @@
 import { createEffect, createSignal, on, onCleanup, onMount, Show } from "solid-js";
 import { editOverlays } from "../api";
-import { SCALE } from "../app/Overlays";
 import { setOpened } from "./Panel";
 import { overlayName, widthOf, type Feature } from "../features/types";
 import { settings } from "../store";
-import { place, sizeOfAll } from "../store/settings";
+import { place, SCALE, sizeOfAll } from "../store/settings";
 import { hold, snap, toPixels, toShare, type Spot } from "./layout";
-import { move as movePlaces } from "./undo";
+import { move as movePlaces, remember, snapshot } from "./undo";
 import { drag } from "./zones";
 
 interface Props {
@@ -54,9 +53,9 @@ export function Frame(props: Props) {
   };
   // On a whole point of the screen: between two, everything in it would be soft.
   const whole = (v: number) => Math.round(v * devicePixelRatio) / devicePixelRatio;
-  const put = (edit: Partial<ReturnType<typeof at>>) => {
+  const put = (edit: Partial<ReturnType<typeof at>>, record = true) => {
     const next = { ...at(), ...edit, height: size().height / zoom() };
-    movePlaces((all) => ({ ...all, [props.feature.id]: next }));
+    movePlaces((all) => ({ ...all, [props.feature.id]: next }), record);
   };
   const putAt = (to: Spot) => put(toShare(to, size(), screen()));
 
@@ -110,19 +109,22 @@ export function Frame(props: Props) {
     frame.addEventListener("lostpointercapture", drop, { once: true });
   }
 
-  /** Sizes it by its corner, as far as the pointer goes, kept within SCALE. */
+  /** Sizes it by its corner, as far as the pointer goes, kept within SCALE. Shown as it goes, and one step to undo on release. */
   function stretch(event: PointerEvent) {
     if (event.button !== 0 || at().locked) return;
     event.stopPropagation();
     const el = event.currentTarget as HTMLElement;
     el.setPointerCapture(event.pointerId);
-    const [x0, from, width] = [event.clientX, at().scale, size().width];
+    const [x0, from, width, before] = [event.clientX, at().scale, size().width, snapshot()];
     const move = (e: PointerEvent) => {
       const want = (from * (width + e.clientX - x0)) / width;
-      scale(Math.min(SCALE.most, Math.max(SCALE.least, want)) - at().scale);
+      scale(Math.min(SCALE.most, Math.max(SCALE.least, want)) - at().scale, false);
     };
     el.addEventListener("pointermove", move);
-    el.addEventListener("lostpointercapture", () => el.removeEventListener("pointermove", move), { once: true });
+    el.addEventListener("lostpointercapture", () => {
+      el.removeEventListener("pointermove", move);
+      if (at().scale !== from) remember(before);
+    }, { once: true });
   }
 
   function walk(event: KeyboardEvent) {
@@ -134,14 +136,15 @@ export function Frame(props: Props) {
   }
 
   // A locked overlay keeps its size too. It grows from the edge nearest the screen's side, so that edge stays where it is.
-  const scale = (by: number) => {
+  const scale = (by: number, record = true) => {
     if (at().locked) return;
     const next = Math.round(Math.min(SCALE.most, Math.max(SCALE.least, at().scale + by)) * 20) / 20;
+    if (next === at().scale) return;
     const k = next / at().scale;
     const [now, own] = [spot(), { width: size().width * k, height: size().height * k }];
     const keep = (v: number, share: number, was: number, will: number) => (share > 0.5 ? v + was - will : v);
     const to = { x: keep(now.x, at().x, size().width, own.width), y: keep(now.y, at().y, size().height, own.height) };
-    put({ scale: next, ...toShare(to, own, screen()) });
+    put({ scale: next, ...toShare(to, own, screen()) }, record);
   };
 
   return (
