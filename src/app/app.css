@@ -180,3 +180,8 @@ label.ui-button:has(:focus-visible) { outline: 2px solid var(--accent); outline-
 .side-row[aria-checked="true"] .side-check { border-color: var(--tint, var(--accent)); background: var(--tint, var(--accent)); }
 .side-row[aria-checked="true"] .side-check::after { content: ""; position: absolute; left: 3.5px; top: 0.5px; width: 4px; height: 8px; border: solid #101014; border-width: 0 2px 2px 0; rotate: 45deg; }
 .side-row { grid-template-columns: 14px minmax(0, 1fr) auto; min-height: 34px; }
+
+/* A picked tab looks picked, like a pressed chip. */
+.ui-chip[aria-selected="true"] { border-color: var(--accent); background: var(--surface-selected); }
+.ui-switch-text[data-pic] { display: flex; align-items: center; gap: 8px; }
+.ui-chip > .pic { width: 18px; height: 18px; }

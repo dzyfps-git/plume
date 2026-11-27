@@ -132,10 +132,11 @@ fn apply(app: &AppHandle, before: &Value, settings: &Value) -> Vec<String> {
     hotkeys::set(keys.map(|(action, key)| (action.clone(), key.as_str().unwrap_or_default().to_string())).collect())
 }
 
-/// Whether a dummy turns training on by itself, and how long a run is.
+/// Whether a dummy turns training on by itself, how long a run is, and how long without a hit ends one.
 fn train(engine: &Engine, settings: &Value) {
     let ms = settings["training"]["seconds"].as_i64().unwrap_or(0) * 1000;
-    let _ = engine.send(json!({ "cmd": "train", "auto": settings["training"]["auto"] == true, "ms": ms }));
+    let idle = settings["training"]["idle"].as_i64().unwrap_or(6) * 1000;
+    let _ = engine.send(json!({ "cmd": "train", "auto": settings["training"]["auto"] == true, "ms": ms, "idle": idle }));
 }
 
 /// Records the session into a file of its own, or stops.

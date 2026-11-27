@@ -8,6 +8,7 @@ import { followActions, recent, skills } from "../actions/store";
 import { SignalLines } from "../alerts/SignalLines";
 import { ANY_ITEM, buffs, called, chosenName } from "../effects/logic";
 import { CLASSES } from "../../ui/classes";
+import { Pic } from "../../ui/Pic";
 import { blank, effectsOf, KIND_NAMES, placeOf, ruleName as name, SETS, starter, VALUE_NAMES } from "./logic";
 import "./auras.css";
 
@@ -156,19 +157,26 @@ function Ready() {
     return [...unique.values()];
   });
   const chosen = (n: Named) => settings.ready.some((r) => chosenName(r) === chosenName(n));
+  // An effect the game data has no name for says nothing but its number: those wait behind a switch.
+  const [unnamed, setUnnamed] = createSignal(false);
+  const nameless = () => list().filter((n) => n.id && !n.name && !chosen(n)).length;
   return (
     <section class="block">
       <h2>Ready check</h2>
       <p class="ui-muted">What you want on before a pull. The Ready check overlay says what is missing, out of fights.</p>
-      <For each={list()}>
+      <For each={list().filter((n) => n.name || !n.id || chosen(n) || unnamed())}>
         {(n) => (
           <Switch
+            pic={n.id ? <Pic effect={n.id} name={chosenName(n)} /> : undefined}
             name={chosenName(n)}
             on={chosen(n)}
             set={(on) => change((s) => (s.ready = on ? [...s.ready, { ...n }] : s.ready.filter((r) => chosenName(r) !== chosenName(n))))}
           />
         )}
       </For>
+      <Show when={nameless()}>
+        <button class="ui-chip" aria-pressed={unnamed()} onClick={() => setUnnamed(!unnamed())}>{unnamed() ? "Hide" : "Show"} {nameless()} effects with no name yet</button>
+      </Show>
     </section>
   );
 }

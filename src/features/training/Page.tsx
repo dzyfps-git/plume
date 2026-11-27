@@ -1,4 +1,8 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { IDLES } from "../../store/settings";
+import { Choices } from "../../ui/Line";
+import { alike } from "../history/logic";
+import { Report } from "../report/Report";
 import { runOver } from "./logic";
 import { SHOWN, verdicts } from "./verdicts";
 import { Grade } from "../best/Grade";
@@ -67,7 +71,9 @@ export function TrainingPage() {
   createEffect(() => {
     if (you()?.damage) setHitAt(Date.now());
   });
-  const over = () => fight.timeup || (!!you()?.damage && runOver(hitAt(), now()));
+  const over = () => fight.timeup || (!!you()?.damage && runOver(hitAt(), now(), settings.training.idle * 1000));
+  // The run opened below, to see it again.
+  const [opened, setOpened] = createSignal("");
   const length = () => seconds() * 1000;
   const left = () => Math.max(0, length() - fight.ms);
   const [group, setGroup] = createSignal("");
@@ -84,6 +90,10 @@ export function TrainingPage() {
         <h1>Training dummy</h1>
         <RunLength after={begin} />
         <label class="ui-row">
+          <small class="ui-muted">Ends after</small>
+          <Choices name="A run ends after this long without a hit" all={IDLES.map((n) => [n as number, n ? `${n} s still` : "Never"] as const)} value={settings.training.idle} set={(n) => change((s) => (s.training.idle = n))} />
+        </label>
+        <label class="ui-row">
           <small class="ui-muted">Goal a second</small>
           <input class="ui-input ui-num goal-input" type="number" min="0" step="1000" aria-label="Damage a second to reach" value={goal() || ""} placeholder="None"
             onChange={(e) => change((s) => (s.training.goal = Math.max(0, Math.round(e.currentTarget.valueAsNumber || 0))))} />
@@ -93,7 +103,23 @@ export function TrainingPage() {
           New run
         </button>
       </header>
-      <Show when={fight.rows.length && live()} fallback={<Waiting idle="Hit a training dummy. The clock starts with your first hit." />}>
+      <Show when={fight.rows.length && live()} fallback={
+        <>
+          <Waiting idle="Hit a training dummy. The clock starts with your first hit, and a run you stop hitting is kept by itself." />
+          <Show when={runs()[0]}>
+            {(last) => (
+              <section class="block">
+                <h2>Last run</h2>
+                <div class="stats">
+                  <div class="stat" data-hero><small>Damage a second</small><b class="ui-num">{short(last().you?.dps ?? 0)}</b></div>
+                  <div class="stat"><small>Damage</small><b class="ui-num">{short(last().you?.damage ?? 0)}</b></div>
+                  <div class="stat"><small>Time</small><b class="ui-num">{clock(last().ms)}</b></div>
+                </div>
+              </section>
+            )}
+          </Show>
+        </>
+      }>
         <div class="stats">
           <div class="stat" data-hero>
             <small>{over() ? "Result, a second" : "Damage a second"}</small>
@@ -136,10 +162,11 @@ export function TrainingPage() {
             </div>
           </Show>
           <datalist id="run-groups"><For each={groups()}>{(g) => <option value={g} />}</For></datalist>
-          <p class="ui-muted ui-small">Open one in History to compare two runs: what was luck, what was a real gain.</p>
+          <p class="ui-muted ui-small">Open a run to see it again. In History, two runs side by side show what was luck and what was a real gain.</p>
           <For each={listed()}>
             {(f) => (
-              <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 130px 110px auto auto 90px" }}>
+              <>
+              <div class="ui-row-item" style={{ "--columns": "minmax(0, 1fr) 130px 110px auto auto 80px 90px 32px" }}>
                 <span>
                   {named()[f.id]?.name || f.target}{" "}
                   <Show when={bestOf(best(), f)?.id === f.id}>
@@ -158,8 +185,14 @@ export function TrainingPage() {
                 <input class="ui-input" list="run-groups" aria-label={`Group of the run at ${time(f.start)}`} placeholder="Group" maxLength={40} value={named()[f.id]?.group ?? ""} onChange={(e) => nameRun(f.id, { group: e.currentTarget.value })} />
                 <span class="ui-muted">{day(f.start)}, {time(f.start)}</span>
                 <span class="ui-muted ui-num">{clock(f.ms)}</span>
+                <span class="ui-num">{short(f.you?.damage ?? 0)}</span>
                 <span class="ui-share" data-goal={(goal() && (f.you?.dps ?? 0) >= goal()) || undefined} style={{ "--share": (f.you?.dps ?? 0) / Math.max(1, goal(), ...runs().map((r) => r.you?.dps ?? 0)) }}>{short(f.you?.dps ?? 0)}</span>
+                <button class="ui-icon-button" aria-expanded={opened() === f.id} aria-label={opened() === f.id ? "Close this run" : "Open this run"} onClick={() => setOpened(opened() === f.id ? "" : f.id)}>{opened() === f.id ? "" : ""}</button>
               </div>
+              <Show when={opened() === f.id}>
+                <div class="run-open"><Report fight={f} best={bestOf(best(), f)} others={alike(runs(), f)} /></div>
+              </Show>
+              </>
             )}
           </For>
         </section>

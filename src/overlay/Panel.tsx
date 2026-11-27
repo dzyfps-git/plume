@@ -1,6 +1,7 @@
-import { For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { openPage } from "../api";
-import { overlayName, type Feature } from "../features/types";
+import { OverlaySettings } from "../app/Overlays";
+import { GROUPS, overlayName, type Feature } from "../features/types";
 import { change, settings } from "../store";
 import type { Settings } from "../store/settings";
 import { Choices, Slide } from "../ui/Line";
@@ -8,6 +9,10 @@ import { Switch } from "../ui/Switch";
 import { canRedo, canUndo, move, redo, undo } from "./undo";
 
 const RATES = [50, 100, 250, 500, 1000] as const;
+
+/** The overlay whose settings are open beside the controls: by its gear here, or the gear on the overlay itself. */
+const [opened, setOpened] = createSignal("");
+export { opened, setOpened };
 const AFTER = [0, 5, 10, 20, 30, 60] as const;
 
 /** Over the game, as the overlay controls key or button opens it: which overlays are on, and how all of them behave. Overlays can be dragged meanwhile. */
@@ -25,19 +30,28 @@ export function Panel(props: { all: readonly Feature[]; on: (f: Feature) => bool
         <button class="ui-icon-button" aria-label="Redo" aria-keyshortcuts="Control+Y" disabled={!canRedo()} onClick={redo}>{"\ue7a6"}</button>
         <button class="ui-icon-button" aria-label="Close" aria-keyshortcuts="Escape" onClick={props.done}>{"\ue8bb"}</button>
       </header>
-      <small class="over-hint">Drag any overlay to move it. Scroll on one to size it.</small>
+      <small class="over-hint">Drag any overlay to move it. Drag its corner, or scroll on it, to size it. The gear beside one opens its own settings.</small>
 
-      <h3>Overlays</h3>
-      <div class="over-grid">
-        <For each={props.all}>
-          {(f) => (
-            <button class="over-pick" aria-pressed={props.on(f)} onClick={() => props.turn(f, !props.on(f))}>
-              <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": f.color }}>{f.icon}</span>
-              <span>{overlayName(f)}</span>
-            </button>
-          )}
-        </For>
-      </div>
+      <For each={GROUPS}>
+        {(group) => (
+          <Show when={props.all.some((f) => f.overlay!.group === group)}>
+            <h3>{group}</h3>
+            <div class="over-list">
+              <For each={props.all.filter((f) => f.overlay!.group === group)}>
+                {(f) => (
+                  <div class="over-item" data-open={opened() === f.id || undefined}>
+                    <button class="over-pick" aria-pressed={props.on(f)} onClick={() => props.turn(f, !props.on(f))}>
+                      <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": f.color }}>{f.icon}</span>
+                      <span>{overlayName(f)}</span>
+                    </button>
+                    <button class="ui-icon-button" aria-label={`Settings of ${overlayName(f)}`} aria-expanded={opened() === f.id} onClick={() => setOpened(opened() === f.id ? "" : f.id)}>{""}</button>
+                  </div>
+                )}
+              </For>
+            </div>
+          </Show>
+        )}
+      </For>
 
       <h3>All overlays</h3>
       <div class="line">
@@ -51,6 +65,7 @@ export function Panel(props: { all: readonly Feature[]; on: (f: Feature) => bool
       <div class="over-line">
         <span>Numbers change every</span>
         <Choices name="Numbers change every" all={RATES.map((n) => [n, n < 1000 ? `${n} ms` : "1 s"] as const)} value={settings.updateMs} set={(n) => set((s) => (s.updateMs = n))} />
+        <small class="over-hint">How often the numbers over the game are drawn again. 1000 ms is one second. 250 ms is smooth and light; 50 ms is the most live and uses the most CPU; 1 s is the lightest.</small>
       </div>
       <Switch name="Snap while moving" on={settings.overlay.snap} set={over("snap")} />
       <Switch name="Handles while you play" about="Drag an overlay by its top edge while the mouse pointer shows. Right-click it for its menu." on={settings.overlay.grips} set={over("grips")} />
@@ -80,6 +95,18 @@ export function Panel(props: { all: readonly Feature[]; on: (f: Feature) => bool
         <button class="ui-button" onClick={reset}>Put all back</button>
         <button class="ui-button" data-main onClick={props.done}>Done</button>
       </footer>
+      <Show when={props.all.find((f) => f.id === opened())}>
+        {(f) => (
+          <div class="over-panel over-side" role="dialog" aria-label={`Settings of ${overlayName(f())}`}>
+            <header>
+              <span class="ui-icon" aria-hidden="true" style={{ "--icon-color": f().color }}>{f().icon}</span>
+              <strong>{overlayName(f())}</strong>
+              <button class="ui-icon-button" aria-label="Close its settings" onClick={() => setOpened("")}>{""}</button>
+            </header>
+            <OverlaySettings of={f()} over />
+          </div>
+        )}
+      </Show>
     </div>
   );
 }

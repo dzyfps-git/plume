@@ -11,6 +11,10 @@ export interface State {
   /** Started after you entered the world, so some names are unknown until a zone change. */
   late: boolean;
   devices: number;
+  /** Bytes from the game were lost on the way in the last minute, so a spawn or a hit may be missing. */
+  lossy: boolean;
+  /** The monster you hit last came before the engine saw it arrive: what it is, and whether it is a boss, is unknown. */
+  unseen: boolean;
 }
 
 /** How much was read of each kind since the engine began. */

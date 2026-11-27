@@ -203,7 +203,7 @@ function Settings(props: { everyone: Kept[]; rows: Row[]; close: () => void }) {
       </For>
       <Show when={ids().length}>
         <h3>The game's numbers</h3>
-        <p class="ui-muted ui-small">The game gives each entry a number. Those without a known name can be named here. On the meter shows it in the meter's footer and the Odyle and tickets overlay.</p>
+        <p class="ui-muted ui-small">The game counts more than Plume can name yet. A number shows on the Checklist once you give it a name or a kind here. On the meter shows it in the meter's footer and the Odyle and tickets overlay.</p>
         <For each={ids()}>
           {(id) => (
             <div class="check-id">

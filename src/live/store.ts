@@ -3,6 +3,7 @@ import { createStore, reconcile } from "solid-js/store";
 import { on, startState } from "../api";
 import { settings } from "../store";
 import { NO_ENTRIES, NO_FIGHT, NO_NEAR, type Entries, type Fight, type Happened, type LootEvent, type RollEvent, type Near, type Position, type Skins, type Reads, type Skill, type State, type Status } from "./types";
+import { fillJobs, type Jobs } from "./jobs";
 import { limit, worth } from "./worth";
 
 const [engine, setEngine] = createSignal<{ status: Status; message?: string }>({ status: "off" });
@@ -21,12 +22,29 @@ const listeners = new Set<(h: Happened) => void>();
 /** True when the game is connected. */
 export const live = () => engine().status === "running" && !!state()?.live;
 /** The game talks, but has not yet said who you are: a zone change or a trip to character select makes it say. */
-export const waitingForYou = () => live() && !near.you?.name;
+// By what the game said, not by what is shown: while overlays are placed, a made-up character is shown.
+export const waitingForYou = () => live() && !youSaid();
+const [youSaid, setYouSaid] = createSignal("");
 export const WAIT_FOR_YOU = "Change zone, or go to character select and log back in, so Plume can read your game data.";
 
 /** Rows keep their place in the page by player, so a bar moves instead of being drawn again. */
 const showFight = (next: Fight) => setFight(reconcile(structuredClone(next), { key: "id" }));
 let told: Fight = NO_FIGHT;
+/** Classes seen, by name, on this PC: see `fillJobs`. */
+const JOBS = "jobs";
+const jobs: Jobs = (() => {
+  try {
+    return (JSON.parse(localStorage.getItem(JOBS) ?? "{}") as Jobs) ?? {};
+  } catch {
+    return {};
+  }
+})();
+const knowJobs = <T extends Fight | Near>(of: T): T => {
+  const before = JSON.stringify(jobs);
+  const filled = fillJobs(of, jobs);
+  if (JSON.stringify(jobs) !== before) localStorage.setItem(JOBS, JSON.stringify(jobs));
+  return filled;
+};
 
 /** Nobody has hit the target for a while. */
 const [over, setOver] = createSignal(true);
@@ -37,6 +55,7 @@ export { shownId };
 function hearFight(next: Fight, force = false) {
   // Engines of protocol 1 before 0.6 say no hit breakdown of yours.
   if (!next.own) next = { ...next, own: [0, 0, 0] };
+  next = knowJobs(next);
   if (!force && !worth(next, settings.fights.only)) return;
   const hit = next.total !== told.total || next.target.code !== told.target.code;
   if (next.target.code !== told.target.code || next.total < told.total || !next.rows.length) setShownId("");
@@ -58,7 +77,9 @@ let said: Near = NO_NEAR;
 const showNear = (next: Near) => setNear(reconcile(structuredClone(next), { key: "key" }));
 
 function hearNear(next: Near) {
+  next = knowJobs(next);
   said = next;
+  setYouSaid(next.you?.name ?? "");
   if (!sampling()) showNear(next);
 }
 

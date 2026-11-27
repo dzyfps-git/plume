@@ -14,11 +14,17 @@ export const canRedo = () => ahead().length > 0;
 const now = (): Places => structuredClone(unwrap(settings.places));
 const show = (places: Places) => change((s) => (s.places = places), true);
 
-/** Changes where overlays are, so that it can be taken back. */
-export function move(edit: (places: Places) => Places) {
-  setPast((all) => [...all, now()].slice(-MOST));
-  setAhead([]);
+/** Changes where overlays are, so that it can be taken back. Unrecorded, it is a preview: `remember` the start once it ends. */
+export function move(edit: (places: Places) => Places, record = true) {
+  if (record) remember(now());
   show(edit(now()));
+}
+
+/** Where overlays were before a change, to take it back to. */
+export const snapshot = now;
+export function remember(before: Places) {
+  setPast((all) => [...all, before].slice(-MOST));
+  setAhead([]);
 }
 
 export function undo() {

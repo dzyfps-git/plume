@@ -18,8 +18,10 @@ export const FOOTER = ["ping", "total", "flight", "odyle", "entries", "kina", "p
 /** Buttons on the meter. */
 export const BUTTONS = ["view", "clear", "history", "compact", "lock", "sound", "clock", "news", "second", "menu"] as const;
 /** What can stand beside a row's number, and by a name. */
-export const SIDES = ["", "total", "share"] as const;
+export const SIDES = ["", "total", "share", "boss"] as const;
 export const CORNERS = ["power", "level", ""] as const;
+/** Smallest and largest an overlay can be made, by its buttons, a corner or a slider; a saved size is kept within it too. */
+export const SCALE = { least: 0.5, most: 2.5 } as const;
 export const THEMES = ["glass", "minimal", "solid", "light"] as const;
 export const OUTLINES = ["", "soft", "solid"] as const;
 export const FONTS = ["house", "narrow", "round", "mono"] as const;
@@ -35,6 +37,8 @@ export const TONES = ["bonus", "best", "ready", "ending", "danger", "you"] as co
 export const KEEP = [5, 10, 25, 50, 100, 0] as const;
 /** Seconds of a training run. 0 is no limit. */
 export const RUNS = [30, 60, 120, 180, 300, 0] as const;
+/** Seconds without a hit that end a training run, 0 for never. */
+export const IDLES = [3, 6, 10, 20, 30, 0] as const;
 /** What a ticket or an entry can be. Each has an icon in `src/ui/icons.tsx`. */
 /** What the Checklist does with rows that are done: shows them, hides them, or puts them together at the end. */
 export const COMPLETED = ["show", "hide", "group"] as const;
@@ -232,6 +236,8 @@ export interface Meter {
   right: (typeof SIDES)[number];
   /** Numbers with all their figures. */
   full: boolean;
+  /** "/s" after a row's number. */
+  perSecond: boolean;
   icons: boolean;
   /** By a name: yours, or the party's too. */
   corner: (typeof CORNERS)[number];
@@ -316,6 +322,8 @@ export interface Settings {
     grips: boolean;
     /** A button over the game that opens the overlay controls, and where it is, in shares of the screen. */
     button: boolean;
+    /** The button half see-through while the mouse pointer is hidden. Off: always seen in full. */
+    buttonDim: boolean;
     buttonAt: { x: number; y: number };
     /** The game's own UI size, 1 to 5, that overlays grow and shrink with. */
     game: number;
@@ -327,7 +335,7 @@ export interface Settings {
   colors: Partial<Record<Exclude<Job, "">, string>>;
   /** When a fight is over, in seconds without a hit, and what is shown of which. */
   fights: { end: number; bossEnd: number; after: "keep" | "clear"; only: (typeof ONLY)[number]; keep: number };
-  training: { auto: boolean; seconds: number; /** Damage a second to reach. 0 is none. */ goal: number };
+  training: { auto: boolean; seconds: number; /** Damage a second to reach. 0 is none. */ goal: number; /** Seconds without a hit that end a run; the next hit starts another. 0: never. */ idle: number };
   party: { columns: 1 | 2; width: number; height: number; icons: "on" | "beside" | "off"; most: number; order: "game" | "role" | "name"; you: boolean; health: "percent" | "number" | "both" | "off"; mark: boolean; power: boolean; low: number };
   cooldowns: { ready: boolean; dim: number; size: number };
   buffs: { as: "tiles" | "bars"; items: "with" | "apart" | "off"; skip: Named[] };
@@ -407,9 +415,9 @@ export const DEFAULTS: Settings = {
     // Empty, so that none takes a key you use.
     compact: "", lock: "", peek: "", discreet: "", history: "", details: "", settings: "", buffs: "", actions: "", second: "", stopwatch: "",
   },
-  overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true, linger: 0, fightBy: "game", grips: true, button: true, buttonAt: { x: 0.62, y: 0.004 }, game: 3 },
+  overlay: { on: true, onlyInGame: true, opacity: 0.62, hideEmpty: true, size: 1, snap: true, linger: 0, fightBy: "game", grips: true, button: true, buttonDim: false, buttonAt: { x: 0.62, y: 0.004 }, game: 3 },
   meter: {
-    style: "bar", rows: 8, left: "share", right: "", full: false, icons: true, corner: "power", corners: "all", head: true, boss: true, clock: true, ghost: false,
+    style: "bar", rows: 8, left: "share", right: "", full: false, perSecond: false, icons: true, corner: "power", corners: "all", head: true, boss: true, clock: true, ghost: false,
     hideNames: false, view: "damage", edge: "bottom", footer: ["ping", "odyle", "entries"], footerLocked: true, footerSmall: ["ping", "odyle"],
     compact: true, small: false, locked: true, buttons: ["view", "clear", "history", "compact", "lock", "menu"], buttonsLocked: [],
     top: false, always: false, gap: true, burst: true, dead: true, casts: false, buffShare: false, who: "everyone", solo: true,
@@ -418,7 +426,7 @@ export const DEFAULTS: Settings = {
   tones: {},
   colors: {},
   fights: { end: 30, bossEnd: 45, after: "keep", only: "", keep: 0 },
-  training: { auto: true, seconds: 60, goal: 0 },
+  training: { auto: true, seconds: 60, goal: 0, idle: 6 },
   party: { columns: 1, width: 260, height: 32, icons: "on", most: 4, order: "game", you: true, health: "percent", mark: true, power: false, low: 25 },
   cooldowns: { ready: true, dim: 0.5, size: 36 },
   buffs: { as: "tiles", items: "with", skip: [] },
@@ -490,7 +498,7 @@ export const place = (v: unknown, d: Place): Place => {
   const p = object(v);
   const height = number(p.height, 0, 5000, 0);
   return {
-    on: flag(p.on, d.on), x: number(p.x, 0, 1, d.x), y: number(p.y, 0, 1, d.y), scale: number(p.scale, 0.6, 2, d.scale),
+    on: flag(p.on, d.on), x: number(p.x, 0, 1, d.x), y: number(p.y, 0, 1, d.y), scale: number(p.scale, SCALE.least, SCALE.most, d.scale),
     ...(height > 0 && { height }),
     ...(p.locked === true && { locked: true }),
   };
@@ -648,6 +656,7 @@ export function read(value: unknown): Settings {
       fightBy: one(overlay.fightBy, ["game", "you", "party"] as const, d.overlay.fightBy),
       grips: flag(overlay.grips, d.overlay.grips),
       button: flag(overlay.button, d.overlay.button),
+      buttonDim: flag(overlay.buttonDim, d.overlay.buttonDim),
       buttonAt: { x: number(object(overlay.buttonAt).x, 0, 1, d.overlay.buttonAt.x), y: number(object(overlay.buttonAt).y, 0, 1, d.overlay.buttonAt.y) },
       game: Math.round(number(overlay.game, 1, 5, d.overlay.game)),
     },
@@ -656,6 +665,7 @@ export function read(value: unknown): Settings {
       rows: Math.round(number(meter.rows, 1, 24, m.rows)),
       ...sides(meter, m),
       full: flag(meter.full, m.full),
+      perSecond: flag(meter.perSecond, m.perSecond),
       icons: flag(meter.icons, m.icons),
       // Before the corner could be chosen, Combat Power had a switch.
       corner: meter.corner === undefined && typeof meter.power === "boolean" ? (meter.power ? "power" : "") : one(meter.corner as Meter["corner"], CORNERS, m.corner),
@@ -711,6 +721,7 @@ export function read(value: unknown): Settings {
       auto: flag(training.auto, d.training.auto),
       seconds: one(training.seconds as number, RUNS as readonly number[], d.training.seconds),
       goal: Math.round(number(training.goal, 0, 1e9, d.training.goal)),
+      idle: one(training.idle as number, IDLES as readonly number[], d.training.idle),
     },
     party: {
       columns: one(party.columns as 1 | 2, [1, 2] as const, d.party.columns),

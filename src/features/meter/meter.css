@@ -61,6 +61,7 @@
 .meter-row small { color: color-mix(in srgb, var(--text) 86%, transparent); font-size: calc(10.5px * var(--size, 1)); }
 .meter-row b { min-width: 42px; font-size: calc(13.5px * var(--size, 1)); font-weight: 700; text-align: right; }
 .meter-share { min-width: 34px; text-align: right; }
+.meter-unit { margin-left: 1px; font-weight: 500; }
 .meter-row .meter-deaths { color: var(--tone-danger); }
 .meter-row[data-you] { box-shadow: inset 0 0 0 1px var(--tone-you); }
 .meter-row .meter-gap { color: color-mix(in srgb, var(--text) 62%, transparent); }
@@ -198,3 +199,5 @@
   .meter-row, .meter-bar, .meter-got { transition: none; }
   .pop { animation: none; }
 }
+.meter-noboss { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin: 4px 8px; color: var(--text-muted); font-size: 12px; }
+.meter-noboss .ui-chip { height: 24px; font-size: 12px; }

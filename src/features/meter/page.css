@@ -26,3 +26,4 @@
 .skills-name i { position: absolute; inset: 0; z-index: -1; border-radius: 6px; background: color-mix(in srgb, var(--class) 34%, transparent); transform: scaleX(var(--length)); transform-origin: left; transition: transform var(--motion-glide); }
 .goal-input { width: 110px; }
 .stat[data-goal] b, .ui-share[data-goal] { color: var(--tone-best, var(--accent)); }
+.run-open { margin: 4px 0 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-large); }

@@ -1,9 +1,13 @@
 import { createMemo, createResource, createSignal, For, Match, Show, Switch } from "solid-js";
+import { openPage } from "../../api";
 import { change, settings } from "../../store";
+import { GameIcon } from "../../ui/Pic";
+import { flip } from "../../ui/sets";
 import type { Layer } from "../../store/settings";
-import { KIND_NAMES, toGo, type Pet } from "../pets/logic";
+import { KIND_NAMES, KINDS, toGo, type Kind, type Pet } from "../pets/logic";
+import { KIND_ICONS, Portrait } from "../pets/Portrait";
 import type { Picked } from "./Canvas";
-import { dropFile, petFile, type You } from "./data";
+import { dropFile, itemFile, petFile, pictureOf, type You } from "./data";
 import { byRegion, counted, droppers, far, height, itemsLike, keyOf, LAYER_COLOURS, matches, nearest, pack, spots, tick, type Thing, type WorldMap } from "./logic";
 
 export const TABS = ["pets", "trace", "cube", "gather", "monster", "item", "route"] as const;
@@ -173,42 +177,65 @@ function Kinds(props: TrackerProps & { layer: "gather" | "monster"; here: You | 
 /** Pets whose souls drop on this map and that you still need. */
 function PetsHere(props: TrackerProps & { here: You | null }) {
   const [file] = createResource(() => petFile().catch(() => null));
+  const [items] = createResource(() => itemFile().catch(() => null));
+  const [faces] = createResource(() => pictureOf("pets").catch(() => null));
+  const [kinds, setKinds] = createSignal<ReadonlySet<Kind>>(new Set());
   const goal = () => settings.pets.goal;
-  const needed = (p: Pet) => toGo(p, settings.pets.levels[p.id] ?? 0, settings.pets.souls[p.id] ?? 0, goal()) > 0;
-  const rows = createMemo(() => {
-    const pets = file()?.pets ?? [];
-    return pets
-      .filter(needed)
+  const left = (p: Pet) => toGo(p, settings.pets.levels[p.id] ?? 0, settings.pets.souls[p.id] ?? 0, goal());
+  const icon = (p: Pet) => (p.market ? items()?.items[String(p.market)]?.[2] : undefined);
+  const here = createMemo(() =>
+    (file()?.pets ?? [])
+      .filter((p) => left(p) > 0)
       .map((pet) => ({ pet, things: props.map.things.filter((t) => t.pets?.includes(pet.id)) }))
-      .filter((r) => r.things.length);
-  });
+      .filter((r) => r.things.length),
+  );
+  const rows = () => here().filter((r) => !kinds().size || kinds().has(r.pet.kind));
   const keys = () => rows().flatMap((r) => r.things.map((t) => keyOf(props.map.id, t)));
   const all = () => keys().length > 0 && keys().every((k) => settings.world.tracked.includes(k));
   return (
     <Show when={file()} fallback={<p class="ui-muted ui-small">The pet file is not on this PC.</p>}>
-      <div class="tracker-head">
-        <b>{rows().length} still needed here</b>
-        <button class="ui-chip" aria-pressed={all()} onClick={() => change((s) => (s.world.tracked = all() ? s.world.tracked.filter((k) => !keys().includes(k)) : [...new Set([...s.world.tracked, ...keys()])]))}>
-          Track all
-        </button>
-      </div>
-      <p class="ui-muted ui-small">To level {goal()}. Change the goal on the Pets page.</p>
-      <For each={rows()}>
-        {(r) => (
-          <div class="tracker-pet">
-            <b>{r.pet.name} <small class="ui-muted">{KIND_NAMES[r.pet.kind]}, {toGo(r.pet, settings.pets.levels[r.pet.id] ?? 0, settings.pets.souls[r.pet.id] ?? 0, goal())} souls to go</small></b>
-            <For each={r.things}>
-              {(t) => (
-                <div class="tracker-row" role="button" tabindex="0" onClick={() => pickNearest(props, t)} onKeyDown={(e) => e.key === "Enter" && pickNearest(props, t)}>
-                  <span>{t.name} <small class="ui-muted">{t.level}</small></span>
-                  <span class="ui-num ui-muted">{spots(t).length}</span>
-                  <TrackButton key={keyOf(props.map.id, t)} name={t.name} />
-                </div>
+      {(f) => (
+        <>
+          <div class="tracker-head">
+            <b>{rows().length} still needed here</b>
+            <button class="ui-chip" aria-pressed={all()} onClick={() => change((s) => (s.world.tracked = all() ? s.world.tracked.filter((k) => !keys().includes(k)) : [...new Set([...s.world.tracked, ...keys()])]))}>
+              Track all
+            </button>
+          </div>
+          <div class="ui-row tracker-kinds" role="group" aria-label="Kind">
+            <For each={KINDS.filter((k) => here().some((r) => r.pet.kind === k))}>
+              {(k) => (
+                <button class="ui-chip" data-kind={k} aria-pressed={kinds().has(k)} onClick={() => setKinds(flip(kinds(), k))}>
+                  <span class="kind-pic" aria-hidden="true"><GameIcon name={KIND_ICONS[k]}>{null}</GameIcon></span>
+                  <span class="tint-text">{KIND_NAMES[k]}</span>
+                </button>
               )}
             </For>
           </div>
-        )}
-      </For>
+          <p class="ui-muted ui-small">
+            To level {goal()}. <button class="ui-chip" onClick={() => void openPage("pets")}>Open in Pets</button>
+          </p>
+          <For each={rows()}>
+            {(r) => (
+              <div class="tracker-pet" data-kind={r.pet.kind}>
+                <b>
+                  <Portrait pet={r.pet} icon={icon(r.pet)} sheet={faces()} cell={f().faces.cell} columns={f().faces.columns} />
+                  <span>{r.pet.name} <small class="ui-muted"><span class="tint-text">{KIND_NAMES[r.pet.kind]}</span>, {left(r.pet)} souls to go</small></span>
+                </b>
+                <For each={r.things}>
+                  {(t) => (
+                    <div class="tracker-row" role="button" tabindex="0" onClick={() => pickNearest(props, t)} onKeyDown={(e) => e.key === "Enter" && pickNearest(props, t)}>
+                      <span>{t.name} <small class="ui-muted">{t.level}</small></span>
+                      <span class="ui-num ui-muted">{spots(t).length}</span>
+                      <TrackButton key={keyOf(props.map.id, t)} name={t.name} />
+                    </div>
+                  )}
+                </For>
+              </div>
+            )}
+          </For>
+        </>
+      )}
     </Show>
   );
 }

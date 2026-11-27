@@ -130,7 +130,7 @@ ${fits.who}` : "";
     >
       <For each={shown()}>{(f) => <Frame feature={f} editing={moving()} pointer={props.pointer()} others={boxes} />}</For>
       <Show when={settings.overlay.button}><GameButton open={props.editing() === "quick"} /></Show>
-      <Show when={long() && !shut() && settings.overlay.on && !props.editing()}>
+      <Show when={long() && !shut() && settings.overlay.on}>
         <div class="game-toast" role="status">
           <span class="ui-icon" aria-hidden="true">{"\ue77b"}</span>
           <span>

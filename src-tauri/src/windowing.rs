@@ -164,13 +164,12 @@ pub fn edit(app: &AppHandle, mode: u8) {
     if let Some(w) = overlay(app) {
         let _ = w.set_ignore_cursor_events(!on);
         let _ = w.set_focusable(on);
+        // Leaving edit mode hides nothing here: the overlay itself is in front then, which the watcher counts as the
+        // game, and it hides the overlay on its next look if it is not wanted.
         if on {
             place(app, &w);
             let _ = w.show();
             let _ = w.set_focus();
-        } else if !(state.on.load(SeqCst) && (game_in_front() || !state.only_in_game.load(SeqCst))) {
-            // Shown for editing, and not wanted now: the watcher only hides what it showed itself.
-            let _ = w.hide();
         }
     }
     let _ = app.emit("edit", MODES[usize::from(mode)]);
@@ -263,6 +262,12 @@ fn game_in_front() -> bool {
     game
 }
 
+/// Whether Plume's overlay window is the one in front.
+fn ours_in_front(app: &AppHandle) -> bool {
+    let front = unsafe { GetForegroundWindow() };
+    app.get_webview_window(OVERLAY).and_then(|w| w.hwnd().ok()).is_some_and(|w| w.0 == front.0)
+}
+
 fn is_game(title: &str) -> bool {
     // A browser tab about the game starts the same way, but ends with the browser's name.
     GAME.iter().any(|g| title.starts_with(g)) && !title.contains(" - ") && !title.contains(" — ")
@@ -271,13 +276,16 @@ fn is_game(title: &str) -> bool {
 /// Shows and hides the overlay as the game comes and goes.
 pub fn watch(app: AppHandle) {
     std::thread::spawn(move || {
-        let mut shown = false;
         let mut seen = Instant::now();
+        let mut was_front = false;
         // The game counts as new when it was not in front for as long as the overlays sleep.
         let (mut gone, mut front_at) = (true, Instant::now());
         loop {
             let state = app.state::<Overlay>();
-            let front = game_in_front();
+            // The overlay in front is over the game: just after edit mode, or a click on one of its buttons.
+            let front = game_in_front() || ours_in_front(&app);
+            // Whether it is seen now, as Windows says: anything may have hidden it.
+            let shown = app.get_webview_window(OVERLAY).is_some_and(|w| w.is_visible().unwrap_or(false));
             if front {
                 if gone {
                     crate::game_came(&app);
@@ -293,10 +301,10 @@ pub fn watch(app: AppHandle) {
                 if front {
                     place(&app, &w);
                 }
-                if !shown {
+                if !shown || front && !was_front {
                     place(&app, &w);
                     let _ = w.show();
-                    // Windows can drop a window behind a game that just took the screen.
+                    // Windows can drop a window behind a game that just took the screen, so on top again each time.
                     let _ = w.set_always_on_top(true);
                 }
             } else if !wanted && shown && let Some(w) = app.get_webview_window(OVERLAY) {
@@ -306,7 +314,7 @@ pub fn watch(app: AppHandle) {
                 // it runs, hidden, even with the overlays off.
                 let _ = overlay(&app);
             }
-            shown = wanted;
+            was_front = front;
             if wanted || front || app.state::<Arc<Engine>>().live() {
                 seen = Instant::now();
             } else if state.sleep.load(SeqCst)

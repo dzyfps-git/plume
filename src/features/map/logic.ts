@@ -93,7 +93,7 @@ export const DENSE: readonly Layer[] = ["gather", "npc", "cube"];
 
 /** Marker colours, by layer. */
 export const LAYER_COLOURS: Record<Layer, string> = {
-  trace: "#7fd6ff", cube: "#ffcf5a", gather: "#5fdc95", monster: "#ff8f70", boss: "#ff5c7a", npc: "#c9b8ff", teleport: "#8f9bff",
+  trace: "#7fd6ff", cube: "#ff4d4d", gather: "#5fdc95", monster: "#ff8f70", boss: "#ff5c7a", npc: "#c9b8ff", teleport: "#8f9bff",
   village: "#f2e6c9", sealed: "#e58cff", dungeon: "#d58cff", portal: "#62c8ff", rift: "#b86bff", stronghold: "#ffa64d",
   monolith: "#a9b4c8", quest: "#ffe08a",
 };

@@ -47,6 +47,8 @@
 .thing-pic .ui-icon { color: color-mix(in oklab, var(--edge) 75%, var(--text)); font-size: 18px; font-weight: 400; }
 .thing-pic[data-small] { width: 28px; height: 28px; border-radius: 6px; font-size: 12px; }
 .thing-pic[data-small] .ui-icon { font-size: 14px; }
+.kind-pic { display: inline-grid; width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; place-items: center; }
+.kind-pic > :is(img, canvas, .sharp) { width: 100%; height: 100%; }
 
 /* A bar of progress in the colour of what it counts. */
 .tint-bar { height: 5px; border-radius: 3px; background: linear-gradient(90deg, var(--tint, var(--accent)) calc(var(--done) * 100%), color-mix(in srgb, var(--text) 10%, transparent) 0); }

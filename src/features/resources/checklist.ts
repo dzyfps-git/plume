@@ -112,7 +112,7 @@ export function checklist(chars: readonly Kept[], chosen: readonly Resource[], m
     },
     { key: "place", group: "character", name: "Location", glyph: "", cell: (k) => (mapName(k.map) ? { n: 0, text: mapName(k.map) } : undefined) },
     { key: "power", group: "character", name: "Combat Power", icon: "profile_power_icon_pc", cell: (k) => (k.power ? { n: k.power, text: power(k.power) } : undefined) },
-    { key: "level", group: "character", name: "Item level", glyph: "", cell: (k) => (k.level ? { n: k.level } : undefined) },
+    { key: "level", group: "character", name: "Item level", icon: "profile_level_icon_pc", glyph: "", cell: (k) => (k.level ? { n: k.level } : undefined) },
     {
       key: "odyle", group: "energy", name: "Odyle Energy", icon: "Icon_Item_Odenergy_A_001", sum: true,
       cell: (k) => {
@@ -142,9 +142,10 @@ export function checklist(chars: readonly Kept[], chosen: readonly Resource[], m
       key: `craft:${id}`, group: "week", name, icon: "Icon_Item_Odenergy_A_001",
       cell: (k) => { const c = k.crafts?.find(([at]) => at === id); return c && (week(k) ? { n: 0, most, note: RESET } : { n: c[1], most, done: c[1] >= most }); },
     })),
-    // What the game counts with no name known: dungeon rewards, then the rest, named by you or by number.
-    ...ids.filter((id) => !kindOf(id, chosen) && !CORRIDORS[id]).map((id): Def => ({
-      key: String(id), group: isReward(id) ? "dungeons" : "entries", name: named(id) || `${isReward(id) ? "Reward counter" : "Entry"} ${id}`,
+    // What the game counts with no name known shows only once you name it in the Checklist's settings: a bare number
+    // says nothing.
+    ...ids.filter((id) => !kindOf(id, chosen) && !CORRIDORS[id] && named(id)).map((id): Def => ({
+      key: String(id), group: isReward(id) ? "dungeons" : "entries", name: named(id)!,
       icon: isReward(id) ? "UT_Marker_Dungeon" : undefined, glyph: "", sum: true,
       cell: (k) => { const c = count(k, id); return c && { n: c[1], more: plus(c[2]) }; },
     })),

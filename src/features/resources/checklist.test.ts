@@ -27,8 +27,8 @@ test("a task is done once every character that has it is done", () => {
 test("unnamed numbers are dungeon rewards or entries, and take the name you give", () => {
   assert.equal(isReward(60_000_001), false, "Odyle Energy");
   assert.equal(isReward(60_000_002), true);
-  const rows = checklist([kept("A", { counts: [[60_000_002, 1, 0], [7, 3, 0], [3, 2, 0]] })], [{ id: 7, name: "Mine", kind: "", show: false }], false, at, () => "");
-  assert.deepEqual(rows.map((r) => [r.group, r.name]), [["corridors", "Lower Abyss"], ["entries", "Mine"], ["dungeons", "Reward counter 60000002"]]);
+  const rows = checklist([kept("A", { counts: [[60_000_002, 1, 0], [60_000_003, 1, 0], [7, 3, 0], [8_888, 1, 0], [3, 2, 0]] })], [{ id: 7, name: "Mine", kind: "", show: false }, { id: 60_000_003, name: "Ours", kind: "", show: false }], false, at, () => "");
+  assert.deepEqual(rows.map((r) => [r.group, r.name]), [["corridors", "Lower Abyss"], ["entries", "Mine"], ["dungeons", "Ours"]], "a bare number is not a row");
 });
 
 test("what was done is to do again after its reset", () => {
